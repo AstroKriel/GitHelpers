@@ -1,74 +1,48 @@
 # Git Helpers
 
-`git_helpers` is a command line tool that collects and packages up common `git` workflows into single commands (see the list of commands below). Each command operates on the `git`-repo in your current directory, narrates what it's doing, and prints the `git` commands it's running internally, so you can learn about the underlying mechanics while getting the job done.
+`git_helpers` is a command line tool that packages up common `git` workflows into single commands. Each command operates on the `git` repo in your current directory, narrates what it's doing, and prints the underlying `git` commands it runs — so you can learn the mechanics while getting the job done.
 
 ## Getting setup
 
-### Clone and install `git_helpers`'s dependencies
+You'll need [uv](https://docs.astral.sh/uv/) installed. Clone the repo and install `git_helpers` as a global tool:
 
 ```bash
 git clone git@github.com:AstroKriel/GitHelpers.git
 cd GitHelpers
-uv sync
-```
-
-### Run `git_helpers` locally (without installing globally)
-
-From inside the repo, run commands through the `uv`-managed environment:
-
-```bash
-uv run git_helpers <subcommand> [args]
-```
-
-### Install `git_helpers` globally
-
-To make `git_helpers` callable from any directory, run the following from the repo root:
-
-```bash
-cd /path/to/GitHelpers  # repo root
 uv tool install .
 ```
 
-`uv` places installed tools in `~/.local/bin`. Verify it's on your PATH:
-
-```bash
-which git_helpers  # prints the path if found, errors if not
-```
-
-If it's missing, add it to your shell config (`~/.zshrc` for zsh, `~/.bashrc` for bash):
+`uv` places installed tools in `~/.local/bin`. If `git_helpers` isn't found after the install, add that directory to your shell config (`~/.zshrc` for zsh, `~/.bashrc` for bash):
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### Verify the installation
+Once installed, verify everything is working:
 
 ```bash
-uv tool list            # should show git_helpers
 git_helpers self-check  # verify git is on your PATH
 git_helpers --help      # list all available commands
 ```
 
-### Update `git_helpers`
+### Update
 
-From the repo root:
+From your local GitHelpers clone, pull the latest changes and reinstall:
 
 ```bash
-cd /path/to/GitHelpers
 git pull
 uv tool install . --reinstall
 ```
 
-### Uninstall `git_helpers`
-
-From the repo root:
+### Uninstall
 
 ```bash
-cd /path/to/GitHelpers
 uv tool uninstall git_helpers
 ```
 
 ## Commands
+
+Run any command from inside a git repo. Use `git_helpers --help` to see all available commands, or `git_helpers <command> --help` for details on a specific one.
 
 **Global git configuration**
 ```bash
@@ -115,15 +89,19 @@ git_helpers --dry-run <cmd>      # print commands without executing them
 git_helpers --allow-dirty <cmd>  # skip the clean worktree check
 ```
 
-## Running tests
+`--dry-run` is useful for previewing what a command will do before committing to it.
 
-Run the full test suite (unit tests + validation tests):
+## Run test suites
+
+Tests live alongside the source and are run with pytest. `utests/` tests the Python logic (argument parsing, config handling) without executing any git commands. `vtests/` tests that the actual git operations produce the expected repo state.
+
+Run the full suite from the repo root:
 
 ```bash
 uv run pytest
 ```
 
-`utests/` tests the Python logic (argument parsing, config handling, command execution), but does not check git commands. `vtests/` tests that the actual git operations produce the expected repo states/changes. To run either suite in isolation:
+To run either suite in isolation:
 
 ```bash
 uv run pytest utests/
@@ -136,14 +114,14 @@ uv run pytest vtests/
 GitHelpers/
 ├── src/
 │   └── git_helpers/
-│       ├── cli_utils.py        # [entrypoint] argparse wiring and main()
-│       ├── git_utils.py        # [commands] all user-facing git commands
-│       ├── repo_utils.py       # [internal] read-only git helpers
-│       └── shell_utils.py      # [internal] config, logging, subprocess wrappers
-├── utests/                     # unit tests
-├── vtests/                     # validation tests
-├── pyproject.toml              # package metadata; registers the git_helpers command
-├── uv.lock                     # pinned dependency versions
+│       ├── cli_utils.py    # [entrypoint] argparse wiring and main()
+│       ├── git_utils.py    # [commands] all user-facing git commands
+│       ├── repo_utils.py   # [internal] read-only git helpers
+│       └── shell_utils.py  # [internal] config, logging, subprocess wrappers
+├── utests/                 # unit tests
+├── vtests/                 # validation tests
+├── pyproject.toml          # package metadata; registers the git_helpers command
+├── uv.lock                 # pinned dependency versions
 ├── .gitignore
 └── README.md
 ```
