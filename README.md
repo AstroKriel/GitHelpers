@@ -1,19 +1,19 @@
 # Git Helpers
 
-`git_helpers` is a CLI tool that packages up common but fiddly git workflows into single commands. Each command narrates what it's doing and prints the git commands it's running, so you can learn the underlying mechanics while getting the job done.
+`git_helpers` is a CLI tool that collects and packages up common `git` workflows into single commands. Each command narrates what it's doing and prints the `git` commands it's running internally, so you can learn the underlying mechanics while getting the job done.
 
 ## Getting setup
 
 ```bash
 git clone git@github.com:AstroKriel/GitHelpers.git
 cd GitHelpers
-pip install -e .
+uv sync
 ```
 
-After installing, the `git_helpers` command is available from anywhere:
+After installing, run commands through the managed environment:
 
 ```bash
-git_helpers <subcommand> [args]
+uv run git_helpers <subcommand> [args]
 ```
 
 ## Commands
@@ -69,12 +69,13 @@ GIT_ALLOW_DIRTY=1 git_helpers <cmd> # skip the clean worktree check
 ```
 GitHelpers/
 ├── src/
-│   └── githelpers/
+│   └── git_helpers/
 │       ├── shell_utils.py   # toggles, logging, subprocess wrappers
 │       ├── inspect_repo.py  # read-only git state helpers (branch, upstream, remote)
 │       ├── run_cmds.py      # all user-facing git commands
 │       └── cli_utils.py     # argparse wiring and entry point
 ├── pyproject.toml           # package metadata; registers the git_helpers command
+├── uv.lock                  # pinned dependency versions
 ├── .gitignore
 └── README.md
 ```
