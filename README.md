@@ -115,18 +115,34 @@ git_helpers --dry-run <cmd>      # print commands without executing them
 git_helpers --allow-dirty <cmd>  # skip the clean worktree check
 ```
 
+## Running tests
+
+Run the suite of unit tests (pure Python, no git required):
+
+```bash
+uv run pytest utests/
+```
+
+Run the suite of validation tests (spins up real temporary git repos):
+
+```bash
+uv run vtests/run.py
+```
+
 ## File structure
 
 ```
 GitHelpers/
 ├── src/
 │   └── git_helpers/
-│       ├── cli_utils.py     # [entrypoint] argparse wiring and main()
-│       ├── run_cmds.py      # [commands] all user-facing git commands
-│       ├── inspect_repo.py  # [internal] read-only git state helpers (branch, upstream, remote)
-│       └── shell_utils.py   # [internal] config, logging, subprocess wrappers
-├── pyproject.toml           # package metadata; registers the git_helpers command
-├── uv.lock                  # pinned dependency versions
+│       ├── cli_utils.py        # [entrypoint] argparse wiring and main()
+│       ├── run_cmds.py         # [commands] all user-facing git commands
+│       ├── inspect_repo.py     # [internal] read-only git state helpers (branch, upstream, remote)
+│       └── shell_utils.py      # [internal] config, logging, subprocess wrappers
+├── utests/                     # unit tests
+├── vtests/                     # validation tests
+├── pyproject.toml              # package metadata; registers the git_helpers command
+├── uv.lock                     # pinned dependency versions
 ├── .gitignore
 └── README.md
 ```
