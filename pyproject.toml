@@ -5,7 +5,9 @@ description = "git_helpers: a CLI tool for common git workflows"
 readme = "README.md"
 authors = [{ name = "Neco Kriel", email = "necokriel@gmail.com" }]
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "rich>=13.0",
+]
 
 [build-system]
 requires = ["hatchling"]

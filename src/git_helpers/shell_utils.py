@@ -1,10 +1,4 @@
-"""
-Logging helpers and subprocess wrappers.
-
-Runtime config (threaded from CLI args via Config):
-  dry_run     -- print commands without executing them (default: False)
-  allow_dirty -- skip the clean worktree check (default: False)
-"""
+## { MODULE
 
 ##
 ## === DEPENDENCIES
@@ -14,7 +8,11 @@ Runtime config (threaded from CLI args via Config):
 import subprocess
 import sys
 from dataclasses import dataclass
+from enum import Enum
 from typing import NoReturn
+
+## third-party
+from rich.console import Console
 
 ##
 ## === CONFIG
@@ -31,32 +29,46 @@ class Config:
 ## === LOGGING
 ##
 
+_CONSOLE = Console(
+    highlight=False,
+    stderr=True,
+)
+
+
+class _Colors(str, Enum):
+    WHITE = "#FFFFFF"
+    GREEN = "#32CD32"
+    BLUE = "#2A71F6"
+    ORANGE = "#E48500"
+    RED = "#FF4500"
+    GRAY = "#818181"
+
+
+class _Markers(str, Enum):
+    CIRCLE_OPEN = "\u25CB"  # ○
+    CIRCLE_CLOSED = "\u25CF"  # ●
+    ARROW = "\u2192"  # →
+
 
 def log_msg(
     msg: str,
 ) -> None:
     """Print msg to stderr; all diagnostic output goes here to keep stdout clean."""
-    ## stderr keeps diagnostic output separate from stdout, which callers
-    ## may capture (e.g. in scripts using $(...)).
-    print(
-        msg,
-        file=sys.stderr,
-    )
+    _CONSOLE.print(msg)
 
 
 def log_step(
     msg: str,
 ) -> None:
     """Narrate a major decision point within a command."""
-    ## helps trace what the function is doing at each stage.
-    log_msg(f"STEP: {msg}")
+    _CONSOLE.print(f"[{_Colors.WHITE.value}]{_Markers.CIRCLE_OPEN.value}[/] {msg}")
 
 
 def log_outcome(
     msg: str,
 ) -> None:
     """Record which path was taken after a branch or decision."""
-    log_msg(f"OUTCOME: {msg}")
+    _CONSOLE.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value}[/] {msg}")
 
 
 def bind_var(
@@ -64,18 +76,14 @@ def bind_var(
     var_value: str,
 ) -> None:
     """Log a variable name alongside the value it was resolved to."""
-    ## useful when debugging computed values like remote names or branch names.
-    log_msg(f"SET: {var_name} = {var_value}")
+    _CONSOLE.print(f"[{_Colors.GRAY.value}]{_Markers.ARROW.value} {var_name} = {var_value}[/]")
 
 
 def kill(
     msg: str,
 ) -> NoReturn:
     """Print an error message to stderr and exit the process immediately."""
-    print(
-        f"error: {msg}",
-        file=sys.stderr,
-    )
+    _CONSOLE.print(f"[{_Colors.RED.value}]{_Markers.CIRCLE_CLOSED.value}[/] error: {msg}")
     sys.exit(1)
 
 
@@ -90,9 +98,11 @@ def run_cmd(
 ) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
     if config.dry_run:
-        log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
+        _CONSOLE.print(
+            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]"
+        )
         return
-    log_msg(f"+ {' '.join(args)}")
+    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value}[/] {' '.join(args)}")
     ## `check=True` raises CalledProcessError on non-zero exit, caught in main().
     subprocess.run(
         args,
@@ -106,9 +116,11 @@ def run_cmd_and_capture_output(
 ) -> str:
     """Run a mutating git command and return its stdout; empty string in dry-run."""
     if config.dry_run:
-        log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
+        _CONSOLE.print(
+            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]"
+        )
         return ""
-    log_msg(f"+ {' '.join(args)}")
+    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value}[/] {' '.join(args)}")
     ## `capture_output=True` redirects both stdout and stderr so they don't
     ## print to the terminal; `text=True` decodes bytes to str automatically.
     result = subprocess.run(
@@ -124,7 +136,7 @@ def query_cmd(
     *args: str,
 ) -> str:
     """Run a read-only git command and return its stdout; always executes, even in dry-run."""
-    log_msg(f"? {' '.join(args)}")
+    _CONSOLE.print(f"[{_Colors.GRAY.value}]{_Markers.ARROW.value} {' '.join(args)}[/]")
     result = subprocess.run(
         args,
         capture_output=True,
@@ -158,3 +170,6 @@ def query_cmd_or_empty(
         text=True,
     )
     return result.stdout.strip()
+
+
+## } MODULE
