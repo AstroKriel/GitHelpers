@@ -84,11 +84,11 @@ def kill(
 
 
 def run_cmd(
-    cfg: Config,
+    config: Config,
     *args: str,
 ) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
-    if cfg.dry_run:
+    if config.dry_run:
         log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
         return
     log_msg(f"+ {' '.join(args)}")
@@ -100,11 +100,11 @@ def run_cmd(
 
 
 def run_cmd_and_capture_output(
-    cfg: Config,
+    config: Config,
     *args: str,
 ) -> str:
     """Run a mutating git command and return its stdout; empty string in dry-run."""
-    if cfg.dry_run:
+    if config.dry_run:
         log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
         return ""
     log_msg(f"+ {' '.join(args)}")

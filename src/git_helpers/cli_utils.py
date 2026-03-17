@@ -31,13 +31,15 @@ def cli_command(
     arg_specs: list[tuple[str, dict[str, Any]]] = cmd_args or []
 
     ## build Config from global flags, then pass it as the first positional arg to cmd_fn
-    def handler(args: argparse.Namespace) -> Any:
-        cfg = shell_utils.Config(
+    def handler(
+        args: argparse.Namespace,
+    ) -> Any:
+        config = shell_utils.Config(
             dry_run=args.dry_run,
             allow_dirty=args.allow_dirty,
         )
         return cmd_fn(
-            cfg,
+            config,
             *[getattr(args, arg_name) for arg_name, _ in arg_specs],
         )
 
@@ -56,7 +58,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
     [
         cli_command(
             cmd_name="set-global-config",
-            cmd_fn=run_cmds.set_global_config,
+            cmd_fn=run_cmds.cmd_set_global_config,
             cmd_help="write FF-first merge defaults + rerere to ~/.gitconfig",
         ),
         cli_command(
@@ -66,37 +68,37 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         ),
         cli_command(
             cmd_name="is-detached",
-            cmd_fn=run_cmds.cmd_is_detached,
+            cmd_fn=run_cmds.check_is_detached,
             cmd_help="exit 0 if HEAD is detached, 1 if on a branch (for shell conditionals)",
         ),
         cli_command(
             cmd_name="show-upstream",
-            cmd_fn=run_cmds.cmd_show_upstream,
+            cmd_fn=run_cmds.show_upstream,
             cmd_help="show the current branch, its upstream ref, and the latest upstream commit",
         ),
         cli_command(
             cmd_name="branches-status",
-            cmd_fn=run_cmds.cmd_branches_status,
+            cmd_fn=run_cmds.show_branches_status,
             cmd_help="fetch, then list all branches with upstream and ahead/behind counts",
         ),
         cli_command(
             cmd_name="ahead-behind",
-            cmd_fn=run_cmds.cmd_ahead_behind,
+            cmd_fn=run_cmds.show_ahead_behind,
             cmd_help="print how many commits ahead/behind the current branch is vs its upstream",
         ),
         cli_command(
             cmd_name="unpulled-commits",
-            cmd_fn=run_cmds.cmd_unpulled_commits,
+            cmd_fn=run_cmds.show_unpulled_commits,
             cmd_help="list commits on upstream not yet pulled locally",
         ),
         cli_command(
             cmd_name="local-remotes",
-            cmd_fn=run_cmds.cmd_local_remotes,
+            cmd_fn=run_cmds.show_local_remotes,
             cmd_help="list all configured remotes and their URLs",
         ),
         cli_command(
             cmd_name="show-recent-commits",
-            cmd_fn=run_cmds.cmd_show_recent_commits,
+            cmd_fn=run_cmds.show_recent_commits,
             cmd_help="print the most recent N commits on the current branch (default: 20)",
             cmd_args=[(
                 "max_entries",
@@ -109,7 +111,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         ),
         cli_command(
             cmd_name="submodules-status",
-            cmd_fn=run_cmds.cmd_submodules_status,
+            cmd_fn=run_cmds.show_submodules_status,
             cmd_help="show SHA and init status of each submodule",
         ),
         cli_command(
@@ -221,7 +223,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         ),
         cli_command(
             cmd_name="self-check",
-            cmd_fn=run_cmds.cmd_self_check,
+            cmd_fn=run_cmds.check_self,
             cmd_help="verify that git is available on PATH",
         ),
     ],

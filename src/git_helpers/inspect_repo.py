@@ -100,10 +100,12 @@ def current_branch() -> str:
     return branch_name
 
 
-def ensure_clean_worktree(cfg: shell_utils.Config) -> None:
+def ensure_clean_worktree(
+    config: shell_utils.Config,
+) -> None:
     """Exit with an error if the worktree has uncommitted or unstaged changes."""
     require_repo()
-    if cfg.allow_dirty:
+    if config.allow_dirty:
         shell_utils.log_outcome("continuing despite dirty worktree (--allow-dirty)")
         return
     ## `git diff --quiet` exits non-zero if there are unstaged changes.
