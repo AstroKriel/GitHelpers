@@ -53,7 +53,9 @@ def get_default_branch_name() -> str:
     ## `-q` suppresses the error if the ref doesn't exist; we check stdout instead.
     ## query_cmd_or_empty returns "" on failure — -q already silences the error message,
     ## so an empty result means either the command failed or the ref doesn't exist.
-    ref_value = shell_utils.query_cmd_or_empty("git", "symbolic-ref", "-q", f"refs/remotes/{remote_name}/HEAD")
+    ref_value = shell_utils.query_cmd_or_empty(
+        "git", "symbolic-ref", "-q", f"refs/remotes/{remote_name}/HEAD"
+    )
     if not ref_value:
         shell_utils.log_outcome("no remote default branch advertised")
         return ""

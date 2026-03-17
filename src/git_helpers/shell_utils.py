@@ -29,7 +29,9 @@ allow_dirty = os.environ.get("GIT_ALLOW_DIRTY", "0") == "1"
 ##
 
 
-def log_msg(msg: str) -> None:
+def log_msg(
+    msg: str,
+) -> None:
     """Print msg to stderr when GIT_VERBOSE is enabled (the default)."""
     ## all diagnostic output goes to stderr so it doesn't pollute stdout,
     ## which callers may capture (e.g. in scripts using $(...)).
@@ -40,24 +42,33 @@ def log_msg(msg: str) -> None:
         )
 
 
-def log_step(msg: str) -> None:
+def log_step(
+    msg: str,
+) -> None:
     """Narrate a major decision point within a command."""
     ## helps trace what the function is doing at each stage.
     log_msg(f"STEP: {msg}")
 
 
-def log_outcome(msg: str) -> None:
+def log_outcome(
+    msg: str,
+) -> None:
     """Record which path was taken after a branch or decision."""
     log_msg(f"OUTCOME: {msg}")
 
 
-def bind_var(var_name: str, var_value: str) -> None:
+def bind_var(
+    var_name: str,
+    var_value: str,
+) -> None:
     """Log a variable name alongside the value it was resolved to."""
     ## useful when debugging computed values like remote names or branch names.
     log_msg(f"SET: {var_name} = {var_value}")
 
 
-def kill(msg: str) -> None:
+def kill(
+    msg: str,
+) -> None:
     """Print an error message to stderr and exit the process immediately."""
     print(
         f"error: {msg}",
@@ -71,7 +82,9 @@ def kill(msg: str) -> None:
 ##
 
 
-def run_cmd(*args: str) -> None:
+def run_cmd(
+    *args: str,
+) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
     if dryrun:
         log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
@@ -84,7 +97,9 @@ def run_cmd(*args: str) -> None:
     )
 
 
-def run_cmd_and_capture_output(*args: str) -> str:
+def run_cmd_and_capture_output(
+    *args: str,
+) -> str:
     """Run a mutating git command and return its stdout; empty string in dry-run."""
     if dryrun:
         log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
@@ -101,7 +116,9 @@ def run_cmd_and_capture_output(*args: str) -> str:
     return result.stdout.strip()
 
 
-def query_cmd(*args: str) -> str:
+def query_cmd(
+    *args: str,
+) -> str:
     """Run a read-only git command and return its stdout; always executes, even in dry-run."""
     log_msg(f"? {' '.join(args)}")
     result = subprocess.run(
@@ -113,7 +130,9 @@ def query_cmd(*args: str) -> str:
     return result.stdout.strip()
 
 
-def probe_cmd(*args: str) -> int:
+def probe_cmd(
+    *args: str,
+) -> int:
     """Run a command silently and return its exit code; used for boolean existence checks."""
     ## output is suppressed entirely — callers only care whether the command succeeded or failed.
     result = subprocess.run(
@@ -123,7 +142,9 @@ def probe_cmd(*args: str) -> int:
     return result.returncode
 
 
-def query_cmd_or_empty(*args: str) -> str:
+def query_cmd_or_empty(
+    *args: str,
+) -> str:
     """Run a read-only git command and return stdout, or empty string if the command fails."""
     ## unlike query_cmd(), no check=True — used when failure is a valid outcome (e.g. -q flag commands
     ## that exit non-zero to signal "not found" rather than an actual error).

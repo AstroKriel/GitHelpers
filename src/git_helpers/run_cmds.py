@@ -195,7 +195,9 @@ def cmd_submodules_status() -> None:
 ##
 
 
-def cmd_rename_last_commit(message: list[str]) -> None:
+def cmd_rename_last_commit(
+    message: list[str],
+) -> None:
     """Replace the message of the most recent commit; rewrites history — avoid if already pushed."""
     inspect_repo.require_repo()
     ## verify there is at least one commit to amend; a brand-new repo has no HEAD.
@@ -216,7 +218,9 @@ def cmd_rename_last_commit(message: list[str]) -> None:
     shell_utils.log_outcome("amended last commit message")
 
 
-def cmd_delete_local_branch(branch_name: str) -> None:
+def cmd_delete_local_branch(
+    branch_name: str,
+) -> None:
     """Safely delete a local branch; refuses if it has unmerged commits."""
     inspect_repo.require_repo()
     inspect_repo.require_attached()
@@ -264,7 +268,9 @@ def cmd_prune_gone_locals() -> None:
     shell_utils.log_outcome("deleted [gone] local branches")
 
 
-def cmd_prune_merged_locals(base_name: str | None = None) -> None:
+def cmd_prune_merged_locals(
+    base_name: str | None = None,
+) -> None:
     """Delete local branches whose commits are fully contained in base_name's history."""
     inspect_repo.require_repo()
     inspect_repo.require_attached()
@@ -281,13 +287,17 @@ def cmd_prune_merged_locals(base_name: str | None = None) -> None:
         var_value=base_name,
     )
     current_branch_name = shell_utils.query_cmd("git", "rev-parse", "--abbrev-ref", "HEAD")
-    shell_utils.log_step(f"finding local branches merged into '{base_name}' (excluding current and main/master)")
+    shell_utils.log_step(
+        f"finding local branches merged into '{base_name}' (excluding current and main/master)"
+    )
     ## `--merged <ref>` lists branches whose tip is reachable from <ref>,
     ## meaning all their commits are already in <ref>'s history — safe to delete.
     ## never delete the current branch, main, or master even if technically merged —
     ## main/master are protected by convention; current branch can't be deleted while checked out.
     excluded_branches = {current_branch_name, "main", "master"}
-    merged_branches_output = shell_utils.query_cmd("git", "branch", "--merged", base_name, "--format=%(refname:short)")
+    merged_branches_output = shell_utils.query_cmd(
+        "git", "branch", "--merged", base_name, "--format=%(refname:short)"
+    )
     branches_to_delete = [
         branch_name for branch_name in merged_branches_output.splitlines()
         if branch_name and branch_name not in excluded_branches
@@ -305,7 +315,9 @@ def cmd_prune_merged_locals(base_name: str | None = None) -> None:
     shell_utils.log_outcome("deleted merged local branches")
 
 
-def cmd_cleanup_local_branches(base_name: str | None = None) -> None:
+def cmd_cleanup_local_branches(
+    base_name: str | None = None,
+) -> None:
     """End-to-end local branch cleanup: remove [gone] branches, then remove merged branches."""
     inspect_repo.require_repo()
     inspect_repo.require_attached()
@@ -318,7 +330,10 @@ def cmd_cleanup_local_branches(base_name: str | None = None) -> None:
     shell_utils.log_outcome("completed local branch cleanup")
 
 
-def cmd_track_remote_branch(remote_branch: str, local_branch: str | None = None) -> None:
+def cmd_track_remote_branch(
+    remote_branch: str,
+    local_branch: str | None = None,
+) -> None:
     """Create a local branch that tracks an existing remote branch and check it out."""
     inspect_repo.require_remote()
     if "/" not in remote_branch:
@@ -343,7 +358,9 @@ def cmd_track_remote_branch(remote_branch: str, local_branch: str | None = None)
     shell_utils.log_outcome(f"created '{local_branch_name}' to track '{remote_branch}'")
 
 
-def cmd_create_branch_from_default(new_branch_name: str) -> None:
+def cmd_create_branch_from_default(
+    new_branch_name: str,
+) -> None:
     """Create a new branch from the remote's default branch and publish it with upstream set."""
     inspect_repo.require_remote()
     shell_utils.bind_var(
@@ -377,7 +394,9 @@ def cmd_create_branch_from_default(new_branch_name: str) -> None:
     shell_utils.log_step("creating local branch from remote default (no tracking)")
     ## `--no-track` means the new branch does NOT track the base it was created
     ## from — we want it to track its own remote counterpart once pushed, not origin/main.
-    shell_utils.run_cmd("git", "switch", "-c", new_branch_name, "--no-track", f"{remote_name}/{base_branch_name}")
+    shell_utils.run_cmd(
+        "git", "switch", "-c", new_branch_name, "--no-track", f"{remote_name}/{base_branch_name}"
+    )
     shell_utils.log_step("publishing branch and setting upstream (-u)")
     ## `HEAD` pushes the current branch; `-u` sets the upstream so subsequent
     ## `git push` / `git pull` work without arguments.
@@ -387,7 +406,10 @@ def cmd_create_branch_from_default(new_branch_name: str) -> None:
     )
 
 
-def cmd_create_branch_from_remote(new_branch_name: str, start_ref: str) -> None:
+def cmd_create_branch_from_remote(
+    new_branch_name: str,
+    start_ref: str,
+) -> None:
     """Create a new branch from an explicit remote ref and publish it with upstream set."""
     inspect_repo.require_remote()
     if "/" not in start_ref:
@@ -420,7 +442,9 @@ def cmd_create_branch_from_remote(new_branch_name: str, start_ref: str) -> None:
     )
 
 
-def cmd_push(extra_args: list[str]) -> None:
+def cmd_push(
+    extra_args: list[str],
+) -> None:
     """Push the current branch; sets upstream automatically if not already configured."""
     inspect_repo.require_remote()
     inspect_repo.require_attached()
@@ -442,7 +466,9 @@ def cmd_push(extra_args: list[str]) -> None:
         shell_utils.run_cmd("git", "push", "-u", remote_name, "HEAD", *extra_args)
 
 
-def cmd_sync_branch(base_name: str | None = None) -> None:
+def cmd_sync_branch(
+    base_name: str | None = None,
+) -> None:
     """Sync the current branch with its upstream or an explicit remote base ref, fast-forward first."""
     inspect_repo.require_remote()
     inspect_repo.require_attached()
@@ -478,7 +504,9 @@ def cmd_sync_branch(base_name: str | None = None) -> None:
         shell_utils.run_cmd("git", "pull", "--ff")
         shell_utils.log_outcome("synced via 'git pull --ff'")
     else:
-        shell_utils.kill("no upstream set; publish (git_helpers push) or provide a base: git_helpers sync-branch <remote>/<base>")
+        shell_utils.kill(
+            "no upstream set; publish (git_helpers push) or provide a base: git_helpers sync-branch <remote>/<base>"
+        )
 
 
 def cmd_self_check() -> None:
