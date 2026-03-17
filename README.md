@@ -1,6 +1,6 @@
 # Git Helpers
 
-`git_helpers` is a command line tool that collects and packages up common `git` workflows into single commands. Each command operates on the `git`-repo in your current directory, narrates what it's doing, and prints the `git` commands it's running internally, so you can learn about the underlying mechanics while getting the job done.
+`git_helpers` is a command line tool that collects and packages up common `git` workflows into single commands (see the list of commands below). Each command operates on the `git`-repo in your current directory, narrates what it's doing, and prints the `git` commands it's running internally, so you can learn about the underlying mechanics while getting the job done.
 
 ## Getting setup
 
@@ -136,8 +136,8 @@ GitHelpers/
 ├── src/
 │   └── git_helpers/
 │       ├── cli_utils.py        # [entrypoint] argparse wiring and main()
-│       ├── run_cmds.py         # [commands] all user-facing git commands
-│       ├── inspect_repo.py     # [internal] read-only git state helpers (branch, upstream, remote)
+│       ├── git_cmds.py         # [commands] all user-facing git commands
+│       ├── repo_utils.py       # [internal] read-only git helpers
 │       └── shell_utils.py      # [internal] config, logging, subprocess wrappers
 ├── utests/                     # unit tests
 ├── vtests/                     # validation tests

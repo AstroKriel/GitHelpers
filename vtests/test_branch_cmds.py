@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 ## local
-from git_helpers import run_cmds
+from git_helpers import git_cmds
 from git_helpers.shell_utils import Config
 from vtests.helpers import git, local_branches, make_commit, make_commits
 
@@ -30,7 +30,7 @@ def test_delete_local_branch_removes_branch(
     git(["checkout", "-b", "to-delete"], cwd=repo)
     git(["checkout", "main"], cwd=repo)
     git(["merge", "to-delete"], cwd=repo)
-    run_cmds.cmd_delete_local_branch(Config(), "to-delete")
+    git_cmds.cmd_delete_local_branch(Config(), "to-delete")
     assert "to-delete" not in local_branches(repo)
 
 
@@ -38,7 +38,7 @@ def test_delete_local_branch_refuses_current_branch(
     repo: Path,
 ) -> None:
     with pytest.raises(SystemExit):
-        run_cmds.cmd_delete_local_branch(Config(), "main")
+        git_cmds.cmd_delete_local_branch(Config(), "main")
 
 
 def test_delete_local_branch_refuses_unmerged_branch(
@@ -49,7 +49,7 @@ def test_delete_local_branch_refuses_unmerged_branch(
     git(["checkout", "main"], cwd=repo)
     ## git refuses -d on unmerged branches — raises CalledProcessError
     with pytest.raises(subprocess.CalledProcessError):
-        run_cmds.cmd_delete_local_branch(Config(), "unmerged")
+        git_cmds.cmd_delete_local_branch(Config(), "unmerged")
     ## branch should still be there
     assert "unmerged" in local_branches(repo)
 
@@ -69,7 +69,7 @@ def test_prune_gone_locals_removes_branch_with_deleted_remote(
     git(["checkout", "main"], cwd=repo)
     git(["push", "origin", "--delete", "gone-branch"], cwd=repo)
     ## prune should clean it up
-    run_cmds.cmd_prune_gone_locals(Config())
+    git_cmds.cmd_prune_gone_locals(Config())
     assert "gone-branch" not in local_branches(repo)
 
 
@@ -81,7 +81,7 @@ def test_prune_gone_locals_leaves_active_branches(
     make_commit(repo, "active commit")
     git(["push", "-u", "origin", "active-branch"], cwd=repo)
     git(["checkout", "main"], cwd=repo)
-    run_cmds.cmd_prune_gone_locals(Config())
+    git_cmds.cmd_prune_gone_locals(Config())
     assert "active-branch" in local_branches(repo)
 
 
@@ -99,7 +99,7 @@ def test_prune_merged_locals_removes_merged_branch(
     git(["checkout", "main"], cwd=repo)
     git(["merge", "merged-feature", "--no-ff", "-m", "merge feature"], cwd=repo)
     git(["push"], cwd=repo)
-    run_cmds.cmd_prune_merged_locals(Config(), "origin/main")
+    git_cmds.cmd_prune_merged_locals(Config(), "origin/main")
     assert "merged-feature" not in local_branches(repo)
 
 
@@ -107,7 +107,7 @@ def test_prune_merged_locals_never_deletes_main(
     repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo, _ = repo_with_remote
-    run_cmds.cmd_prune_merged_locals(Config(), "origin/main")
+    git_cmds.cmd_prune_merged_locals(Config(), "origin/main")
     assert "main" in local_branches(repo)
 
 
@@ -121,7 +121,7 @@ def test_prune_merged_locals_never_deletes_current_branch(
     git(["merge", "current", "--no-ff", "-m", "merge current"], cwd=repo)
     git(["push"], cwd=repo)
     git(["checkout", "current"], cwd=repo)
-    run_cmds.cmd_prune_merged_locals(Config(), "origin/main")
+    git_cmds.cmd_prune_merged_locals(Config(), "origin/main")
     assert "current" in local_branches(repo)
 
 
@@ -145,7 +145,7 @@ def test_cleanup_local_branches_runs_both_passes(
     git(["checkout", "main"], cwd=repo)
     git(["merge", "merged", "--no-ff", "-m", "merge merged"], cwd=repo)
     git(["push"], cwd=repo)
-    run_cmds.cmd_cleanup_local_branches(Config(), "origin/main")
+    git_cmds.cmd_cleanup_local_branches(Config(), "origin/main")
     branches = local_branches(repo)
     assert "gone" not in branches
     assert "merged" not in branches
