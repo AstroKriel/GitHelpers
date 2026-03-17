@@ -1,14 +1,24 @@
+[project]
+name = "git_helpers"
+version = "0.1.0"
+description = "git_helpers: a CLI tool for common git workflows"
+readme = "README.md"
+authors = [{ name = "Neco Kriel", email = "necokriel@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = []
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[project]
-name = "git_helpers"
-version = "0.1.0"
-requires-python = ">=3.10"
+[tool.hatch.build]
+sources = ["src"]
 
 [project.scripts]
 git_helpers = "git_helpers.cli_utils:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/git_helpers"]
+[tool.pyright]
+include = ["src"]
+extraPaths = ["src"]
+reportMissingImports = true
+reportMissingTypeStubs = false
