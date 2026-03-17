@@ -99,7 +99,7 @@ def run_cmd(
     """Run a mutating git command; skipped entirely in dry-run mode."""
     if config.dry_run:
         _CONSOLE.print(
-            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]"
+            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]",
         )
         return
     _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value}[/] {' '.join(args)}")
@@ -117,7 +117,7 @@ def run_cmd_and_capture_output(
     """Run a mutating git command and return its stdout; empty string in dry-run."""
     if config.dry_run:
         _CONSOLE.print(
-            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]"
+            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]",
         )
         return ""
     _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value}[/] {' '.join(args)}")
