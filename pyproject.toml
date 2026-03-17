@@ -17,6 +17,15 @@ sources = ["src"]
 [project.scripts]
 git_helpers = "git_helpers.cli_utils:main"
 
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["utests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
 [tool.pyright]
 include = ["src"]
 extraPaths = ["src"]
