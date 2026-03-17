@@ -2,13 +2,19 @@
 Command-line interface: subcommand registry and entry point.
 """
 
+##
+## === DEPENDENCIES
+##
+
+## stdlib
 import argparse
 import subprocess
 import sys
 from collections.abc import Callable
 from typing import Any
 
-from git_helpers import run_cmds
+## local
+from git_helpers import run_cmds, shell_utils
 
 ##
 ## === COMMAND LINE INTERFACE
@@ -24,9 +30,16 @@ def cli_command(
     """Build a (name, entry) pair for COMMANDS; handler is auto-generated from cmd_args."""
     arg_specs: list[tuple[str, dict[str, Any]]] = cmd_args or []
 
-    ## extract each arg's value from the parsed namespace by name, then pass positionally to cmd_fn
+    ## build Config from global flags, then pass it as the first positional arg to cmd_fn
     def handler(args: argparse.Namespace) -> Any:
-        return cmd_fn(*[getattr(args, arg_name) for arg_name, _arg_kwargs in arg_specs])
+        cfg = shell_utils.Config(
+            dry_run=args.dry_run,
+            allow_dirty=args.allow_dirty,
+        )
+        return cmd_fn(
+            cfg,
+            *[getattr(args, arg_name) for arg_name, _ in arg_specs],
+        )
 
     return (
         cmd_name,
@@ -219,6 +232,18 @@ def main() -> None:
     """Parse arguments and dispatch to the appropriate command function."""
     arg_parser = argparse.ArgumentParser(
         description="Git workflow helpers",
+    )
+    arg_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=False,
+        help="print commands without executing them",
+    )
+    arg_parser.add_argument(
+        "--allow-dirty",
+        action="store_true",
+        default=False,
+        help="skip the clean worktree check",
     )
     sub_parsers = arg_parser.add_subparsers(
         dest="cmd",  # the chosen subcommand name: parse_args().cmd

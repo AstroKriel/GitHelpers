@@ -106,14 +106,13 @@ git_helpers sync-branch [base]        # pull/merge with --ff; merge explicit bas
 git_helpers rename-last-commit <msg>  # amend the most recent commit message
 ```
 
-## Toggles
+## Global flags
 
-Behaviour can be adjusted at runtime via environment variables:
+These flags apply to any command and are placed before the subcommand:
 
 ```bash
-GIT_VERBOSE=0 git_helpers <cmd>      # suppress narration (default: on)
-GIT_DRYRUN=1 git_helpers <cmd>       # print commands without executing them
-GIT_ALLOW_DIRTY=1 git_helpers <cmd>  # skip the clean worktree check
+git_helpers --dry-run <cmd>      # print commands without executing them
+git_helpers --allow-dirty <cmd>  # skip the clean worktree check
 ```
 
 ## File structure
@@ -125,7 +124,7 @@ GitHelpers/
 │       ├── cli_utils.py     # [entrypoint] argparse wiring and main()
 │       ├── run_cmds.py      # [commands] all user-facing git commands
 │       ├── inspect_repo.py  # [internal] read-only git state helpers (branch, upstream, remote)
-│       └── shell_utils.py   # [internal] toggles, logging, subprocess wrappers
+│       └── shell_utils.py   # [internal] config, logging, subprocess wrappers
 ├── pyproject.toml           # package metadata; registers the git_helpers command
 ├── uv.lock                  # pinned dependency versions
 ├── .gitignore

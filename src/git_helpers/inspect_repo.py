@@ -2,6 +2,11 @@
 Git repository state helpers: guards, branch/remote introspection, and worktree checks.
 """
 
+##
+## === DEPENDENCIES
+##
+
+## local
 from git_helpers import shell_utils
 
 ##
@@ -54,7 +59,10 @@ def get_default_branch_name() -> str:
     ## query_cmd_or_empty returns "" on failure — -q already silences the error message,
     ## so an empty result means either the command failed or the ref doesn't exist.
     ref_value = shell_utils.query_cmd_or_empty(
-        "git", "symbolic-ref", "-q", f"refs/remotes/{remote_name}/HEAD"
+        "git",
+        "symbolic-ref",
+        "-q",
+        f"refs/remotes/{remote_name}/HEAD",
     )
     if not ref_value:
         shell_utils.log_outcome("no remote default branch advertised")
@@ -92,11 +100,11 @@ def current_branch() -> str:
     return branch_name
 
 
-def ensure_clean_worktree() -> None:
+def ensure_clean_worktree(cfg: shell_utils.Config) -> None:
     """Exit with an error if the worktree has uncommitted or unstaged changes."""
     require_repo()
-    if shell_utils.allow_dirty:
-        shell_utils.log_outcome("continuing despite dirty worktree (GIT_ALLOW_DIRTY=1)")
+    if cfg.allow_dirty:
+        shell_utils.log_outcome("continuing despite dirty worktree (--allow-dirty)")
         return
     ## `git diff --quiet` exits non-zero if there are unstaged changes.
     ## `git diff --cached --quiet` exits non-zero if there are staged-but-uncommitted changes.

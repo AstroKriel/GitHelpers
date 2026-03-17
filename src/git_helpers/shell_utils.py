@@ -1,28 +1,30 @@
 """
-Runtime toggles, logging helpers, and subprocess wrappers.
+Logging helpers and subprocess wrappers.
 
-Runtime toggles (env-vars):
-  GIT_VERBOSE=1  # default  -> print decisions + the exact git commands
-  GIT_VERBOSE=0  #          -> quiet mode
-
-  GIT_DRYRUN=1   #          -> show commands, but DO NOT execute them
-  GIT_DRYRUN=0   # default  -> execute normally
-
-  GIT_ALLOW_DIRTY=1  #      -> allow syncs/merges with uncommitted changes
-  GIT_ALLOW_DIRTY=0  # default  -> require a clean worktree (safer)
+Runtime config (threaded from CLI args via Config):
+  dry_run     -- print commands without executing them (default: False)
+  allow_dirty -- skip the clean worktree check (default: False)
 """
 
-import os
+##
+## === DEPENDENCIES
+##
+
+## stdlib
 import subprocess
 import sys
+from dataclasses import dataclass
 
 ##
-## === TOGGLES
+## === CONFIG
 ##
 
-verbose = os.environ.get("GIT_VERBOSE", "1") != "0"
-dryrun = os.environ.get("GIT_DRYRUN", "0") == "1"
-allow_dirty = os.environ.get("GIT_ALLOW_DIRTY", "0") == "1"
+
+@dataclass
+class Config:
+    dry_run: bool = False
+    allow_dirty: bool = False
+
 
 ##
 ## === LOGGING
@@ -32,14 +34,13 @@ allow_dirty = os.environ.get("GIT_ALLOW_DIRTY", "0") == "1"
 def log_msg(
     msg: str,
 ) -> None:
-    """Print msg to stderr when GIT_VERBOSE is enabled (the default)."""
-    ## all diagnostic output goes to stderr so it doesn't pollute stdout,
-    ## which callers may capture (e.g. in scripts using $(...)).
-    if verbose:
-        print(
-            msg,
-            file=sys.stderr,
-        )
+    """Print msg to stderr; all diagnostic output goes here to keep stdout clean."""
+    ## stderr keeps diagnostic output separate from stdout, which callers
+    ## may capture (e.g. in scripts using $(...)).
+    print(
+        msg,
+        file=sys.stderr,
+    )
 
 
 def log_step(
@@ -83,10 +84,11 @@ def kill(
 
 
 def run_cmd(
+    cfg: Config,
     *args: str,
 ) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
-    if dryrun:
+    if cfg.dry_run:
         log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
         return
     log_msg(f"+ {' '.join(args)}")
@@ -98,10 +100,11 @@ def run_cmd(
 
 
 def run_cmd_and_capture_output(
+    cfg: Config,
     *args: str,
 ) -> str:
     """Run a mutating git command and return its stdout; empty string in dry-run."""
-    if dryrun:
+    if cfg.dry_run:
         log_msg(f"+ (dryrun) skipped: {' '.join(args)}")
         return ""
     log_msg(f"+ {' '.join(args)}")

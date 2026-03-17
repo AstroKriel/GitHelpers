@@ -22,3 +22,4 @@ include = ["src"]
 extraPaths = ["src"]
 reportMissingImports = true
 reportMissingTypeStubs = false
+reportUnusedParameter = "none"
