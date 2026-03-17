@@ -14,7 +14,7 @@ uv sync
 
 ### Run `git_helpers` locally (without installing globally)
 
-From inside the repo, run commands through the managed environment:
+From inside the repo, run commands through the `uv`-managed environment:
 
 ```bash
 uv run git_helpers <subcommand> [args]
@@ -22,10 +22,10 @@ uv run git_helpers <subcommand> [args]
 
 ### Install `git_helpers` globally
 
-To make `git_helpers` callable from any directory, run from the repo root:
+To make `git_helpers` callable from any directory, run the following from the repo root:
 
 ```bash
-cd /path/to/GitHelpers
+cd /path/to/GitHelpers  # repo root
 uv tool install .
 ```
 
