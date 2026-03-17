@@ -10,7 +10,7 @@ Validation tests for --dry-run: verifies no mutations occur.
 from pathlib import Path
 
 ## local
-from git_helpers import git_cmds
+from git_helpers import git_utils
 from git_helpers.shell_utils import Config
 from vtests.helpers import current_commit_message, git, head_sha, local_branches, make_commit
 
@@ -27,7 +27,7 @@ def test_dry_run_delete_branch_leaves_branch_intact(
     make_commit(repo, "dry commit")
     git(["checkout", "main"], cwd=repo)
     git(["merge", "dry-target"], cwd=repo)
-    git_cmds.cmd_delete_local_branch(Config(dry_run=True), "dry-target")
+    git_utils.cmd_delete_local_branch(Config(dry_run=True), "dry-target")
     assert "dry-target" in local_branches(repo)
 
 
@@ -35,7 +35,7 @@ def test_dry_run_rename_last_commit_leaves_message_unchanged(
     repo: Path,
 ) -> None:
     original = current_commit_message(repo)
-    git_cmds.cmd_rename_last_commit(Config(dry_run=True), ["completely", "different", "message"])
+    git_utils.cmd_rename_last_commit(Config(dry_run=True), ["completely", "different", "message"])
     assert current_commit_message(repo) == original
 
 
@@ -43,7 +43,7 @@ def test_dry_run_rename_last_commit_leaves_sha_unchanged(
     repo: Path,
 ) -> None:
     before = head_sha(repo)
-    git_cmds.cmd_rename_last_commit(Config(dry_run=True), ["new", "message"])
+    git_utils.cmd_rename_last_commit(Config(dry_run=True), ["new", "message"])
     assert head_sha(repo) == before
 
 
@@ -61,5 +61,5 @@ def test_dry_run_sync_branch_leaves_head_unchanged(
     git(["push"], cwd=second)
     ## dry-run sync should leave HEAD where it is
     before = head_sha(repo)
-    git_cmds.cmd_sync_branch(Config(dry_run=True))
+    git_utils.cmd_sync_branch(Config(dry_run=True))
     assert head_sha(repo) == before

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 ## local
-from git_helpers import git_cmds
+from git_helpers import git_utils
 from git_helpers.shell_utils import Config
 from vtests.helpers import current_commit_message, git, head_sha, make_commit, make_commits
 
@@ -30,7 +30,7 @@ def test_sync_branch_fails_with_dirty_worktree(
     (repo / "dirty.txt").write_text("uncommitted change")
     git(["add", "dirty.txt"], cwd=repo)
     with pytest.raises(SystemExit):
-        git_cmds.cmd_sync_branch(Config())
+        git_utils.cmd_sync_branch(Config())
 
 
 def test_sync_branch_proceeds_with_allow_dirty(
@@ -40,7 +40,7 @@ def test_sync_branch_proceeds_with_allow_dirty(
     (repo / "dirty.txt").write_text("uncommitted change")
     git(["add", "dirty.txt"], cwd=repo)
     ## no remote commits to pull — just verify the dirty check is skipped
-    git_cmds.cmd_sync_branch(Config(allow_dirty=True))
+    git_utils.cmd_sync_branch(Config(allow_dirty=True))
 
 
 def test_sync_branch_pulls_remote_commits(
@@ -57,7 +57,7 @@ def test_sync_branch_pulls_remote_commits(
     git(["push"], cwd=second)
     ## sync should bring those commits into the local repo
     before = head_sha(repo)
-    git_cmds.cmd_sync_branch(Config())
+    git_utils.cmd_sync_branch(Config())
     after = head_sha(repo)
     assert before != after
 
@@ -79,7 +79,7 @@ def test_sync_branch_with_explicit_base(
     make_commit(second, "main update", filename=".main_counter")
     git(["push"], cwd=second)
     ## sync feature branch against origin/main
-    git_cmds.cmd_sync_branch(Config(), "origin/main")
+    git_utils.cmd_sync_branch(Config(), "origin/main")
 
 
 ##
@@ -91,7 +91,7 @@ def test_rename_last_commit_changes_message(
     repo: Path,
 ) -> None:
     original = current_commit_message(repo)
-    git_cmds.cmd_rename_last_commit(Config(), ["new", "commit", "message"])
+    git_utils.cmd_rename_last_commit(Config(), ["new", "commit", "message"])
     assert current_commit_message(repo) == "new commit message"
     assert current_commit_message(repo) != original
 
@@ -99,7 +99,7 @@ def test_rename_last_commit_changes_message(
 def test_rename_last_commit_joins_words(
     repo: Path,
 ) -> None:
-    git_cmds.cmd_rename_last_commit(Config(), ["fix", "typo", "in", "readme"])
+    git_utils.cmd_rename_last_commit(Config(), ["fix", "typo", "in", "readme"])
     assert current_commit_message(repo) == "fix typo in readme"
 
 
@@ -108,6 +108,6 @@ def test_rename_last_commit_preserves_sha_prefix(
 ) -> None:
     ## amend changes the SHA — verify it actually changed
     before = head_sha(repo)
-    git_cmds.cmd_rename_last_commit(Config(), ["amended"])
+    git_utils.cmd_rename_last_commit(Config(), ["amended"])
     after = head_sha(repo)
     assert before != after

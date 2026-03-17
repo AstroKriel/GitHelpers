@@ -136,7 +136,7 @@ GitHelpers/
 ├── src/
 │   └── git_helpers/
 │       ├── cli_utils.py        # [entrypoint] argparse wiring and main()
-│       ├── git_cmds.py         # [commands] all user-facing git commands
+│       ├── git_utils.py         # [commands] all user-facing git commands
 │       ├── repo_utils.py       # [internal] read-only git helpers
 │       └── shell_utils.py      # [internal] config, logging, subprocess wrappers
 ├── utests/                     # unit tests
