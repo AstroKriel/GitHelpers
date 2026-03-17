@@ -14,6 +14,7 @@ Runtime config (threaded from CLI args via Config):
 import subprocess
 import sys
 from dataclasses import dataclass
+from typing import NoReturn
 
 ##
 ## === CONFIG
@@ -69,7 +70,7 @@ def bind_var(
 
 def kill(
     msg: str,
-) -> None:
+) -> NoReturn:
     """Print an error message to stderr and exit the process immediately."""
     print(
         f"error: {msg}",

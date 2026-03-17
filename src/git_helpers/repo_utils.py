@@ -28,7 +28,7 @@ def require_remote() -> None:
     ## `git remote` with no args prints one remote name per line; empty output
     ## means no remotes have been added yet.
     remotes = shell_utils.query_cmd("git", "remote")
-    if not remotes and not shell_utils.dryrun:
+    if not remotes:
         shell_utils.kill("no remotes configured (try: git remote add origin <url>)")
 
 
