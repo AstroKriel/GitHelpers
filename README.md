@@ -117,16 +117,17 @@ git_helpers --allow-dirty <cmd>  # skip the clean worktree check
 
 ## Running tests
 
-Run the suite of unit tests (pure Python, no git required):
+Run the full test suite (unit tests + validation tests):
+
+```bash
+uv run pytest
+```
+
+Unit tests are pure Python with no git required. Validation tests spin up real temporary git repos to exercise each command end-to-end. To run either suite in isolation:
 
 ```bash
 uv run pytest utests/
-```
-
-Run the suite of validation tests (spins up real temporary git repos):
-
-```bash
-uv run vtests/run.py
+uv run pytest vtests/
 ```
 
 ## File structure
@@ -136,7 +137,7 @@ GitHelpers/
 ├── src/
 │   └── git_helpers/
 │       ├── cli_utils.py        # [entrypoint] argparse wiring and main()
-│       ├── git_utils.py         # [commands] all user-facing git commands
+│       ├── git_utils.py        # [commands] all user-facing git commands
 │       ├── repo_utils.py       # [internal] read-only git helpers
 │       └── shell_utils.py      # [internal] config, logging, subprocess wrappers
 ├── utests/                     # unit tests

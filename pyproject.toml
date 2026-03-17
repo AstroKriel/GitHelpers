@@ -19,7 +19,7 @@ git_helpers = "git_helpers.cli_utils:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
-testpaths = ["utests"]
+testpaths = ["utests", "vtests"]
 
 [dependency-groups]
 dev = [
@@ -27,8 +27,10 @@ dev = [
 ]
 
 [tool.pyright]
-include = ["src"]
-extraPaths = ["src"]
+include = ["src", "utests", "vtests"]
+extraPaths = ["src", "."]
+venvPath = "."
+venv = ".venv"
 reportMissingImports = true
 reportMissingTypeStubs = false
 reportUnusedParameter = "none"
