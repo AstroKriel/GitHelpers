@@ -123,7 +123,7 @@ Run the full test suite (unit tests + validation tests):
 uv run pytest
 ```
 
-Unit tests are pure Python with no git required. Validation tests spin up real temporary git repos to exercise each command end-to-end. To run either suite in isolation:
+`utests/` tests the Python logic (argument parsing, config handling, command execution), but does not check git commands. `vtests/` tests that the actual git operations produce the expected repo states/changes. To run either suite in isolation:
 
 ```bash
 uv run pytest utests/
