@@ -19,6 +19,19 @@ from git_helpers import git_utils, shell_utils
 ##
 
 
+class _HelpFormatter(argparse.HelpFormatter):
+
+    def __init__(self, prog: str) -> None:
+        ## pre-set _action_max_length so all subcommand names fit in the left column;
+        ## argparse's default computation underestimates the threshold.
+        super().__init__(
+            prog,
+            max_help_position=100,
+            width=120,
+        )
+        self._action_max_length = 30
+
+
 def cli_command(
     cmd_name: str,
     cmd_fn: Callable[..., Any],
@@ -232,6 +245,7 @@ def main() -> None:
     """Parse arguments and dispatch to the appropriate command function."""
     arg_parser = argparse.ArgumentParser(
         description="Git workflow helpers",
+        formatter_class=_HelpFormatter,
     )
     arg_parser.add_argument(
         "--dry-run",
