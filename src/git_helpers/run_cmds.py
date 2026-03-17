@@ -4,7 +4,7 @@ All user-facing commands: git config helpers, read-only probes, and mutating ope
 
 import sys
 
-from githelpers import shell_utils, inspect_repo
+from git_helpers import shell_utils, inspect_repo
 
 ##
 ## === GIT CONFIGURATION

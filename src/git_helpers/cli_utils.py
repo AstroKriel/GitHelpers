@@ -6,7 +6,7 @@ import argparse
 import subprocess
 import sys
 
-from githelpers import run_cmds
+from git_helpers import run_cmds
 
 ##
 ## === COMMAND LINE INTERFACE

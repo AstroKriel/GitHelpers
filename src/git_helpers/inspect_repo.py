@@ -2,7 +2,7 @@
 Git repository state helpers: guards, branch/remote introspection, and worktree checks.
 """
 
-from githelpers import shell_utils
+from git_helpers import shell_utils
 
 ##
 ## === INTERNAL HELPERS
