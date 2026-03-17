@@ -12,7 +12,7 @@ from pathlib import Path
 ## local
 from git_helpers import git_utils
 from git_helpers.shell_utils import Config
-from vtests.helpers import current_commit_message, git, head_sha, local_branches, make_commit
+from vtests import helpers as vtest_helpers
 
 
 ##
@@ -21,45 +21,45 @@ from vtests.helpers import current_commit_message, git, head_sha, local_branches
 
 
 def test_dry_run_delete_branch_leaves_branch_intact(
-    repo: Path,
+    make_repo_: Path,
 ) -> None:
-    git(["checkout", "-b", "dry-target"], cwd=repo)
-    make_commit(repo, "dry commit")
-    git(["checkout", "main"], cwd=repo)
-    git(["merge", "dry-target"], cwd=repo)
+    vtest_helpers.git(["checkout", "-b", "dry-target"], cwd=make_repo_)
+    vtest_helpers.make_commit(make_repo_, "dry commit")
+    vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
+    vtest_helpers.git(["merge", "dry-target"], cwd=make_repo_)
     git_utils.cmd_delete_local_branch(Config(dry_run=True), "dry-target")
-    assert "dry-target" in local_branches(repo)
+    assert "dry-target" in vtest_helpers.local_branches(make_repo_)
 
 
 def test_dry_run_rename_last_commit_leaves_message_unchanged(
-    repo: Path,
+    make_repo_: Path,
 ) -> None:
-    original = current_commit_message(repo)
+    original_msg = vtest_helpers.current_commit_message(make_repo_)
     git_utils.cmd_rename_last_commit(Config(dry_run=True), ["completely", "different", "message"])
-    assert current_commit_message(repo) == original
+    assert vtest_helpers.current_commit_message(make_repo_) == original_msg
 
 
 def test_dry_run_rename_last_commit_leaves_sha_unchanged(
-    repo: Path,
+    make_repo_: Path,
 ) -> None:
-    before = head_sha(repo)
+    before_sha = vtest_helpers.head_sha(make_repo_)
     git_utils.cmd_rename_last_commit(Config(dry_run=True), ["new", "message"])
-    assert head_sha(repo) == before
+    assert vtest_helpers.head_sha(make_repo_) == before_sha
 
 
 def test_dry_run_sync_branch_leaves_head_unchanged(
-    repo_with_remote: tuple[Path, Path],
+    make_repo_with_remote: tuple[Path, Path],
 ) -> None:
-    repo, remote = repo_with_remote
+    repo_dir, remote_dir = make_repo_with_remote
     ## push a new commit from a second clone
-    second = repo.parent / "second"
-    second.mkdir()
-    git(["clone", str(remote), str(second)], cwd=repo.parent)
+    second_dir = repo_dir.parent / "second"
+    second_dir.mkdir()
+    vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
-        git(["config", key, val], cwd=second)
-    make_commit(second, "remote commit")
-    git(["push"], cwd=second)
+        vtest_helpers.git(["config", key, val], cwd=second_dir)
+    vtest_helpers.make_commit(second_dir, "remote commit")
+    vtest_helpers.git(["push"], cwd=second_dir)
     ## dry-run sync should leave HEAD where it is
-    before = head_sha(repo)
+    before_sha = vtest_helpers.head_sha(repo_dir)
     git_utils.cmd_sync_branch(Config(dry_run=True))
-    assert head_sha(repo) == before
+    assert vtest_helpers.head_sha(repo_dir) == before_sha
