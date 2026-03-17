@@ -9,7 +9,6 @@ Unit tests for the Config dataclass.
 ## local
 from git_helpers.shell_utils import Config
 
-
 ##
 ## === TESTS
 ##

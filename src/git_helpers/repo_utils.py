@@ -1,6 +1,4 @@
-"""
-Git repository state helpers: guards, branch/remote introspection, and worktree checks.
-"""
+## { MODULE
 
 ##
 ## === DEPENDENCIES
@@ -144,3 +142,6 @@ def require_attached() -> None:
     ## a named branch to act on; detached HEAD is a commit-only state.
     if is_detached():
         shell_utils.kill("operation not valid in detached HEAD state")
+
+
+## } MODULE

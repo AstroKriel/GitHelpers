@@ -1,6 +1,4 @@
-"""
-All user-facing commands: git config helpers, read-only probes, and mutating operations.
-"""
+## { MODULE
 
 ##
 ## === DEPENDENCIES
@@ -215,7 +213,7 @@ def show_submodules_status(
     repo_utils.require_repo()
     ## `submodule status` prints one line per submodule:
     ##   <SHA> <path> (<describe>)
-    ## A leading `-` means not initialised; `+` means the checked-out SHA
+    ## A leading `-` means not initialized; `+` means the checked-out SHA
     ## differs from what the parent repo recorded; ` ` means up to date.
     print(shell_utils.query_cmd_or_empty("git", "submodule", "status") or "No submodules or not initialized.")
 
@@ -568,3 +566,6 @@ def check_self(
     if shell_utils.probe_cmd("which", "git") != 0:
         shell_utils.kill("git not found in PATH")
     shell_utils.log_outcome("selfcheck passed")
+
+
+## } MODULE

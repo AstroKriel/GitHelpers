@@ -18,7 +18,6 @@ from git_helpers import git_utils
 from git_helpers.shell_utils import Config
 from vtests import helpers as vtest_helpers
 
-
 ##
 ## === delete-local-branch
 ##

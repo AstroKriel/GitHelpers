@@ -15,10 +15,10 @@ import pytest
 ## local
 from vtests.helpers import GIT_USER, git, make_commit
 
-
 ##
 ## === FIXTURES
 ##
+
 
 @pytest.fixture
 def make_repo_(

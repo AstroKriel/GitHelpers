@@ -1,6 +1,4 @@
-"""
-Command-line interface: subcommand registry and entry point.
-"""
+## { MODULE
 
 ##
 ## === DEPENDENCIES
@@ -262,3 +260,6 @@ def main() -> None:
         COMMANDS[args.cmd]["handler"](args)
     except subprocess.CalledProcessError as proc_error:
         sys.exit(proc_error.returncode)
+
+
+## } MODULE

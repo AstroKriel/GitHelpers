@@ -1,5 +1,5 @@
 """
-Unit tests for shell_utils: logging helpers and dry-run behaviour.
+Unit tests for shell_utils: logging helpers and dry-run behavior.
 """
 
 ##
@@ -21,7 +21,6 @@ from git_helpers.shell_utils import (
     run_cmd_and_capture_output,
 )
 
-
 ##
 ## === LOGGING
 ##
@@ -41,7 +40,7 @@ def test_log_step_prefix(
 ):
     log_step("doing something")
     captured = capsys.readouterr()
-    assert "STEP:" in captured.err
+    assert "○" in captured.err
     assert "doing something" in captured.err
 
 
@@ -50,7 +49,7 @@ def test_log_outcome_prefix(
 ):
     log_outcome("it worked")
     captured = capsys.readouterr()
-    assert "OUTCOME:" in captured.err
+    assert "●" in captured.err
     assert "it worked" in captured.err
 
 
@@ -59,7 +58,7 @@ def test_bind_var_format(
 ):
     bind_var("branch_name", "main")
     captured = capsys.readouterr()
-    assert "SET:" in captured.err
+    assert "→" in captured.err
     assert "branch_name" in captured.err
     assert "main" in captured.err
 

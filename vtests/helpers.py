@@ -19,7 +19,6 @@ GIT_USER = {
     "user.email": "TestDummy@bla.com",
 }
 
-
 ##
 ## === HELPERS
 ##
