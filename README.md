@@ -27,7 +27,7 @@ git_helpers --help      # list all available commands
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### Update GitHelpers
+## Update GitHelpers
 
 From your local GitHelpers clone, pull the latest changes and reinstall:
 
@@ -36,7 +36,7 @@ git pull
 uv tool install . --reinstall
 ```
 
-### Uninstall GitHelpers
+## Uninstall GitHelpers
 
 ```bash
 uv tool uninstall git_helpers
