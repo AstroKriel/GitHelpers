@@ -12,17 +12,17 @@ cd GitHelpers
 uv tool install .
 ```
 
-`uv` places installed tools in `~/.local/bin`. If `git_helpers` isn't found after the install, add that directory to your shell config (`~/.zshrc` for zsh, `~/.bashrc` for bash):
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Once installed, verify everything is working (and if `~/.local/bin` needs to be manually added to your PATH):
+Once installed, verify everything is working:
 
 ```bash
 git_helpers self-check  # verify git is on your PATH
 git_helpers --help      # list all available commands
+```
+
+`uv` places installed tools in `~/.local/bin`, so if `git_helpers` isn't found after the install, add the following to your shell config (`~/.zshrc` for zsh, and `~/.bashrc` for bash):
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 ### Update
