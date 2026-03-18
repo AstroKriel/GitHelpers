@@ -95,7 +95,7 @@ git_helpers --allow-dirty <cmd>  # skip the clean worktree check
 
 ## Run test suites
 
-Tests live alongside the source and are run with pytest. `utests/` tests the Python logic (argument parsing, config handling) without executing any git commands. `vtests/` tests that the actual git operations produce the expected repo state.
+Tests are run with `pytest`, and are broken into two categories. `utests/` tests the Python logic (argument parsing, config handling) without executing any git commands, and `vtests/` tests that the actual git operations produce the expected repo state.
 
 Run the full suite from the repo root:
 
