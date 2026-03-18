@@ -72,7 +72,7 @@ def log_outcome(
     msg: str,
 ) -> None:
     """Record which path was taken after a branch or decision."""
-    _CONSOLE.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value}[/] {msg}")
+    _CONSOLE.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value} {msg}[/]")
 
 
 def bind_var(
@@ -87,7 +87,7 @@ def log_result(
     msg: str,
 ) -> None:
     """Print a user-facing result to stdout."""
-    _CONSOLE_OUT.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value}[/] {msg}")
+    _CONSOLE_OUT.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value} {msg}[/]")
 
 
 def kill(
