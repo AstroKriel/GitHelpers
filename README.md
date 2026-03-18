@@ -4,7 +4,9 @@
 
 ## Getting setup
 
-Before you start, you'll need [uv](https://docs.astral.sh/uv/). Once you have it, clone the repo and install `git_helpers` as a global tool:
+Before you start, you'll need [uv](https://docs.astral.sh/uv/).
+
+Once you have `uv` installed, clone this repo and install `git_helpers` as a globally accessible tool:
 
 ```bash
 git clone git@github.com:AstroKriel/GitHelpers.git
@@ -12,7 +14,7 @@ cd GitHelpers
 uv tool install .
 ```
 
-Once installed, verify everything is working:
+Verify everything is working:
 
 ```bash
 git_helpers self-check  # verify git is on your PATH
