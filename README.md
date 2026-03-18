@@ -1,6 +1,6 @@
 # Git Helpers
 
-`git_helpers` is a command line tool that packages up common `git` workflows into single commands. Each command operates on the `git` repo in your current directory, narrates what it's doing, and prints the underlying `git` commands it runs — so you can learn the mechanics while getting the job done.
+`git_helpers` is a command line tool that packages up common `git` workflows into single commands. Each command operates on the `git` repo in your current directory, narrates what it's doing, and prints the underlying `git` commands it runs. That way you'll learn the mechanics while getting the job done.
 
 ## Getting setup
 
