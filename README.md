@@ -18,7 +18,7 @@ uv tool install .
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Once installed, verify everything is working:
+Once installed, verify everything is working (and if `~/.local/bin` needs to be manually added to your PATH):
 
 ```bash
 git_helpers self-check  # verify git is on your PATH
