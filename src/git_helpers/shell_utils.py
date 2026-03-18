@@ -33,6 +33,10 @@ _CONSOLE = Console(
     highlight=False,
     stderr=True,
 )
+_CONSOLE_OUT = Console(
+    highlight=False,
+    stderr=False,
+)
 
 
 class _Colors(str, Enum):
@@ -79,6 +83,13 @@ def bind_var(
     _CONSOLE.print(f"[{_Colors.GRAY.value}]{_Markers.ARROW.value} {var_name} = {var_value}[/]")
 
 
+def log_result(
+    msg: str,
+) -> None:
+    """Print a user-facing result to stdout."""
+    _CONSOLE_OUT.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value}[/] {msg}")
+
+
 def kill(
     msg: str,
 ) -> NoReturn:
@@ -102,7 +113,7 @@ def run_cmd(
             f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]",
         )
         return
-    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value}[/] {' '.join(args)}")
+    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value} {' '.join(args)}[/]")
     ## `check=True` raises CalledProcessError on non-zero exit, caught in main().
     subprocess.run(
         args,
@@ -120,7 +131,7 @@ def run_cmd_and_capture_output(
             f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]",
         )
         return ""
-    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value}[/] {' '.join(args)}")
+    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value} {' '.join(args)}[/]")
     ## `capture_output=True` redirects both stdout and stderr so they don't
     ## print to the terminal; `text=True` decodes bytes to str automatically.
     result = subprocess.run(

@@ -1,6 +1,4 @@
-"""
-Validation tests for branch management commands.
-"""
+## { SCRIPT
 
 ##
 ## === DEPENDENCIES
@@ -149,3 +147,6 @@ def test_cleanup_local_branches_runs_both_passes(
     assert "gone" not in branches
     assert "merged" not in branches
     assert "main" in branches
+
+
+## } SCRIPT

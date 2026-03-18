@@ -1,6 +1,4 @@
-"""
-Validation tests for read-only inspection commands.
-"""
+## { SCRIPT
 
 ##
 ## === DEPENDENCIES
@@ -148,3 +146,6 @@ def test_is_detached_exits_0_when_detached(
     with pytest.raises(SystemExit) as exc:
         git_utils.check_is_detached(Config())
     assert exc.value.code == 0
+
+
+## } SCRIPT

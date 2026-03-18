@@ -1,6 +1,4 @@
-"""
-Shared fixtures for validation tests.
-"""
+## { SCRIPT
 
 ##
 ## === DEPENDENCIES
@@ -57,3 +55,6 @@ def make_repo_with_remote(
     git(["push", "-u", "origin", "main"], cwd=repo_dir)
     monkeypatch.chdir(repo_dir)
     return repo_dir, remote_dir
+
+
+## } SCRIPT

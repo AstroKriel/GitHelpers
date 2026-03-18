@@ -1,6 +1,4 @@
-"""
-Validation tests for syncing and history-rewriting commands.
-"""
+## { SCRIPT
 
 ##
 ## === DEPENDENCIES
@@ -110,3 +108,6 @@ def test_rename_last_commit_preserves_sha_prefix(
     git_utils.cmd_rename_last_commit(Config(), ["amended"])
     after_sha = vtest_helpers.head_sha(make_repo_)
     assert before_sha != after_sha
+
+
+## } SCRIPT

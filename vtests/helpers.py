@@ -1,6 +1,4 @@
-"""
-Shared git helpers for validation tests.
-"""
+## { SCRIPT
 
 ##
 ## === DEPENDENCIES
@@ -81,3 +79,6 @@ def head_sha(
 ) -> str:
     """Return the short SHA of HEAD."""
     return git(["rev-parse", "--short", "HEAD"], cwd=repo_dir).stdout.strip()
+
+
+## } SCRIPT

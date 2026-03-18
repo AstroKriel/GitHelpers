@@ -29,7 +29,7 @@ def cmd_set_global_config(
     ## rerere (Reuse Recorded Resolution): git remembers how you resolved a
     ## conflict and re-applies the same resolution automatically next time.
     shell_utils.run_cmd(config, "git", "config", "--global", "rerere.enabled", "true")
-    print("result: installed FF-first merge defaults globally in ~/.gitconfig")
+    shell_utils.log_result("installed FF-first merge defaults globally in ~/.gitconfig")
 
 
 def show_global_config(
@@ -44,7 +44,7 @@ def show_global_config(
     ) -> str:
         return shell_utils.query_cmd_or_empty("git", "config", "--global", "--get", key) or "(unset)"
 
-    print("\nCurrent global Git configuration summary:")
+    shell_utils.log_result("global git configuration:")
     for label, key in [
         ("pull.rebase", "pull.rebase"),
         ("pull.ff", "pull.ff"),
@@ -52,8 +52,10 @@ def show_global_config(
         ("rerere.enabled", "rerere.enabled"),
     ]:
         ## `{label:<15}` left-aligns the label in a 15-char field so values line up.
-        print(f"\t{label:<15} = {read_config_value(key)}")
-    print("Tip: edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'")
+        shell_utils.log_result(f"  {label:<15} = {read_config_value(key)}")
+    shell_utils.log_result(
+        "tip: edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'"
+    )
 
 
 ##
@@ -77,7 +79,7 @@ def show_upstream(
     repo_utils.require_repo()
     shell_utils.log_step("identifying current branch")
     current_branch_name = repo_utils.current_branch()
-    print(f"local branch: {current_branch_name}")
+    shell_utils.log_result(f"local branch: {current_branch_name}")
     shell_utils.log_step("resolving upstream (if any)")
     ## resolve `@{u}` to a human-readable name like "origin/main".
     upstream_name = shell_utils.query_cmd(
@@ -88,7 +90,7 @@ def show_upstream(
         "@{u}",
     ) if repo_utils.has_upstream() else ""
     if upstream_name:
-        print(f"upstream:     {upstream_name}")
+        shell_utils.log_result(f"upstream:     {upstream_name}")
         shell_utils.log_step("showing the latest commit on the upstream")
         ## `-1` limits to one commit; `--oneline` keeps output compact;
         ## `--decorate` shows branch/tag labels alongside the SHA.
@@ -96,7 +98,7 @@ def show_upstream(
         shell_utils.log_outcome(f"upstream detected: {upstream_name}")
     else:
         shell_utils.log_outcome("no upstream configured for current branch")
-        print("upstream:     (none)")
+        shell_utils.log_result("upstream:     (none)")
 
 
 def show_branches_status(
@@ -154,7 +156,7 @@ def show_ahead_behind(
         var_name="behind_count",
         var_value=behind_count,
     )
-    print(f"ahead: {ahead_count}  behind: {behind_count}")
+    shell_utils.log_result(f"ahead: {ahead_count}; behind: {behind_count}")
 
 
 def show_unpulled_commits(
@@ -186,7 +188,8 @@ def show_local_remotes(
     ## `-v` prints both fetch and push URLs for each remote; deduplicate with
     ## a set in case fetch == push (the common case), then sort for stable output.
     remotes_output = shell_utils.query_cmd("git", "remote", "-v")
-    print("\n".join(sorted(set(remotes_output.splitlines()))))
+    for line in sorted(set(remotes_output.splitlines())):
+        shell_utils.log_result(line)
 
 
 def show_recent_commits(
@@ -215,7 +218,10 @@ def show_submodules_status(
     ##   <SHA> <path> (<describe>)
     ## A leading `-` means not initialized; `+` means the checked-out SHA
     ## differs from what the parent repo recorded; ` ` means up to date.
-    print(shell_utils.query_cmd_or_empty("git", "submodule", "status") or "No submodules or not initialized.")
+    submodules_output = shell_utils.query_cmd_or_empty("git", "submodule", "status")
+    for line in (submodules_output.splitlines()
+                 if submodules_output else ["no submodules or not initialized"]):
+        shell_utils.log_result(line)
 
 
 ##
@@ -418,15 +424,10 @@ def cmd_create_branch_from_default(
     shell_utils.log_step("discovering remote default branch (<remote>/HEAD)")
     base_branch_name = repo_utils.get_default_branch_name()
     if not base_branch_name:
-        print(
-            f"No remote default branch is set (refs/remotes/{remote_name}/HEAD unknown).\n"
-            f"Be explicit:\n"
-            f"  git_helpers create-branch-from-remote {new_branch_name} {remote_name}/<base_branch_name>\n"
-            f"Inspect the remote:\n"
-            f"  git remote show {remote_name}",
-            file=sys.stderr,
+        shell_utils.kill(
+            f"no remote default branch set (refs/remotes/{remote_name}/HEAD unknown); "
+            f"be explicit: git_helpers create-branch-from-remote {new_branch_name} {remote_name}/<base>",
         )
-        sys.exit(1)
     shell_utils.bind_var(
         var_name="base_branch_name",
         var_value=base_branch_name,

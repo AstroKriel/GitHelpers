@@ -1,6 +1,4 @@
-"""
-Validation tests for --dry-run: verifies no mutations occur.
-"""
+## { SCRIPT
 
 ##
 ## === DEPENDENCIES
@@ -62,3 +60,6 @@ def test_dry_run_sync_branch_leaves_head_unchanged(
     before_sha = vtest_helpers.head_sha(repo_dir)
     git_utils.cmd_sync_branch(Config(dry_run=True))
     assert vtest_helpers.head_sha(repo_dir) == before_sha
+
+
+## } SCRIPT
