@@ -72,7 +72,7 @@ def check_is_detached(
     sys.exit(0 if repo_utils.is_detached() else 1)
 
 
-def show_upstream(
+def show_upstream_state(
     config: shell_utils.Config,
 ) -> None:
     """Print the current branch name, its upstream ref, and the upstream's latest commit."""
@@ -116,7 +116,7 @@ def show_branches_status(
     shell_utils.run_cmd(config, "git", "branch", "-vv", "--no-abbrev")
 
 
-def show_ahead_behind(
+def count_ahead_behind(
     config: shell_utils.Config,
 ) -> None:
     """Print how many commits the current branch is ahead of and behind its upstream."""
@@ -644,7 +644,7 @@ def cmd_sync_branch(
         )
 
 
-def cmd_stash(
+def cmd_stash_work(
     config: shell_utils.Config,
     name: str | None = None,
 ) -> None:
@@ -666,7 +666,7 @@ def cmd_stash(
         shell_utils.log_outcome("stashed work")
 
 
-def cmd_unstash(
+def cmd_unstash_work(
     config: shell_utils.Config,
     name: str | None = None,
 ) -> None:
@@ -701,7 +701,7 @@ def cmd_unstash(
         shell_utils.log_outcome("restored most recent stash")
 
 
-def cmd_amend_last(
+def cmd_amend_last_commit(
     config: shell_utils.Config,
     message: list[str],
 ) -> None:

@@ -54,14 +54,13 @@ git_helpers show-global-config  # print current values of those settings
 
 **Inspecting repo state**
 ```bash
-git_helpers branches-status          # fetch, then show all branches with upstream + ahead/behind
-git_helpers ahead-behind             # how many commits ahead/behind the current branch is
-git_helpers show-upstream            # show the upstream ref and its latest commit
-git_helpers unpulled-commits         # list commits on upstream not yet pulled
-git_helpers show-recent-commits [N]  # last N commits on current branch (default: 20)
-git_helpers local-remotes            # list all remotes and their URLs
-git_helpers submodules-status        # show SHA and init status of each submodule
-git_helpers is-detached              # exit 0 if HEAD is detached (usable in shell conditionals)
+git_helpers show-branches-status          # fetch, then show all branches with upstream + ahead/behind
+git_helpers count-ahead-behind            # how many commits ahead/behind the current branch is
+git_helpers show-upstream-state           # show the upstream ref and its latest commit
+git_helpers show-unpulled-commits         # list commits on upstream not yet pulled
+git_helpers show-recent-commits [N]       # last N commits on current branch (default: 20)
+git_helpers show-local-remotes            # list all remotes and their URLs
+git_helpers show-submodules-status        # show SHA and init status of each submodule
 ```
 
 **Managing branches**
@@ -75,11 +74,21 @@ git_helpers prune-merged-locals [base]                  # delete branches merged
 git_helpers cleanup-local-branches [base]               # run both prune steps in sequence
 ```
 
+**Managing submodules**
+```bash
+git_helpers update-submodules              # pull latest commits for all submodules
+git_helpers fix-submodule <path>           # repair detached HEAD: checkout main, pull, bump pointer
+git_helpers add-submodule <url> <name>     # add submodule tracking main and commit
+```
+
 **Syncing and rewriting history**
 ```bash
-git_helpers push                      # push current branch; sets upstream automatically if needed
-git_helpers sync-branch [base]        # pull/merge with --ff; merge explicit base if provided
-git_helpers rename-last-commit <msg>  # amend the most recent commit message
+git_helpers push                           # push current branch; sets upstream automatically if needed
+git_helpers sync-branch [base]             # pull/merge with --ff; merge explicit base if provided
+git_helpers stash-work [name]              # stash uncommitted work; optionally label it
+git_helpers unstash-work [name]            # pop most recent stash, or find one by name
+git_helpers amend-last-commit [msg]        # amend staged changes into last commit; optionally update message
+git_helpers rename-last-commit <msg>       # replace the most recent commit message
 ```
 
 ## Global flags

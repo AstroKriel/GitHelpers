@@ -8,8 +8,11 @@
 import argparse
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
+
+## third-party
+from rich.console import Console
 
 ## local
 from git_helpers import git_utils, shell_utils
@@ -37,6 +40,8 @@ def cli_command(
     cmd_fn: Callable[..., Any],
     cmd_help: str = "",
     cmd_args: list[tuple[str, dict[str, Any]]] | None = None,
+    section: str = "",
+    is_hidden: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """Build a (name, entry) pair for COMMANDS; handler is auto-generated from cmd_args."""
     arg_specs: list[tuple[str, dict[str, Any]]] = cmd_args or []
@@ -60,52 +65,103 @@ def cli_command(
             "help": cmd_help,
             "arg_specs": arg_specs,
             "handler": handler,
+            "section": section,
+            "is_hidden": is_hidden,
         },
     )
+
+
+class _GroupedHelpAction(argparse.Action):
+    """Replace the default --help with a Rich-formatted, section-grouped command listing."""
+
+    def __init__(
+        self,
+        option_strings: list[str],
+        dest: str = argparse.SUPPRESS,
+        default: str = argparse.SUPPRESS,
+        help: str = "show this help message and exit",
+    ) -> None:
+        super().__init__(
+            option_strings=option_strings,
+            dest=dest,
+            default=default,
+            nargs=0,
+            help=help,
+        )
+
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: str | Sequence[Any] | None,
+        option_string: str | None = None,
+    ) -> None:
+        console = Console()
+        console.print()
+        console.print("[bold]git_helpers[/bold]: git workflow helpers")
+        console.print()
+        console.print("[dim]usage:[/dim] git_helpers \\[--dry-run] \\[--allow-dirty] <command> \\[args]")
+        console.print()
+        ## iterate COMMANDS in order, printing a header each time the section changes.
+        current_section = None
+        for name, entry in COMMANDS.items():
+            if entry.get("is_hidden"):
+                continue
+            entry_section = entry.get("section", "")
+            if entry_section != current_section:
+                if current_section is not None:
+                    console.print()
+                console.print(f"[bold]{entry_section}[/bold]")
+                current_section = entry_section
+            console.print(f"  [cyan]{name:<30}[/cyan]{entry['help']}")
+        console.print()
+        console.print("[bold]Global flags[/bold]")
+        console.print(f"  [cyan]{'--dry-run':<30}[/cyan]print commands without executing them")
+        console.print(f"  [cyan]{'--allow-dirty':<30}[/cyan]skip the clean worktree check")
+        console.print()
+        parser.exit()
 
 
 ## maps each CLI subcommand name to an entry dict with its arg specs and handler
 COMMANDS: dict[str, dict[str, Any]] = dict(
     [
+        ## --- global configuration ---
         cli_command(
             cmd_name="set-global-config",
             cmd_fn=git_utils.cmd_set_global_config,
             cmd_help="write FF-first merge defaults + rerere to ~/.gitconfig",
+            section="Global configuration",
         ),
         cli_command(
             cmd_name="show-global-config",
             cmd_fn=git_utils.show_global_config,
             cmd_help="print current values of the git settings this tool manages",
+            section="Global configuration",
         ),
+        ## --- inspection ---
         cli_command(
-            cmd_name="is-detached",
-            cmd_fn=git_utils.check_is_detached,
-            cmd_help="exit 0 if HEAD is detached, 1 if on a branch (for shell conditionals)",
-        ),
-        cli_command(
-            cmd_name="show-upstream",
-            cmd_fn=git_utils.show_upstream,
+            cmd_name="show-upstream-state",
+            cmd_fn=git_utils.show_upstream_state,
             cmd_help="show the current branch, its upstream ref, and the latest upstream commit",
+            section="Inspection",
         ),
         cli_command(
-            cmd_name="branches-status",
+            cmd_name="show-branches-status",
             cmd_fn=git_utils.show_branches_status,
             cmd_help="fetch, then list all branches with upstream and ahead/behind counts",
+            section="Inspection",
         ),
         cli_command(
-            cmd_name="ahead-behind",
-            cmd_fn=git_utils.show_ahead_behind,
+            cmd_name="count-ahead-behind",
+            cmd_fn=git_utils.count_ahead_behind,
             cmd_help="print how many commits ahead/behind the current branch is vs its upstream",
+            section="Inspection",
         ),
         cli_command(
-            cmd_name="unpulled-commits",
+            cmd_name="show-unpulled-commits",
             cmd_fn=git_utils.show_unpulled_commits,
             cmd_help="list commits on upstream not yet pulled locally",
-        ),
-        cli_command(
-            cmd_name="local-remotes",
-            cmd_fn=git_utils.show_local_remotes,
-            cmd_help="list all configured remotes and their URLs",
+            section="Inspection",
         ),
         cli_command(
             cmd_name="show-recent-commits",
@@ -119,108 +175,46 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "default": 20,
                 },
             )],
+            section="Inspection",
         ),
         cli_command(
-            cmd_name="submodules-status",
+            cmd_name="show-local-remotes",
+            cmd_fn=git_utils.show_local_remotes,
+            cmd_help="list all configured remotes and their URLs",
+            section="Inspection",
+        ),
+        cli_command(
+            cmd_name="show-submodules-status",
             cmd_fn=git_utils.show_submodules_status,
             cmd_help="show SHA and init status of each submodule",
+            section="Inspection",
+        ),
+        ## --- branch management ---
+        cli_command(
+            cmd_name="create-branch-from-default",
+            cmd_fn=git_utils.cmd_create_branch_from_default,
+            cmd_help="cut a new branch from the remote default branch and push it",
+            cmd_args=[(
+                "new_branch_name",
+                {},
+            )],
+            section="Branch management",
         ),
         cli_command(
-            cmd_name="update-submodules",
-            cmd_fn=git_utils.cmd_update_submodules,
-            cmd_help="pull latest commits for all submodules from their tracked branches",
-        ),
-        cli_command(
-            cmd_name="fix-submodule",
-            cmd_fn=git_utils.cmd_fix_submodule,
-            cmd_help="repair a submodule in detached HEAD: checkout main, pull, bump parent pointer",
-            cmd_args=[("submodule_path", {})],
-        ),
-        cli_command(
-            cmd_name="add-submodule",
-            cmd_fn=git_utils.cmd_add_submodule,
-            cmd_help="add a submodule tracking main, and commit .gitmodules + pointer",
+            cmd_name="create-branch-from-remote",
+            cmd_fn=git_utils.cmd_create_branch_from_remote,
+            cmd_help="cut a new branch from an explicit remote ref and push it",
             cmd_args=[
-                ("url", {}),
-                ("local_name", {}),
+                (
+                    "new_branch_name",
+                    {},
+                ),
+                (
+                    "start_ref",
+                    {},
+                ),
             ],
-        ),
-        cli_command(
-            cmd_name="stash",
-            cmd_fn=git_utils.cmd_stash,
-            cmd_help="stash uncommitted work; optionally label it with a name",
-            cmd_args=[(
-                "name",
-                {
-                    "nargs": "?",
-                },
-            )],
-        ),
-        cli_command(
-            cmd_name="unstash",
-            cmd_fn=git_utils.cmd_unstash,
-            cmd_help="pop stashed work; if a name is given, finds and pops that specific entry",
-            cmd_args=[(
-                "name",
-                {
-                    "nargs": "?",
-                },
-            )],
-        ),
-        cli_command(
-            cmd_name="amend-last",
-            cmd_fn=git_utils.cmd_amend_last,
-            cmd_help="amend the last commit with staged changes; optionally update the message too",
-            cmd_args=[(
-                "message",
-                {
-                    "nargs": "*",
-                },
-            )],
-        ),
-        cli_command(
-            cmd_name="rename-last-commit",
-            cmd_fn=git_utils.cmd_rename_last_commit,
-            cmd_help="amend the most recent commit message (rewrites history)",
-            cmd_args=[(
-                "message",
-                {
-                    "nargs": "+",
-                },
-            )],
-        ),
-        cli_command(
-            cmd_name="delete-local-branch",
-            cmd_fn=git_utils.cmd_delete_local_branch,
-            cmd_help="safely delete a local branch (refuses if unmerged)",
-            cmd_args=[("branch_name", {})],
-        ),
-        cli_command(
-            cmd_name="prune-gone-locals",
-            cmd_fn=git_utils.cmd_prune_gone_locals,
-            cmd_help="delete local branches whose remote counterpart has been deleted",
-        ),
-        cli_command(
-            cmd_name="prune-merged-locals",
-            cmd_fn=git_utils.cmd_prune_merged_locals,
-            cmd_help="delete local branches fully merged into base (default: remote default branch)",
-            cmd_args=[(
-                "base_name",
-                {
-                    "nargs": "?",
-                },
-            )],
-        ),
-        cli_command(
-            cmd_name="cleanup-local-branches",
-            cmd_fn=git_utils.cmd_cleanup_local_branches,
-            cmd_help="run prune-gone-locals then prune-merged-locals in sequence",
-            cmd_args=[(
-                "base_name",
-                {
-                    "nargs": "?",
-                },
-            )],
+            section="Branch management",
         ),
         cli_command(
             cmd_name="track-remote-branch",
@@ -238,31 +232,70 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     },
                 ),
             ],
+            section="Branch management",
         ),
         cli_command(
-            cmd_name="create-branch-from-default",
-            cmd_fn=git_utils.cmd_create_branch_from_default,
-            cmd_help="cut a new branch from the remote default branch and push it",
+            cmd_name="delete-local-branch",
+            cmd_fn=git_utils.cmd_delete_local_branch,
+            cmd_help="safely delete a local branch (refuses if unmerged)",
+            cmd_args=[("branch_name", {})],
+            section="Branch management",
+        ),
+        cli_command(
+            cmd_name="prune-gone-locals",
+            cmd_fn=git_utils.cmd_prune_gone_locals,
+            cmd_help="delete local branches whose remote counterpart has been deleted",
+            section="Branch management",
+        ),
+        cli_command(
+            cmd_name="prune-merged-locals",
+            cmd_fn=git_utils.cmd_prune_merged_locals,
+            cmd_help="delete local branches fully merged into base (default: remote default branch)",
             cmd_args=[(
-                "new_branch_name",
-                {},
+                "base_name",
+                {
+                    "nargs": "?",
+                },
             )],
+            section="Branch management",
         ),
         cli_command(
-            cmd_name="create-branch-from-remote",
-            cmd_fn=git_utils.cmd_create_branch_from_remote,
-            cmd_help="cut a new branch from an explicit remote ref and push it",
-            cmd_args=[
-                (
-                    "new_branch_name",
-                    {},
-                ),
-                (
-                    "start_ref",
-                    {},
-                ),
-            ],
+            cmd_name="cleanup-local-branches",
+            cmd_fn=git_utils.cmd_cleanup_local_branches,
+            cmd_help="run prune-gone-locals then prune-merged-locals in sequence",
+            cmd_args=[(
+                "base_name",
+                {
+                    "nargs": "?",
+                },
+            )],
+            section="Branch management",
         ),
+        ## --- submodule management ---
+        cli_command(
+            cmd_name="update-submodules",
+            cmd_fn=git_utils.cmd_update_submodules,
+            cmd_help="pull latest commits for all submodules from their tracked branches",
+            section="Submodule management",
+        ),
+        cli_command(
+            cmd_name="fix-submodule",
+            cmd_fn=git_utils.cmd_fix_submodule,
+            cmd_help="repair a submodule in detached HEAD: checkout main, pull, bump parent pointer",
+            cmd_args=[("submodule_path", {})],
+            section="Submodule management",
+        ),
+        cli_command(
+            cmd_name="add-submodule",
+            cmd_fn=git_utils.cmd_add_submodule,
+            cmd_help="add a submodule tracking main, and commit .gitmodules + pointer",
+            cmd_args=[
+                ("url", {}),
+                ("local_name", {}),
+            ],
+            section="Submodule management",
+        ),
+        ## --- syncing and history ---
         cli_command(
             cmd_name="push",
             cmd_fn=git_utils.cmd_push,
@@ -273,6 +306,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "*",
                 },
             )],
+            section="Syncing and history",
         ),
         cli_command(
             cmd_name="sync-branch",
@@ -284,11 +318,68 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "?",
                 },
             )],
+            section="Syncing and history",
         ),
+        cli_command(
+            cmd_name="stash-work",
+            cmd_fn=git_utils.cmd_stash_work,
+            cmd_help="stash uncommitted work; optionally label it with a name",
+            cmd_args=[(
+                "name",
+                {
+                    "nargs": "?",
+                },
+            )],
+            section="Syncing and history",
+        ),
+        cli_command(
+            cmd_name="unstash-work",
+            cmd_fn=git_utils.cmd_unstash_work,
+            cmd_help="pop stashed work; if a name is given, finds and pops that specific entry",
+            cmd_args=[(
+                "name",
+                {
+                    "nargs": "?",
+                },
+            )],
+            section="Syncing and history",
+        ),
+        cli_command(
+            cmd_name="amend-last-commit",
+            cmd_fn=git_utils.cmd_amend_last_commit,
+            cmd_help="amend the last commit with staged changes; optionally update the message too",
+            cmd_args=[(
+                "message",
+                {
+                    "nargs": "*",
+                },
+            )],
+            section="Syncing and history",
+        ),
+        cli_command(
+            cmd_name="rename-last-commit",
+            cmd_fn=git_utils.cmd_rename_last_commit,
+            cmd_help="amend the most recent commit message (rewrites history)",
+            cmd_args=[(
+                "message",
+                {
+                    "nargs": "+",
+                },
+            )],
+            section="Syncing and history",
+        ),
+        ## --- utilities ---
         cli_command(
             cmd_name="self-check",
             cmd_fn=git_utils.check_self,
             cmd_help="verify that git is available on PATH",
+            is_hidden=True,
+        ),
+        cli_command(
+            cmd_name="is-detached",
+            cmd_fn=git_utils.check_is_detached,
+            cmd_help="exit 0 if HEAD is detached, 1 if on a branch (for shell conditionals)",
+            is_hidden=True,
         ),
     ],
 )
@@ -299,6 +390,13 @@ def main() -> None:
     arg_parser = argparse.ArgumentParser(
         description="Git workflow helpers",
         formatter_class=_HelpFormatter,
+        add_help=False,
+    )
+    arg_parser.add_argument(
+        "-h",
+        "--help",
+        action=_GroupedHelpAction,
+        default=argparse.SUPPRESS,
     )
     arg_parser.add_argument(
         "--dry-run",
