@@ -123,6 +123,94 @@ def test_prune_merged_locals_never_deletes_current_branch(
 
 
 ##
+## === track-remote-branch
+##
+
+
+def test_track_remote_branch_creates_and_checks_out_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    git_branches.cmd_track_remote_branch(Config(), "origin/main", "local-main")
+    current = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir).stdout.strip()
+    assert current == "local-main"
+    upstream = vtest_helpers.git(
+        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        cwd=repo_dir,
+    ).stdout.strip()
+    assert upstream == "origin/main"
+
+
+def test_track_remote_branch_defaults_local_name_from_remote(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    ## push a fresh remote branch so there's a distinct ref to track without
+    ## conflicting with the existing local 'main'
+    vtest_helpers.git(["checkout", "-b", "feature-x"], cwd=repo_dir)
+    vtest_helpers.make_commit(repo_dir, "feature commit")
+    vtest_helpers.git(["push", "origin", "feature-x"], cwd=repo_dir)
+    vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
+    vtest_helpers.git(["branch", "-D", "feature-x"], cwd=repo_dir)
+    ## no local_branch arg — should derive "feature-x" from "origin/feature-x"
+    git_branches.cmd_track_remote_branch(Config(), "origin/feature-x")
+    current = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir).stdout.strip()
+    assert current == "feature-x"
+
+
+##
+## === create-branch-from-remote
+##
+
+
+def test_create_branch_from_remote_creates_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    git_branches.cmd_create_branch_from_remote(Config(), "new-feature", "origin/main")
+    assert "new-feature" in vtest_helpers.local_branches(repo_dir)
+
+
+def test_create_branch_from_remote_sets_upstream(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    git_branches.cmd_create_branch_from_remote(Config(), "new-feature", "origin/main")
+    upstream = vtest_helpers.git(
+        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        cwd=repo_dir,
+    ).stdout.strip()
+    assert upstream == "origin/new-feature"
+
+
+##
+## === create-branch-from-default
+##
+
+
+def test_create_branch_from_default_creates_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
+    git_branches.cmd_create_branch_from_default(Config(), "new-feature")
+    assert "new-feature" in vtest_helpers.local_branches(repo_dir)
+
+
+def test_create_branch_from_default_sets_upstream(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
+    git_branches.cmd_create_branch_from_default(Config(), "new-feature")
+    upstream = vtest_helpers.git(
+        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        cwd=repo_dir,
+    ).stdout.strip()
+    assert upstream == "origin/new-feature"
+
+
+##
 ## === cleanup-local-branches
 ##
 

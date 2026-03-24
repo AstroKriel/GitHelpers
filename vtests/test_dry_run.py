@@ -64,6 +64,22 @@ def test_dry_run_sync_branch_leaves_head_unchanged(
 
 
 ##
+## === push
+##
+
+
+def test_dry_run_push_does_not_push(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, remote_dir = make_repo_with_remote
+    remote_sha_before = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
+    vtest_helpers.make_commit(repo_dir, "local only")
+    git_sync.cmd_push(Config(dry_run=True), [])
+    remote_sha_after = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
+    assert remote_sha_before == remote_sha_after
+
+
+##
 ## === create-branch-from-remote / track-remote-branch / create-branch-from-default
 ##
 ## These commands read remote state then create branches.  In dry-run mode the
