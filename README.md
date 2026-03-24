@@ -67,7 +67,7 @@ git_helpers show-submodules-status        # show SHA and init status of each sub
 
 **Managing branches**
 ```bash
-git_helpers create-branch-from-default <name>           # cut from remote default branch + push
+git_helpers create-branch-from-default <name>                 # cut from remote default branch + push
 git_helpers create-branch-from-remote <name> <remote/branch>  # cut from explicit remote ref + push
 git_helpers track-remote-branch <remote/branch> [name]        # create local branch tracking a remote one
 git_helpers delete-local-branch <name>                        # safe delete (refuses if unmerged)
