@@ -127,14 +127,18 @@ uv run pytest vtests/
 GitHelpers/
 ├── src/
 │   └── git_helpers/
-│       ├── cli_utils.py    # [entrypoint] argparse wiring and main()
-│       ├── git_utils.py    # [commands] all user-facing git commands
-│       ├── repo_utils.py   # [internal] read-only git helpers
-│       └── shell_utils.py  # [internal] config, logging, subprocess wrappers
-├── utests/                 # unit tests
-├── vtests/                 # validation tests
-├── pyproject.toml          # package metadata; registers the git_helpers command
-├── uv.lock                 # pinned dependency versions
+│       ├── user_interface.py   # [entrypoint] argparse wiring and main()
+│       ├── git_config.py       # [commands] global git config commands
+│       ├── git_inspection.py   # [commands] read-only inspection commands
+│       ├── git_branches.py     # [commands] branch management commands
+│       ├── git_submodules.py   # [commands] submodule commands
+│       ├── git_sync.py         # [commands] push, sync, stash, and history commands
+│       ├── repo_state.py       # [internal] repo state queries and guards
+│       └── shell_interface.py  # [internal] config, logging, subprocess wrappers
+├── utests/                     # unit tests
+├── vtests/                     # validation tests
+├── pyproject.toml              # package metadata; registers the git_helpers command
+├── uv.lock                     # pinned dependency versions
 ├── .gitignore
 └── README.md
 ```

@@ -15,7 +15,7 @@ from typing import Any
 from rich.console import Console
 
 ## local
-from git_helpers import git_utils, shell_utils
+from git_helpers import git_config, git_inspection, git_branches, git_submodules, git_sync, shell_interface
 
 ##
 ## === COMMAND LINE INTERFACE
@@ -51,7 +51,7 @@ def cli_command(
     def handler(
         args: argparse.Namespace,
     ) -> Any:
-        config = shell_utils.Config(
+        config = shell_interface.Config(
             dry_run=args.dry_run,
             allow_dirty=args.allow_dirty,
         )
@@ -130,44 +130,44 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Global configuration",
             cmd_name="set-global-config",
-            cmd_fn=git_utils.cmd_set_global_config,
+            cmd_fn=git_config.cmd_set_global_config,
             cmd_help="write FF-first merge defaults + rerere to ~/.gitconfig",
         ),
         cli_command(
             "Global configuration",
             cmd_name="show-global-config",
-            cmd_fn=git_utils.show_global_config,
+            cmd_fn=git_config.show_global_config,
             cmd_help="print current values of the git settings this tool manages",
         ),
         ## --- inspection ---
         cli_command(
             "Inspection",
             cmd_name="show-upstream-state",
-            cmd_fn=git_utils.show_upstream_state,
+            cmd_fn=git_inspection.show_upstream_state,
             cmd_help="show the current branch, its upstream ref, and the latest upstream commit",
         ),
         cli_command(
             "Inspection",
             cmd_name="show-branches-status",
-            cmd_fn=git_utils.show_branches_status,
+            cmd_fn=git_inspection.show_branches_status,
             cmd_help="fetch, then list all branches with upstream and ahead/behind counts",
         ),
         cli_command(
             "Inspection",
             cmd_name="count-ahead-behind",
-            cmd_fn=git_utils.count_ahead_behind,
+            cmd_fn=git_inspection.count_ahead_behind,
             cmd_help="print how many commits ahead/behind the current branch is vs its upstream",
         ),
         cli_command(
             "Inspection",
             cmd_name="show-unpulled-commits",
-            cmd_fn=git_utils.show_unpulled_commits,
+            cmd_fn=git_inspection.show_unpulled_commits,
             cmd_help="list commits on upstream not yet pulled locally",
         ),
         cli_command(
             "Inspection",
             cmd_name="show-recent-commits",
-            cmd_fn=git_utils.show_recent_commits,
+            cmd_fn=git_inspection.show_recent_commits,
             cmd_help="print the most recent N commits on the current branch (default: 20)",
             cmd_args=[(
                 "max_entries",
@@ -181,20 +181,20 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Inspection",
             cmd_name="show-local-remotes",
-            cmd_fn=git_utils.show_local_remotes,
+            cmd_fn=git_inspection.show_local_remotes,
             cmd_help="list all configured remotes and their URLs",
         ),
         cli_command(
             "Inspection",
             cmd_name="show-submodules-status",
-            cmd_fn=git_utils.show_submodules_status,
+            cmd_fn=git_inspection.show_submodules_status,
             cmd_help="show SHA and init status of each submodule",
         ),
         ## --- branch management ---
         cli_command(
             "Branch management",
             cmd_name="create-branch-from-default",
-            cmd_fn=git_utils.cmd_create_branch_from_default,
+            cmd_fn=git_branches.cmd_create_branch_from_default,
             cmd_help="cut a new branch from the remote default branch and push it",
             cmd_args=[(
                 "new_branch_name",
@@ -204,7 +204,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Branch management",
             cmd_name="create-branch-from-remote",
-            cmd_fn=git_utils.cmd_create_branch_from_remote,
+            cmd_fn=git_branches.cmd_create_branch_from_remote,
             cmd_help="cut a new branch from an explicit remote ref and push it",
             cmd_args=[
                 (
@@ -220,7 +220,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Branch management",
             cmd_name="track-remote-branch",
-            cmd_fn=git_utils.cmd_track_remote_branch,
+            cmd_fn=git_branches.cmd_track_remote_branch,
             cmd_help="create a local branch tracking an existing remote branch and check it out",
             cmd_args=[
                 (
@@ -238,20 +238,20 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Branch management",
             cmd_name="delete-local-branch",
-            cmd_fn=git_utils.cmd_delete_local_branch,
+            cmd_fn=git_branches.cmd_delete_local_branch,
             cmd_help="safely delete a local branch (refuses if unmerged)",
             cmd_args=[("branch_name", {})],
         ),
         cli_command(
             "Branch management",
             cmd_name="prune-gone-locals",
-            cmd_fn=git_utils.cmd_prune_gone_locals,
+            cmd_fn=git_branches.cmd_prune_gone_locals,
             cmd_help="delete local branches whose remote counterpart has been deleted",
         ),
         cli_command(
             "Branch management",
             cmd_name="prune-merged-locals",
-            cmd_fn=git_utils.cmd_prune_merged_locals,
+            cmd_fn=git_branches.cmd_prune_merged_locals,
             cmd_help="delete local branches fully merged into base (default: remote default branch)",
             cmd_args=[(
                 "base_name",
@@ -263,7 +263,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Branch management",
             cmd_name="cleanup-local-branches",
-            cmd_fn=git_utils.cmd_cleanup_local_branches,
+            cmd_fn=git_branches.cmd_cleanup_local_branches,
             cmd_help="run prune-gone-locals then prune-merged-locals in sequence",
             cmd_args=[(
                 "base_name",
@@ -276,20 +276,20 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Submodule management",
             cmd_name="update-submodules",
-            cmd_fn=git_utils.cmd_update_submodules,
+            cmd_fn=git_submodules.cmd_update_submodules,
             cmd_help="pull latest commits for all submodules from their tracked branches",
         ),
         cli_command(
             "Submodule management",
             cmd_name="fix-submodule",
-            cmd_fn=git_utils.cmd_fix_submodule,
+            cmd_fn=git_submodules.cmd_fix_submodule,
             cmd_help="repair a submodule in detached HEAD: checkout main, pull, bump parent pointer",
             cmd_args=[("submodule_path", {})],
         ),
         cli_command(
             "Submodule management",
             cmd_name="add-submodule",
-            cmd_fn=git_utils.cmd_add_submodule,
+            cmd_fn=git_submodules.cmd_add_submodule,
             cmd_help="add a submodule tracking main, and commit .gitmodules + pointer",
             cmd_args=[
                 ("url", {}),
@@ -300,7 +300,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Syncing and history",
             cmd_name="push",
-            cmd_fn=git_utils.cmd_push,
+            cmd_fn=git_sync.cmd_push,
             cmd_help="push current branch; sets upstream automatically if not already configured",
             cmd_args=[(
                 "extra_args",
@@ -312,7 +312,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Syncing and history",
             cmd_name="sync-branch",
-            cmd_fn=git_utils.cmd_sync_branch,
+            cmd_fn=git_sync.cmd_sync_branch,
             cmd_help="pull/merge with --ff against upstream or an explicit remote base ref",
             cmd_args=[(
                 "base_name",
@@ -324,7 +324,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Syncing and history",
             cmd_name="stash-work",
-            cmd_fn=git_utils.cmd_stash_work,
+            cmd_fn=git_sync.cmd_stash_work,
             cmd_help="stash uncommitted work; optionally label it with a name",
             cmd_args=[(
                 "name",
@@ -336,7 +336,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Syncing and history",
             cmd_name="unstash-work",
-            cmd_fn=git_utils.cmd_unstash_work,
+            cmd_fn=git_sync.cmd_unstash_work,
             cmd_help="pop stashed work; if a name is given, finds and pops that specific entry",
             cmd_args=[(
                 "name",
@@ -348,7 +348,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Syncing and history",
             cmd_name="amend-last-commit",
-            cmd_fn=git_utils.cmd_amend_last_commit,
+            cmd_fn=git_sync.cmd_amend_last_commit,
             cmd_help="amend the last commit with staged changes; optionally update the message too",
             cmd_args=[(
                 "message",
@@ -360,7 +360,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         cli_command(
             "Syncing and history",
             cmd_name="rename-last-commit",
-            cmd_fn=git_utils.cmd_rename_last_commit,
+            cmd_fn=git_sync.cmd_rename_last_commit,
             cmd_help="amend the most recent commit message (rewrites history)",
             cmd_args=[(
                 "message",
@@ -372,13 +372,13 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
         ## --- utilities ---
         cli_command(
             cmd_name="self-check",
-            cmd_fn=git_utils.check_self,
+            cmd_fn=git_config.check_self,
             cmd_help="verify that git is available on PATH",
             is_hidden=True,
         ),
         cli_command(
             cmd_name="is-detached",
-            cmd_fn=git_utils.check_is_detached,
+            cmd_fn=git_inspection.check_is_detached,
             cmd_help="exit 0 if HEAD is detached, 1 if on a branch (for shell conditionals)",
             is_hidden=True,
         ),
