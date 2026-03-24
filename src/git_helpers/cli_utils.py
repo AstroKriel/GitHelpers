@@ -36,11 +36,12 @@ class _HelpFormatter(argparse.HelpFormatter):
 
 
 def cli_command(
+    section: str = "",
+    *,
     cmd_name: str,
     cmd_fn: Callable[..., Any],
     cmd_help: str = "",
     cmd_args: list[tuple[str, dict[str, Any]]] | None = None,
-    section: str = "",
     is_hidden: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     """Build a (name, entry) pair for COMMANDS; handler is auto-generated from cmd_args."""
@@ -127,43 +128,44 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
     [
         ## --- global configuration ---
         cli_command(
+            "Global configuration",
             cmd_name="set-global-config",
             cmd_fn=git_utils.cmd_set_global_config,
             cmd_help="write FF-first merge defaults + rerere to ~/.gitconfig",
-            section="Global configuration",
         ),
         cli_command(
+            "Global configuration",
             cmd_name="show-global-config",
             cmd_fn=git_utils.show_global_config,
             cmd_help="print current values of the git settings this tool manages",
-            section="Global configuration",
         ),
         ## --- inspection ---
         cli_command(
+            "Inspection",
             cmd_name="show-upstream-state",
             cmd_fn=git_utils.show_upstream_state,
             cmd_help="show the current branch, its upstream ref, and the latest upstream commit",
-            section="Inspection",
         ),
         cli_command(
+            "Inspection",
             cmd_name="show-branches-status",
             cmd_fn=git_utils.show_branches_status,
             cmd_help="fetch, then list all branches with upstream and ahead/behind counts",
-            section="Inspection",
         ),
         cli_command(
+            "Inspection",
             cmd_name="count-ahead-behind",
             cmd_fn=git_utils.count_ahead_behind,
             cmd_help="print how many commits ahead/behind the current branch is vs its upstream",
-            section="Inspection",
         ),
         cli_command(
+            "Inspection",
             cmd_name="show-unpulled-commits",
             cmd_fn=git_utils.show_unpulled_commits,
             cmd_help="list commits on upstream not yet pulled locally",
-            section="Inspection",
         ),
         cli_command(
+            "Inspection",
             cmd_name="show-recent-commits",
             cmd_fn=git_utils.show_recent_commits,
             cmd_help="print the most recent N commits on the current branch (default: 20)",
@@ -175,22 +177,22 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "default": 20,
                 },
             )],
-            section="Inspection",
         ),
         cli_command(
+            "Inspection",
             cmd_name="show-local-remotes",
             cmd_fn=git_utils.show_local_remotes,
             cmd_help="list all configured remotes and their URLs",
-            section="Inspection",
         ),
         cli_command(
+            "Inspection",
             cmd_name="show-submodules-status",
             cmd_fn=git_utils.show_submodules_status,
             cmd_help="show SHA and init status of each submodule",
-            section="Inspection",
         ),
         ## --- branch management ---
         cli_command(
+            "Branch management",
             cmd_name="create-branch-from-default",
             cmd_fn=git_utils.cmd_create_branch_from_default,
             cmd_help="cut a new branch from the remote default branch and push it",
@@ -198,9 +200,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                 "new_branch_name",
                 {},
             )],
-            section="Branch management",
         ),
         cli_command(
+            "Branch management",
             cmd_name="create-branch-from-remote",
             cmd_fn=git_utils.cmd_create_branch_from_remote,
             cmd_help="cut a new branch from an explicit remote ref and push it",
@@ -214,9 +216,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     {},
                 ),
             ],
-            section="Branch management",
         ),
         cli_command(
+            "Branch management",
             cmd_name="track-remote-branch",
             cmd_fn=git_utils.cmd_track_remote_branch,
             cmd_help="create a local branch tracking an existing remote branch and check it out",
@@ -232,22 +234,22 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     },
                 ),
             ],
-            section="Branch management",
         ),
         cli_command(
+            "Branch management",
             cmd_name="delete-local-branch",
             cmd_fn=git_utils.cmd_delete_local_branch,
             cmd_help="safely delete a local branch (refuses if unmerged)",
             cmd_args=[("branch_name", {})],
-            section="Branch management",
         ),
         cli_command(
+            "Branch management",
             cmd_name="prune-gone-locals",
             cmd_fn=git_utils.cmd_prune_gone_locals,
             cmd_help="delete local branches whose remote counterpart has been deleted",
-            section="Branch management",
         ),
         cli_command(
+            "Branch management",
             cmd_name="prune-merged-locals",
             cmd_fn=git_utils.cmd_prune_merged_locals,
             cmd_help="delete local branches fully merged into base (default: remote default branch)",
@@ -257,9 +259,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "?",
                 },
             )],
-            section="Branch management",
         ),
         cli_command(
+            "Branch management",
             cmd_name="cleanup-local-branches",
             cmd_fn=git_utils.cmd_cleanup_local_branches,
             cmd_help="run prune-gone-locals then prune-merged-locals in sequence",
@@ -269,23 +271,23 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "?",
                 },
             )],
-            section="Branch management",
         ),
         ## --- submodule management ---
         cli_command(
+            "Submodule management",
             cmd_name="update-submodules",
             cmd_fn=git_utils.cmd_update_submodules,
             cmd_help="pull latest commits for all submodules from their tracked branches",
-            section="Submodule management",
         ),
         cli_command(
+            "Submodule management",
             cmd_name="fix-submodule",
             cmd_fn=git_utils.cmd_fix_submodule,
             cmd_help="repair a submodule in detached HEAD: checkout main, pull, bump parent pointer",
             cmd_args=[("submodule_path", {})],
-            section="Submodule management",
         ),
         cli_command(
+            "Submodule management",
             cmd_name="add-submodule",
             cmd_fn=git_utils.cmd_add_submodule,
             cmd_help="add a submodule tracking main, and commit .gitmodules + pointer",
@@ -293,10 +295,10 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                 ("url", {}),
                 ("local_name", {}),
             ],
-            section="Submodule management",
         ),
         ## --- syncing and history ---
         cli_command(
+            "Syncing and history",
             cmd_name="push",
             cmd_fn=git_utils.cmd_push,
             cmd_help="push current branch; sets upstream automatically if not already configured",
@@ -306,9 +308,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "*",
                 },
             )],
-            section="Syncing and history",
         ),
         cli_command(
+            "Syncing and history",
             cmd_name="sync-branch",
             cmd_fn=git_utils.cmd_sync_branch,
             cmd_help="pull/merge with --ff against upstream or an explicit remote base ref",
@@ -318,9 +320,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "?",
                 },
             )],
-            section="Syncing and history",
         ),
         cli_command(
+            "Syncing and history",
             cmd_name="stash-work",
             cmd_fn=git_utils.cmd_stash_work,
             cmd_help="stash uncommitted work; optionally label it with a name",
@@ -330,9 +332,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "?",
                 },
             )],
-            section="Syncing and history",
         ),
         cli_command(
+            "Syncing and history",
             cmd_name="unstash-work",
             cmd_fn=git_utils.cmd_unstash_work,
             cmd_help="pop stashed work; if a name is given, finds and pops that specific entry",
@@ -342,9 +344,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "?",
                 },
             )],
-            section="Syncing and history",
         ),
         cli_command(
+            "Syncing and history",
             cmd_name="amend-last-commit",
             cmd_fn=git_utils.cmd_amend_last_commit,
             cmd_help="amend the last commit with staged changes; optionally update the message too",
@@ -354,9 +356,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "*",
                 },
             )],
-            section="Syncing and history",
         ),
         cli_command(
+            "Syncing and history",
             cmd_name="rename-last-commit",
             cmd_fn=git_utils.cmd_rename_last_commit,
             cmd_help="amend the most recent commit message (rewrites history)",
@@ -366,7 +368,6 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                     "nargs": "+",
                 },
             )],
-            section="Syncing and history",
         ),
         ## --- utilities ---
         cli_command(

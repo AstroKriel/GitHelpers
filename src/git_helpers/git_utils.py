@@ -54,7 +54,7 @@ def show_global_config(
         ## `{label:<15}` left-aligns the label in a 15-char field so values line up.
         shell_utils.log_result(f"  {label:<15} = {read_config_value(key)}")
     shell_utils.log_result(
-        "tip: edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'"
+        "tip: edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'",
     )
 
 
