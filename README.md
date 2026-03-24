@@ -46,6 +46,8 @@ uv tool uninstall git_helpers
 
 Run any command from inside a git repo. Use `git_helpers --help` to see all available commands, or `git_helpers <command> --help` for details on a specific one.
 
+In the usage lines below: `<arg>` is required, `[arg]` is optional.
+
 **Global git configuration**
 ```bash
 git_helpers set-global-config   # write FF-first merge defaults + rerere to ~/.gitconfig
@@ -66,12 +68,12 @@ git_helpers show-submodules-status        # show SHA and init status of each sub
 **Managing branches**
 ```bash
 git_helpers create-branch-from-default <name>           # cut from remote default branch + push
-git_helpers create-branch-from-remote <name> <ref>      # cut from explicit remote ref + push
-git_helpers track-remote-branch <remote/branch> [name]  # create local branch tracking a remote one
-git_helpers delete-local-branch <name>                  # safe delete (refuses if unmerged)
-git_helpers prune-gone-locals                           # delete branches whose remote was deleted
-git_helpers prune-merged-locals [base]                  # delete branches merged into base
-git_helpers cleanup-local-branches [base]               # run both prune steps in sequence
+git_helpers create-branch-from-remote <name> <remote/branch>  # cut from explicit remote ref + push
+git_helpers track-remote-branch <remote/branch> [name]        # create local branch tracking a remote one
+git_helpers delete-local-branch <name>                        # safe delete (refuses if unmerged)
+git_helpers prune-gone-locals                                 # delete branches whose remote was deleted
+git_helpers prune-merged-locals [remote/branch]               # delete branches merged into base
+git_helpers cleanup-local-branches [remote/branch]            # run both prune steps in sequence
 ```
 
 **Managing submodules**
@@ -84,7 +86,7 @@ git_helpers add-submodule <url> <name>     # add submodule tracking main and com
 **Syncing and rewriting history**
 ```bash
 git_helpers push                           # push current branch; sets upstream automatically if needed
-git_helpers sync-branch [base]             # pull/merge with --ff; merge explicit base if provided
+git_helpers sync-branch [remote/branch]    # pull/merge with --ff; merge explicit base if provided
 git_helpers stash-work [name]              # stash uncommitted work; optionally label it
 git_helpers unstash-work [name]            # pop most recent stash, or find one by name
 git_helpers amend-last-commit [msg]        # amend staged changes into last commit; optionally update message
