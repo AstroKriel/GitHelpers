@@ -126,6 +126,59 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             cmd_help="show SHA and init status of each submodule",
         ),
         cli_command(
+            cmd_name="update-submodules",
+            cmd_fn=git_utils.cmd_update_submodules,
+            cmd_help="pull latest commits for all submodules from their tracked branches",
+        ),
+        cli_command(
+            cmd_name="fix-submodule",
+            cmd_fn=git_utils.cmd_fix_submodule,
+            cmd_help="repair a submodule in detached HEAD: checkout main, pull, bump parent pointer",
+            cmd_args=[("submodule_path", {})],
+        ),
+        cli_command(
+            cmd_name="add-submodule",
+            cmd_fn=git_utils.cmd_add_submodule,
+            cmd_help="add a submodule tracking main, and commit .gitmodules + pointer",
+            cmd_args=[
+                ("url", {}),
+                ("local_name", {}),
+            ],
+        ),
+        cli_command(
+            cmd_name="stash",
+            cmd_fn=git_utils.cmd_stash,
+            cmd_help="stash uncommitted work; optionally label it with a name",
+            cmd_args=[(
+                "name",
+                {
+                    "nargs": "?",
+                },
+            )],
+        ),
+        cli_command(
+            cmd_name="unstash",
+            cmd_fn=git_utils.cmd_unstash,
+            cmd_help="pop stashed work; if a name is given, finds and pops that specific entry",
+            cmd_args=[(
+                "name",
+                {
+                    "nargs": "?",
+                },
+            )],
+        ),
+        cli_command(
+            cmd_name="amend-last",
+            cmd_fn=git_utils.cmd_amend_last,
+            cmd_help="amend the last commit with staged changes; optionally update the message too",
+            cmd_args=[(
+                "message",
+                {
+                    "nargs": "*",
+                },
+            )],
+        ),
+        cli_command(
             cmd_name="rename-last-commit",
             cmd_fn=git_utils.cmd_rename_last_commit,
             cmd_help="amend the most recent commit message (rewrites history)",

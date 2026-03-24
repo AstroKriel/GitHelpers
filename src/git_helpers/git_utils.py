@@ -225,6 +225,91 @@ def show_submodules_status(
 
 
 ##
+## === SUBMODULE COMMANDS
+##
+
+
+def cmd_update_submodules(
+    config: shell_utils.Config,
+) -> None:
+    """Pull the latest commits for all submodules from their tracked branches."""
+    repo_utils.require_repo()
+    shell_utils.log_step("updating all submodules to latest on their tracked branch")
+    ## `--remote` fetches from each submodule's remote and checks out the latest
+    ## commit on the tracked branch (set in .gitmodules via `branch = main`).
+    ## `--recursive` handles nested submodules.
+    shell_utils.run_cmd(config, "git", "submodule", "update", "--remote", "--recursive")
+    shell_utils.log_outcome("all submodules updated to latest")
+
+
+def cmd_fix_submodule(
+    config: shell_utils.Config,
+    submodule_path: str,
+) -> None:
+    """Repair a submodule stuck in detached HEAD: checkout main, pull, bump parent pointer."""
+    repo_utils.require_repo()
+    shell_utils.bind_var(
+        var_name="submodule_path",
+        var_value=submodule_path,
+    )
+    shell_utils.log_step("checking out main inside the submodule")
+    ## `git -C <path>` runs the command as if cwd were <path> — avoids needing
+    ## to actually cd in and out of the submodule directory.
+    shell_utils.run_cmd(config, "git", "-C", submodule_path, "checkout", "main")
+    shell_utils.log_step("pulling latest commits inside the submodule")
+    shell_utils.run_cmd(config, "git", "-C", submodule_path, "pull")
+    shell_utils.log_step("staging updated submodule pointer in parent repo")
+    ## staging the submodule path tells the parent to record the new HEAD SHA.
+    shell_utils.run_cmd(config, "git", "add", submodule_path)
+    shell_utils.log_step("committing updated pointer in parent repo")
+    shell_utils.run_cmd(
+        config,
+        "git",
+        "commit",
+        "-m",
+        f"fix: update {submodule_path} pointer after repair",
+    )
+    shell_utils.log_outcome(f"repaired '{submodule_path}' and bumped parent pointer")
+
+
+def cmd_add_submodule(
+    config: shell_utils.Config,
+    url: str,
+    local_name: str,
+) -> None:
+    """Add a new submodule, pin it to track main, and commit .gitmodules + pointer."""
+    repo_utils.require_repo()
+    shell_utils.bind_var(
+        var_name="url",
+        var_value=url,
+    )
+    shell_utils.bind_var(
+        var_name="local_name",
+        var_value=local_name,
+    )
+    shell_utils.log_step("adding submodule")
+    ## `submodule add` clones the remote into <local_name> and registers it in .gitmodules.
+    shell_utils.run_cmd(config, "git", "submodule", "add", url, local_name)
+    shell_utils.log_step("setting tracked branch to main in .gitmodules")
+    ## record `branch = main` so `git submodule update --remote` knows which
+    ## branch to follow when pulling new commits.
+    shell_utils.run_cmd(
+        config,
+        "git",
+        "config",
+        "-f",
+        ".gitmodules",
+        f"submodule.{local_name}.branch",
+        "main",
+    )
+    shell_utils.log_step("staging .gitmodules and submodule pointer")
+    shell_utils.run_cmd(config, "git", "add", ".gitmodules", local_name)
+    shell_utils.log_step("committing")
+    shell_utils.run_cmd(config, "git", "commit", "-m", f"add {local_name} submodule")
+    shell_utils.log_outcome(f"added submodule '{local_name}' tracking main")
+
+
+##
 ## === MUTATING COMMANDS
 ##
 
@@ -557,6 +642,89 @@ def cmd_sync_branch(
         shell_utils.kill(
             "no upstream set; publish (git_helpers push) or provide a base: git_helpers sync-branch <remote>/<base>",
         )
+
+
+def cmd_stash(
+    config: shell_utils.Config,
+    name: str | None = None,
+) -> None:
+    """Stash uncommitted work; optionally label it with a name for easy retrieval."""
+    repo_utils.require_repo()
+    if name:
+        shell_utils.bind_var(
+            var_name="name",
+            var_value=name,
+        )
+        shell_utils.log_step("stashing work with label")
+        ## `-m` attaches a descriptive message to the stash entry, making it
+        ## identifiable by name when listing or popping later.
+        shell_utils.run_cmd(config, "git", "stash", "push", "-m", name)
+        shell_utils.log_outcome(f"stashed work as '{name}'")
+    else:
+        shell_utils.log_step("stashing work")
+        shell_utils.run_cmd(config, "git", "stash", "push")
+        shell_utils.log_outcome("stashed work")
+
+
+def cmd_unstash(
+    config: shell_utils.Config,
+    name: str | None = None,
+) -> None:
+    """Pop stashed work; if a name is given, finds and pops that specific stash entry."""
+    repo_utils.require_repo()
+    if name:
+        shell_utils.bind_var(
+            var_name="name",
+            var_value=name,
+        )
+        shell_utils.log_step("finding stash entry by name")
+        ## `stash list` prints entries like: stash@{0}: On main: <message>
+        ## search for the label to find the matching index.
+        stash_list = shell_utils.query_cmd_or_empty("git", "stash", "list")
+        stash_ref = ""
+        for line in (stash_list.splitlines() if stash_list else []):
+            if name in line:
+                stash_ref = line.split(":")[0]
+                break
+        if not stash_ref:
+            shell_utils.kill(f"no stash entry found matching '{name}'")
+        shell_utils.bind_var(
+            var_name="stash_ref",
+            var_value=stash_ref,
+        )
+        shell_utils.log_step(f"popping {stash_ref}")
+        shell_utils.run_cmd(config, "git", "stash", "pop", stash_ref)
+        shell_utils.log_outcome(f"restored stash '{name}'")
+    else:
+        shell_utils.log_step("popping most recent stash entry")
+        shell_utils.run_cmd(config, "git", "stash", "pop")
+        shell_utils.log_outcome("restored most recent stash")
+
+
+def cmd_amend_last(
+    config: shell_utils.Config,
+    message: list[str],
+) -> None:
+    """Amend the last commit with currently staged changes; optionally update the message too."""
+    repo_utils.require_repo()
+    if shell_utils.probe_cmd("git", "rev-parse", "--verify", "HEAD") != 0:
+        shell_utils.kill("no commits yet (nothing to amend)")
+    shell_utils.log_step("amending last commit with staged changes")
+    shell_utils.log_msg("note: this rewrites commit history; avoid if already pushed")
+    if message:
+        ## argparse nargs="*" returns a list; rejoin into a single string.
+        new_message = " ".join(message)
+        shell_utils.bind_var(
+            var_name="new_message",
+            var_value=new_message,
+        )
+        ## amend tree and message together.
+        shell_utils.run_cmd(config, "git", "commit", "--amend", "-m", new_message)
+        shell_utils.log_outcome("amended last commit with staged changes and new message")
+    else:
+        ## `--no-edit` keeps the existing commit message unchanged.
+        shell_utils.run_cmd(config, "git", "commit", "--amend", "--no-edit")
+        shell_utils.log_outcome("amended last commit with staged changes (message unchanged)")
 
 
 def check_self(
