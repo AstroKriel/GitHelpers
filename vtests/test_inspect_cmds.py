@@ -46,7 +46,7 @@ def test_ahead_behind_shows_correct_counts(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.make_commits(repo_dir, 2, prefix="local")
-    git_utils.show_ahead_behind(Config())
+    git_utils.count_ahead_behind(Config())
     out = capsys.readouterr().out
     assert "ahead: 2" in out
     assert "behind: 0" in out
@@ -67,7 +67,7 @@ def test_ahead_behind_behind_counts(
     vtest_helpers.git(["push"], cwd=second_dir)
     ## fetch to update tracking refs without pulling
     vtest_helpers.git(["fetch"], cwd=repo_dir)
-    git_utils.show_ahead_behind(Config())
+    git_utils.count_ahead_behind(Config())
     out = capsys.readouterr().out
     assert "ahead: 0" in out
     assert "behind: 3" in out

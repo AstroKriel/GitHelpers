@@ -110,4 +110,81 @@ def test_rename_last_commit_preserves_sha_prefix(
     assert before_sha != after_sha
 
 
+##
+## === amend-last
+##
+
+
+def test_amend_last_includes_staged_changes(
+    make_repo_: Path,
+) -> None:
+    (make_repo_ / "staged.txt").write_text("new content")
+    vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
+    git_utils.cmd_amend_last_commit(Config(), [])
+    files_in_last_commit = vtest_helpers.git(
+        ["show", "--name-only", "--format=", "HEAD"],
+        cwd=make_repo_,
+    ).stdout
+    assert "staged.txt" in files_in_last_commit
+
+
+def test_amend_last_with_message_updates_message(
+    make_repo_: Path,
+) -> None:
+    (make_repo_ / "staged.txt").write_text("content")
+    vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
+    git_utils.cmd_amend_last_commit(Config(), ["updated", "message"])
+    assert vtest_helpers.current_commit_message(make_repo_) == "updated message"
+
+
+def test_amend_last_without_message_keeps_message(
+    make_repo_: Path,
+) -> None:
+    original_msg = vtest_helpers.current_commit_message(make_repo_)
+    (make_repo_ / "staged.txt").write_text("content")
+    vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
+    git_utils.cmd_amend_last_commit(Config(), [])
+    assert vtest_helpers.current_commit_message(make_repo_) == original_msg
+
+
+def test_amend_last_changes_sha(
+    make_repo_: Path,
+) -> None:
+    (make_repo_ / "staged.txt").write_text("content")
+    vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
+    before_sha = vtest_helpers.head_sha(make_repo_)
+    git_utils.cmd_amend_last_commit(Config(), [])
+    assert vtest_helpers.head_sha(make_repo_) != before_sha
+
+
+##
+## === push
+##
+
+
+def test_push_sets_upstream_when_none(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "no-upstream"], cwd=repo_dir)
+    vtest_helpers.make_commit(repo_dir, "branch commit")
+    git_utils.cmd_push(Config(), [])
+    upstream = vtest_helpers.git(
+        ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        cwd=repo_dir,
+    ).stdout.strip()
+    assert upstream == "origin/no-upstream"
+
+
+def test_push_with_existing_upstream_pushes_commit(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, remote_dir = make_repo_with_remote
+    vtest_helpers.make_commit(repo_dir, "new commit")
+    local_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=repo_dir).stdout.strip()
+    git_utils.cmd_push(Config(), [])
+    remote_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
+    assert local_sha == remote_sha
+
+
 ## } SCRIPT

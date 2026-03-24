@@ -62,4 +62,41 @@ def test_dry_run_sync_branch_leaves_head_unchanged(
     assert vtest_helpers.head_sha(repo_dir) == before_sha
 
 
+##
+## === create-branch-from-remote / track-remote-branch / create-branch-from-default
+##
+## These commands read remote state then create branches.  In dry-run mode the
+## read-only queries still execute (so the command validates that the remote ref
+## exists and resolves the names correctly), but no branch is created.  Run these
+## with --dry-run manually to confirm the bound values look right before committing.
+##
+
+
+def test_dry_run_create_branch_from_remote_creates_no_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    before = vtest_helpers.local_branches(repo_dir)
+    git_utils.cmd_create_branch_from_remote(Config(dry_run=True), "new-feature", "origin/main")
+    assert vtest_helpers.local_branches(repo_dir) == before
+
+
+def test_dry_run_track_remote_branch_creates_no_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    git_utils.cmd_track_remote_branch(Config(dry_run=True), "origin/main", "tracked-main")
+    assert "tracked-main" not in vtest_helpers.local_branches(repo_dir)
+
+
+def test_dry_run_create_branch_from_default_creates_no_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    ## set-head tells git which branch is the remote default (normally set by clone)
+    vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
+    git_utils.cmd_create_branch_from_default(Config(dry_run=True), "new-feature")
+    assert "new-feature" not in vtest_helpers.local_branches(repo_dir)
+
+
 ## } SCRIPT
