@@ -46,7 +46,7 @@ uv tool uninstall git_helpers
 
 Run any command from inside a git repo. Use `git_helpers --help` to see all available commands, or `git_helpers <command> --help` for details on a specific one.
 
-In the usage lines below: `<arg>` is required, `[arg]` is optional.
+Note that below `<arg>` means required, and `[arg]` means optional.
 
 **Global git configuration**
 ```bash
