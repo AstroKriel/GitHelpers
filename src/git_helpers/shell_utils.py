@@ -54,6 +54,39 @@ class _Markers(str, Enum):
     ARROW = "\u2192"  # →
 
 
+@dataclass(frozen=True)
+class _Style:
+    color: _Colors
+    marker: _Markers
+
+
+class _Theme:
+    STEP = _Style(
+        color=_Colors.WHITE,
+        marker=_Markers.CIRCLE_OPEN,
+    )  # narrating a major decision point
+    SUCCESS = _Style(
+        color=_Colors.GREEN,
+        marker=_Markers.CIRCLE_CLOSED,
+    )  # positive outcome or result
+    ACTION = _Style(
+        color=_Colors.BLUE,
+        marker=_Markers.ARROW,
+    )  # executing a mutating command
+    SKIPPED = _Style(
+        color=_Colors.ORANGE,
+        marker=_Markers.ARROW,
+    )  # skipped in dry-run mode
+    ERROR = _Style(
+        color=_Colors.RED,
+        marker=_Markers.CIRCLE_CLOSED,
+    )  # fatal error
+    CONTEXT = _Style(
+        color=_Colors.GRAY,
+        marker=_Markers.ARROW,
+    )  # metadata, bindings, read-only commands
+
+
 def log_msg(
     msg: str,
 ) -> None:
@@ -65,14 +98,16 @@ def log_step(
     msg: str,
 ) -> None:
     """Narrate a major decision point within a command."""
-    _CONSOLE.print(f"[{_Colors.WHITE.value}]{_Markers.CIRCLE_OPEN.value}[/] {msg}")
+    style = _Theme.STEP
+    _CONSOLE.print(f"[{style.color.value}]{style.marker.value}[/] {msg}")
 
 
 def log_outcome(
     msg: str,
 ) -> None:
     """Record which path was taken after a branch or decision."""
-    _CONSOLE.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value} {msg}[/]")
+    style = _Theme.SUCCESS
+    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {msg}[/]")
 
 
 def bind_var(
@@ -80,21 +115,24 @@ def bind_var(
     var_value: str,
 ) -> None:
     """Log a variable name alongside the value it was resolved to."""
-    _CONSOLE.print(f"[{_Colors.GRAY.value}]{_Markers.ARROW.value} {var_name} = {var_value}[/]")
+    style = _Theme.CONTEXT
+    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {var_name} = {var_value}[/]")
 
 
 def log_result(
     msg: str,
 ) -> None:
     """Print a user-facing result to stdout."""
-    _CONSOLE_OUT.print(f"[{_Colors.GREEN.value}]{_Markers.CIRCLE_CLOSED.value} {msg}[/]")
+    style = _Theme.SUCCESS
+    _CONSOLE_OUT.print(f"[{style.color.value}]{style.marker.value} {msg}[/]")
 
 
 def kill(
     msg: str,
 ) -> NoReturn:
     """Print an error message to stderr and exit the process immediately."""
-    _CONSOLE.print(f"[{_Colors.RED.value}]{_Markers.CIRCLE_CLOSED.value}[/] error: {msg}")
+    style = _Theme.ERROR
+    _CONSOLE.print(f"[{style.color.value}]{style.marker.value}[/] error: {msg}")
     sys.exit(1)
 
 
@@ -109,11 +147,11 @@ def run_cmd(
 ) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
     if config.dry_run:
-        _CONSOLE.print(
-            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]",
-        )
+        style = _Theme.SKIPPED
+        _CONSOLE.print(f"[{style.color.value}]{style.marker.value} (dryrun) skipped: {' '.join(args)}[/]")
         return
-    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value} {' '.join(args)}[/]")
+    style = _Theme.ACTION
+    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {' '.join(args)}[/]")
     ## `check=True` raises CalledProcessError on non-zero exit, caught in main().
     subprocess.run(
         args,
@@ -127,11 +165,11 @@ def run_cmd_and_capture_output(
 ) -> str:
     """Run a mutating git command and return its stdout; empty string in dry-run."""
     if config.dry_run:
-        _CONSOLE.print(
-            f"[{_Colors.ORANGE.value}]{_Markers.ARROW.value} (dryrun) skipped: {' '.join(args)}[/]",
-        )
+        style = _Theme.SKIPPED
+        _CONSOLE.print(f"[{style.color.value}]{style.marker.value} (dryrun) skipped: {' '.join(args)}[/]")
         return ""
-    _CONSOLE.print(f"[{_Colors.BLUE.value}]{_Markers.ARROW.value} {' '.join(args)}[/]")
+    style = _Theme.ACTION
+    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {' '.join(args)}[/]")
     ## `capture_output=True` redirects both stdout and stderr so they don't
     ## print to the terminal; `text=True` decodes bytes to str automatically.
     result = subprocess.run(
@@ -147,7 +185,8 @@ def query_cmd(
     *args: str,
 ) -> str:
     """Run a read-only git command and return its stdout; always executes, even in dry-run."""
-    _CONSOLE.print(f"[{_Colors.GRAY.value}]{_Markers.ARROW.value} {' '.join(args)}[/]")
+    style = _Theme.CONTEXT
+    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {' '.join(args)}[/]")
     result = subprocess.run(
         args,
         capture_output=True,
