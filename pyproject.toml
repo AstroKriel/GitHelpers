@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "git_helpers: a CLI tool for common git workflows"
 readme = "README.md"
 authors = [{ name = "Neco Kriel", email = "necokriel@gmail.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "rich>=13.0",
 ]
@@ -33,6 +33,7 @@ include = ["src", "utests", "vtests"]
 extraPaths = ["src", "."]
 venvPath = "."
 venv = ".venv"
+pythonVersion = "3.13"
 reportMissingImports = true
 reportMissingTypeStubs = false
 reportUnusedParameter = "none"
