@@ -76,7 +76,13 @@ def count_ahead_behind(
     shell_interface.log_step("determining upstream for current branch")
     if not repo_state.has_upstream():
         shell_interface.kill(f"no upstream set for {repo_state.current_branch()}")
-    upstream_name = shell_interface.query_cmd("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    upstream_name = shell_interface.query_cmd(
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{u}",
+    )
     shell_interface.bind_var(
         var_name="upstream_name",
         var_value=upstream_name,
@@ -119,7 +125,13 @@ def show_unpulled_commits(
     shell_interface.log_step("determining upstream")
     if not repo_state.has_upstream():
         shell_interface.kill("no upstream set")
-    upstream_name = shell_interface.query_cmd("git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
+    upstream_name = shell_interface.query_cmd(
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{u}",
+    )
     shell_interface.bind_var(
         var_name="upstream_name",
         var_value=upstream_name,
