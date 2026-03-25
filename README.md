@@ -50,47 +50,47 @@ Note that below `<arg>` means required, and `[arg]` means optional.
 
 **Global git configuration**
 ```bash
-git_helpers set-global-config   # write FF-first merge defaults + rerere to ~/.gitconfig
-git_helpers show-global-config  # print current values of those settings
+git_helpers set-global-config   # set sensible merge defaults in ~/.gitconfig (fast-forward preferred, rerere enabled)
+git_helpers show-global-config  # show the current values of the git settings this tool manages
 ```
 
 **Inspecting repo state**
 ```bash
-git_helpers show-branches-status          # fetch, then show all branches with upstream + ahead/behind
-git_helpers count-ahead-behind            # how many commits ahead/behind the current branch is
-git_helpers show-upstream-state           # show the upstream ref and its latest commit
-git_helpers show-unpulled-commits         # list commits on upstream not yet pulled
-git_helpers show-recent-commits [N]       # last N commits on current branch (default: 20)
-git_helpers show-local-remotes            # list all remotes and their URLs
-git_helpers show-submodules-status        # show SHA and init status of each submodule
+git_helpers show-branches-status     # see all local branches and whether they're ahead or behind their remote (fetches first)
+git_helpers count-ahead-behind       # show how many commits the current branch is ahead of and behind its upstream
+git_helpers show-upstream-state      # show which remote branch the current branch is tracking and its latest commit
+git_helpers show-unpulled-commits    # list commits on the remote that haven't been pulled yet
+git_helpers show-recent-commits [N]  # show the last N commits on the current branch (default: 20)
+git_helpers show-local-remotes       # list all configured remotes and their URLs
+git_helpers show-submodules-status   # show the current state of each submodule (commit SHA and init status)
 ```
 
 **Managing branches**
 ```bash
-git_helpers create-branch-from-default <name>                 # cut from remote default branch + push
-git_helpers create-branch-from-remote <name> <remote/branch>  # cut from explicit remote ref + push
-git_helpers track-remote-branch <remote/branch> [name]        # create local branch tracking a remote one
-git_helpers delete-local-branch <name>                        # safe delete (refuses if unmerged)
-git_helpers prune-gone-locals                                 # delete branches whose remote was deleted
-git_helpers prune-merged-locals [remote/branch]               # delete branches merged into base
-git_helpers cleanup-local-branches [remote/branch]            # run both prune steps in sequence
+git_helpers create-branch-from-default <name>                 # create and push a new branch from the remote default (e.g. origin/main)
+git_helpers create-branch-from-remote <name> <remote/branch>  # create and push a new branch from a specific remote branch
+git_helpers track-remote-branch <remote/branch> [name]        # create a local tracking branch for an existing remote branch and check it out
+git_helpers delete-local-branch <name>                        # delete a local branch safely (refuses if it has unmerged commits)
+git_helpers prune-gone-locals                                 # delete local branches whose remote counterpart has been deleted
+git_helpers prune-merged-locals [remote/branch]               # delete local branches whose commits are already in the base branch
+git_helpers cleanup-local-branches [remote/branch]            # delete all gone and merged local branches in one step
 ```
 
 **Managing submodules**
 ```bash
-git_helpers update-submodules              # pull latest commits for all submodules
-git_helpers fix-submodule <path>           # repair detached HEAD: checkout main, pull, bump pointer
-git_helpers add-submodule <url> <name>     # add submodule tracking main and commit
+git_helpers update-submodules           # update all submodules to their latest commit on the tracked branch
+git_helpers fix-submodule <path>        # repair a submodule in detached HEAD state (checks out main, pulls, updates parent pointer)
+git_helpers add-submodule <url> <name>  # add a new submodule tracking main and commit the result
 ```
 
 **Syncing and rewriting history**
 ```bash
-git_helpers push                           # push current branch; sets upstream automatically if needed
-git_helpers sync-branch [remote/branch]    # pull/merge with --ff; merge explicit base if provided
-git_helpers stash-work [name]              # stash uncommitted work; optionally label it
-git_helpers unstash-work [name]            # pop most recent stash, or find one by name
-git_helpers amend-last-commit [msg]        # amend staged changes into last commit; optionally update message
-git_helpers rename-last-commit <msg>       # replace the most recent commit message
+git_helpers push                         # push the current branch; sets the upstream automatically if it's a new branch
+git_helpers sync-branch [remote/branch]  # bring the current branch up to date with its upstream (or an explicit remote branch)
+git_helpers stash-work [name]            # temporarily save uncommitted work so you can switch context; optionally label it
+git_helpers unstash-work [name]          # restore the most recently stashed work, or a specific stash by name
+git_helpers amend-last-commit [msg]      # fold staged changes into the last commit; optionally update the message too
+git_helpers rename-last-commit <msg>     # update the message of the last commit without changing its content (rewrites history)
 ```
 
 ## Global flags
