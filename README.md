@@ -50,7 +50,7 @@ Note that below `<arg>` means required, and `[arg]` means optional.
 
 **Global git configuration**
 ```bash
-git_helpers set-global-config   # set sensible merge defaults in ~/.gitconfig (fast-forward preferred, rerere enabled)
+git_helpers set-global-config   # set sensible merge rules in ~/.gitconfig (fast-forward preferred, rerere enabled)
 git_helpers show-global-config  # show the current values of the git settings this tool manages
 ```
 
@@ -78,9 +78,9 @@ git_helpers cleanup-local-branches [remote/branch]            # delete all gone 
 
 **Managing submodules**
 ```bash
-git_helpers update-submodules           # update all submodules to their latest commit on the tracked branch
-git_helpers fix-submodule <path>        # repair a submodule in detached HEAD state (checks out main, pulls, updates parent pointer)
-git_helpers add-submodule <url> <name>  # add a new submodule tracking main and commit the result
+git_helpers update-submodules                    # update all submodules to their latest commit on the tracked branch
+git_helpers fix-submodule <path> [branch]        # repair a submodule in detached HEAD state (auto-detects branch, pulls, updates parent pointer)
+git_helpers add-submodule <url> <name> [branch]  # add a new submodule tracking its default branch and commit the result
 ```
 
 **Syncing and rewriting history**

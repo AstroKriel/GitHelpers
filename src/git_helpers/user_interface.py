@@ -131,7 +131,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             "Global configuration",
             cmd_name="set-global-config",
             cmd_fn=git_config.cmd_set_global_config,
-            cmd_help="set sensible merge defaults in ~/.gitconfig (fast-forward preferred, rerere enabled)",
+            cmd_help="set sensible merge rules in ~/.gitconfig (fast-forward preferred, rerere enabled)",
         ),
         cli_command(
             "Global configuration",
@@ -283,17 +283,36 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             "Submodule management",
             cmd_name="fix-submodule",
             cmd_fn=git_submodules.cmd_fix_submodule,
-            cmd_help="repair a submodule in detached HEAD state (checks out main, pulls, updates parent pointer)",
-            cmd_args=[("submodule_path", {})],
+            cmd_help=
+            "repair a submodule in detached HEAD state (auto-detects branch, pulls, updates parent pointer)",
+            cmd_args=[
+                ("submodule_path", {}),
+                (
+                    "branch",
+                    {
+                        "nargs": "?",
+                        "default": None,
+                        "metavar": "branch",
+                    },
+                ),
+            ],
         ),
         cli_command(
             "Submodule management",
             cmd_name="add-submodule",
             cmd_fn=git_submodules.cmd_add_submodule,
-            cmd_help="add a new submodule tracking main and commit the result",
+            cmd_help="add a new submodule tracking its default branch and commit the result",
             cmd_args=[
                 ("url", {}),
                 ("local_name", {}),
+                (
+                    "branch",
+                    {
+                        "nargs": "?",
+                        "default": None,
+                        "metavar": "branch",
+                    },
+                ),
             ],
         ),
         ## --- syncing and history ---
