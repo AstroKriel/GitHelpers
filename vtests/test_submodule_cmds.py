@@ -142,9 +142,22 @@ def test_fix_submodule_with_explicit_branch_commits_pointer_in_parent(
     assert msg == "fix: update sub pointer after repair"
 
 
-def test_fix_submodule_auto_detects_branch(
+def test_fix_submodule_reads_branch_from_gitmodules(
     make_repo_with_submodule: tuple[Path, Path],
 ) -> None:
+    parent, sub_dir = make_repo_with_submodule
+    ## set a non-default branch in .gitmodules and remove origin/HEAD so only .gitmodules can succeed
+    git(["config", "-f", ".gitmodules", "submodule.sub.branch", "main"], cwd=parent)
+    git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
+    git_submodules.cmd_fix_submodule(Config(), "sub", None)
+    branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
+    assert branch == "main"
+
+
+def test_fix_submodule_falls_back_to_origin_head_when_gitmodules_has_no_branch(
+    make_repo_with_submodule: tuple[Path, Path],
+) -> None:
+    ## fixture's .gitmodules has no branch entry by default — origin/HEAD is the only source
     _, sub_dir = make_repo_with_submodule
     git_submodules.cmd_fix_submodule(Config(), "sub", None)
     branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
@@ -154,6 +167,7 @@ def test_fix_submodule_auto_detects_branch(
 def test_fix_submodule_kills_when_branch_not_detectable(
     make_repo_with_submodule: tuple[Path, Path],
 ) -> None:
+    ## .gitmodules has no branch entry by default; removing origin/HEAD leaves nothing to detect
     _, sub_dir = make_repo_with_submodule
     git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
     with pytest.raises(SystemExit):
