@@ -87,6 +87,17 @@ class _Themes:
     )
 
 
+def _print_cmd(
+    theme: _Theme,
+    cmd: list[str],
+    cmd_prefix: str,
+) -> None:
+    theme_color = theme.color.value
+    theme_marker = theme.marker.value
+    cmd_string = " ".join(cmd)
+    _CONSOLE.print(f"[{theme_color}]{theme_marker}{cmd_prefix}{cmd_string}[/]")
+
+
 def log_msg(
     msg: str,
 ) -> None:
@@ -99,7 +110,9 @@ def log_step(
 ) -> None:
     """Narrate a major decision point within a command."""
     theme = _Themes.STEP
-    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value}[/] {msg}")
+    theme_color = theme.color.value
+    theme_marker = theme.marker.value
+    _CONSOLE.print(f"[{theme_color}]{theme_marker}[/] {msg}")
 
 
 def log_outcome(
@@ -107,7 +120,9 @@ def log_outcome(
 ) -> None:
     """Record which path was taken after a branch or decision."""
     theme = _Themes.SUCCESS
-    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {msg}[/]")
+    theme_color = theme.color.value
+    theme_marker = theme.marker.value
+    _CONSOLE.print(f"[{theme_color}]{theme_marker} {msg}[/]")
 
 
 def bind_var(
@@ -116,7 +131,9 @@ def bind_var(
 ) -> None:
     """Log a variable name alongside the value it was resolved to."""
     theme = _Themes.CONTEXT
-    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {var_name} = {var_value}[/]")
+    theme_color = theme.color.value
+    theme_marker = theme.marker.value
+    _CONSOLE.print(f"[{theme_color}]{theme_marker} {var_name} = {var_value}[/]")
 
 
 def log_result(
@@ -124,7 +141,9 @@ def log_result(
 ) -> None:
     """Print a user-facing result to stdout."""
     theme = _Themes.SUCCESS
-    _CONSOLE_OUT.print(f"[{theme.color.value}]{theme.marker.value} {msg}[/]")
+    theme_color = theme.color.value
+    theme_marker = theme.marker.value
+    _CONSOLE_OUT.print(f"[{theme_color}]{theme_marker} {msg}[/]")
 
 
 def kill(
@@ -132,7 +151,9 @@ def kill(
 ) -> NoReturn:
     """Print an error message to stderr and exit the process immediately."""
     theme = _Themes.ERROR
-    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value}[/] error: {msg}")
+    theme_color = theme.color.value
+    theme_marker = theme.marker.value
+    _CONSOLE.print(f"[{theme_color}]{theme_marker}[/] error: {msg}")
     sys.exit(1)
 
 
@@ -147,11 +168,17 @@ def run_cmd(
 ) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
     if config.dry_run:
-        theme = _Themes.SKIPPED
-        _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} (dryrun) skipped: {' '.join(cmd)}[/]")
+        _print_cmd(
+            theme=_Themes.SKIPPED,
+            cmd=cmd,
+            cmd_prefix=" (dryrun) skipped: ",
+        )
         return
-    theme = _Themes.ACTION
-    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {' '.join(cmd)}[/]")
+    _print_cmd(
+        theme=_Themes.ACTION,
+        cmd=cmd,
+        cmd_prefix=" ",
+    )
     ## `check=True` raises CalledProcessError on non-zero exit, caught in main().
     subprocess.run(
         cmd,
@@ -165,11 +192,17 @@ def run_cmd_and_capture_output(
 ) -> str:
     """Run a mutating git command and return its stdout; empty string in dry-run."""
     if config.dry_run:
-        theme = _Themes.SKIPPED
-        _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} (dryrun) skipped: {' '.join(cmd)}[/]")
+        _print_cmd(
+            theme=_Themes.SKIPPED,
+            cmd=cmd,
+            cmd_prefix=" (dryrun) skipped: ",
+        )
         return ""
-    theme = _Themes.ACTION
-    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {' '.join(cmd)}[/]")
+    _print_cmd(
+        theme=_Themes.ACTION,
+        cmd=cmd,
+        cmd_prefix=" ",
+    )
     ## `capture_output=True` redirects both stdout and stderr so they don't
     ## print to the terminal; `text=True` decodes bytes to str automatically.
     result = subprocess.run(
@@ -190,8 +223,11 @@ def query_cmd(
     When error_on_failure=False, a non-zero exit returns an empty string instead of raising.
     Use this for commands where "not found" is a valid outcome rather than an error.
     """
-    theme = _Themes.CONTEXT
-    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {' '.join(cmd)}[/]")
+    _print_cmd(
+        theme=_Themes.CONTEXT,
+        cmd=cmd,
+        cmd_prefix=" ",
+    )
     result = subprocess.run(
         cmd,
         capture_output=True,

@@ -173,7 +173,9 @@ def cmd_add_submodule(
     shell_interface.log_step(f"setting tracked branch to {branch} in .gitmodules")
     ## record `branch = <branch>` so `git submodule update --remote` knows which
     ## branch to follow when pulling new commits.
-    cmd_set_gitmodules_branch = ["git", "config", "-f", ".gitmodules", f"submodule.{local_name}.branch", branch]
+    cmd_set_gitmodules_branch = [
+        "git", "config", "-f", ".gitmodules", f"submodule.{local_name}.branch", branch
+    ]
     shell_interface.run_cmd(config=config, cmd=cmd_set_gitmodules_branch)
     shell_interface.log_step("staging .gitmodules and submodule pointer")
     cmd_stage_gitmodules = ["git", "add", ".gitmodules", local_name]

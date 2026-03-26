@@ -117,7 +117,9 @@ def test_run_cmd_and_capture_dry_run_skips_subprocess():
 
 def test_run_cmd_and_capture_dry_run_returns_empty():
     config = shell_interface.Config(dry_run=True)
-    result = shell_interface.run_cmd_and_capture_output(config=config, cmd=["git", "rev-list", "--count", "HEAD"])
+    result = shell_interface.run_cmd_and_capture_output(
+        config=config, cmd=["git", "rev-list", "--count", "HEAD"]
+    )
     assert result == ""
 
 

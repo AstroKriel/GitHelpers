@@ -47,7 +47,9 @@ def cmd_prune_gone_locals(
     ## string requests the short branch name and its upstream tracking status.
     ## when the remote branch has been deleted, git marks the tracking status
     ## as "[gone]" — that's what we filter on.
-    cmd_list_branch_tracking = ["git", "for-each-ref", "--format=%(refname:short) %(upstream:track)", "refs/heads/"]
+    cmd_list_branch_tracking = [
+        "git", "for-each-ref", "--format=%(refname:short) %(upstream:track)", "refs/heads/"
+    ]
     all_branches_output = shell_interface.query_cmd(cmd=cmd_list_branch_tracking)
     gone_branches = [line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line]
     if not gone_branches:
@@ -194,7 +196,9 @@ def cmd_create_branch_from_default(
     shell_interface.log_step("creating local branch from remote default (no tracking)")
     ## `--no-track` means the new branch does NOT track the base it was created
     ## from — we want it to track its own remote counterpart once pushed, not origin/main.
-    cmd_create_branch = ["git", "switch", "-c", new_branch_name, "--no-track", f"{remote_name}/{base_branch_name}"]
+    cmd_create_branch = [
+        "git", "switch", "-c", new_branch_name, "--no-track", f"{remote_name}/{base_branch_name}"
+    ]
     shell_interface.run_cmd(config=config, cmd=cmd_create_branch)
     shell_interface.log_step("publishing branch and setting upstream (-u)")
     ## `HEAD` pushes the current branch; `-u` sets the upstream so subsequent

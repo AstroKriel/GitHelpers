@@ -90,7 +90,9 @@ def count_ahead_behind(
     ## the `...` (three dots) means symmetric difference; `..` (two dots) would
     ## only show one direction.
     cmd_count_ahead_behind = ["git", "rev-list", "--left-right", "--count", f"HEAD...{upstream_name}"]
-    ahead_behind_counts = shell_interface.run_cmd_and_capture_output(config=config, cmd=cmd_count_ahead_behind)
+    ahead_behind_counts = shell_interface.run_cmd_and_capture_output(
+        config=config, cmd=cmd_count_ahead_behind
+    )
     if not ahead_behind_counts and config.dry_run:
         return
     ahead_count, behind_count = ahead_behind_counts.split()
