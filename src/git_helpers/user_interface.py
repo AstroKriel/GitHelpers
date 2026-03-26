@@ -9,6 +9,7 @@ import argparse
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 ## third-party
@@ -35,6 +36,15 @@ class _HelpFormatter(argparse.HelpFormatter):
         self._action_max_length = 30
 
 
+@dataclass(frozen=True)
+class CommandDetails:
+    help: str
+    cmd_args: list[tuple[str, dict[str, Any]]]
+    handler: Callable[[argparse.Namespace], Any]
+    section: str
+    is_hidden: bool
+
+
 def cli_command(
     section: str = "",
     *,
@@ -43,9 +53,11 @@ def cli_command(
     cmd_help: str = "",
     cmd_args: list[tuple[str, dict[str, Any]]] | None = None,
     is_hidden: bool = False,
-) -> tuple[str, dict[str, Any]]:
-    """Build a (name, entry) pair for COMMANDS; handler is auto-generated from cmd_args."""
-    arg_specs: list[tuple[str, dict[str, Any]]] = cmd_args or []
+) -> tuple[str, CommandDetails]:
+    """Build a (name, cmd_details) pair for COMMANDS; handler is auto-generated from cmd_args."""
+    ## normalise to a list; each cmd_details is (arg_name, arg_kwargs) where arg_name becomes both the
+    ## argparse positional name and the attribute read back off the parsed Namespace
+    cmd_args = cmd_args or []
 
     ## build Config from global flags, then pass it as the first positional arg to cmd_fn
     def handler(
@@ -57,18 +69,18 @@ def cli_command(
         )
         return cmd_fn(
             config,
-            *[getattr(args, arg_name) for arg_name, _ in arg_specs],
+            *[getattr(args, arg_name) for arg_name, _ in cmd_args],
         )
 
     return (
         cmd_name,
-        {
-            "help": cmd_help,
-            "arg_specs": arg_specs,
-            "handler": handler,
-            "section": section,
-            "is_hidden": is_hidden,
-        },
+        CommandDetails(
+            help=cmd_help,
+            cmd_args=cmd_args,
+            handler=handler,
+            section=section,
+            is_hidden=is_hidden,
+        ),
     )
 
 
@@ -105,16 +117,15 @@ class _GroupedHelpAction(argparse.Action):
         console.print()
         ## iterate COMMANDS in order, printing a header each time the section changes.
         current_section = None
-        for name, entry in COMMANDS.items():
-            if entry.get("is_hidden"):
+        for cmd_name, cmd_details in COMMANDS.items():
+            if cmd_details.is_hidden:
                 continue
-            entry_section = entry.get("section", "")
-            if entry_section != current_section:
+            if cmd_details.section != current_section:
                 if current_section is not None:
                     console.print()
-                console.print(f"[bold]{entry_section}[/bold]")
-                current_section = entry_section
-            console.print(f"  [cyan]{name:<30}[/cyan]{entry['help']}")
+                console.print(f"[bold]{cmd_details.section}[/bold]")
+                current_section = cmd_details.section
+            console.print(f"  [cyan]{cmd_name:<30}[/cyan]{cmd_details.help}")
         console.print()
         console.print("[bold]Global flags[/bold]")
         console.print(f"  [cyan]{'--dry-run':<30}[/cyan]print commands without executing them")
@@ -123,49 +134,49 @@ class _GroupedHelpAction(argparse.Action):
         parser.exit()
 
 
-## maps each CLI subcommand name to an entry dict with its arg specs and handler
-COMMANDS: dict[str, dict[str, Any]] = dict(
+## maps each CLI subcommand name to an cmd_details dict with its arg specs and handler
+COMMANDS: dict[str, CommandDetails] = dict(
     [
-        ## --- global configuration ---
+        ## global configuration
         cli_command(
-            "Global configuration",
+            section="Global configuration",
             cmd_name="set-global-config",
             cmd_fn=git_config.cmd_set_global_config,
             cmd_help="set sensible merge rules in ~/.gitconfig (fast-forward preferred, rerere enabled)",
         ),
         cli_command(
-            "Global configuration",
+            section="Global configuration",
             cmd_name="show-global-config",
             cmd_fn=git_config.show_global_config,
             cmd_help="show the current values of the git settings this tool manages",
         ),
-        ## --- inspection ---
+        ## inspection
         cli_command(
-            "Inspection",
+            section="Inspection",
             cmd_name="show-upstream-state",
             cmd_fn=git_inspection.show_upstream_state,
             cmd_help="show which remote branch the current branch is tracking and its latest commit",
         ),
         cli_command(
-            "Inspection",
+            section="Inspection",
             cmd_name="show-branches-status",
             cmd_fn=git_inspection.show_branches_status,
             cmd_help="see all local branches and whether they're ahead or behind their remote (fetches first)",
         ),
         cli_command(
-            "Inspection",
+            section="Inspection",
             cmd_name="count-ahead-behind",
             cmd_fn=git_inspection.count_ahead_behind,
             cmd_help="show how many commits the current branch is ahead of and behind its upstream",
         ),
         cli_command(
-            "Inspection",
+            section="Inspection",
             cmd_name="show-unpulled-commits",
             cmd_fn=git_inspection.show_unpulled_commits,
             cmd_help="list commits on the remote that haven't been pulled yet",
         ),
         cli_command(
-            "Inspection",
+            section="Inspection",
             cmd_name="show-recent-commits",
             cmd_fn=git_inspection.show_recent_commits,
             cmd_help="show the last N commits on the current branch (default: 20)",
@@ -179,20 +190,20 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Inspection",
+            section="Inspection",
             cmd_name="show-local-remotes",
             cmd_fn=git_inspection.show_local_remotes,
             cmd_help="list all configured remotes and their URLs",
         ),
         cli_command(
-            "Inspection",
+            section="Inspection",
             cmd_name="show-submodules-status",
             cmd_fn=git_inspection.show_submodules_status,
             cmd_help="show the current state of each submodule (commit SHA and init status)",
         ),
-        ## --- branch management ---
+        ## branch management
         cli_command(
-            "Branch management",
+            section="Branch management",
             cmd_name="create-branch-from-default",
             cmd_fn=git_branches.cmd_create_branch_from_default,
             cmd_help="create and push a new branch from the remote default (e.g. origin/main)",
@@ -202,7 +213,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Branch management",
+            section="Branch management",
             cmd_name="create-branch-from-remote",
             cmd_fn=git_branches.cmd_create_branch_from_remote,
             cmd_help="create and push a new branch from a specific remote branch",
@@ -218,7 +229,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             ],
         ),
         cli_command(
-            "Branch management",
+            section="Branch management",
             cmd_name="track-remote-branch",
             cmd_fn=git_branches.cmd_track_remote_branch,
             cmd_help="create a local tracking branch for an existing remote branch and check it out",
@@ -236,20 +247,20 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             ],
         ),
         cli_command(
-            "Branch management",
+            section="Branch management",
             cmd_name="delete-local-branch",
             cmd_fn=git_branches.cmd_delete_local_branch,
             cmd_help="delete a local branch safely (refuses if it has unmerged commits)",
             cmd_args=[("branch_name", {})],
         ),
         cli_command(
-            "Branch management",
+            section="Branch management",
             cmd_name="prune-gone-locals",
             cmd_fn=git_branches.cmd_prune_gone_locals,
             cmd_help="delete local branches whose remote counterpart has been deleted",
         ),
         cli_command(
-            "Branch management",
+            section="Branch management",
             cmd_name="prune-merged-locals",
             cmd_fn=git_branches.cmd_prune_merged_locals,
             cmd_help="delete local branches whose commits are already in the base branch",
@@ -261,7 +272,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Branch management",
+            section="Branch management",
             cmd_name="cleanup-local-branches",
             cmd_fn=git_branches.cmd_cleanup_local_branches,
             cmd_help="delete all gone and merged local branches in one step",
@@ -272,15 +283,15 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                 },
             )],
         ),
-        ## --- submodule management ---
+        ## submodule management
         cli_command(
-            "Submodule management",
+            section="Submodule management",
             cmd_name="update-submodules",
             cmd_fn=git_submodules.cmd_update_submodules,
             cmd_help="update all submodules to their latest commit on the tracked branch",
         ),
         cli_command(
-            "Submodule management",
+            section="Submodule management",
             cmd_name="fix-submodule",
             cmd_fn=git_submodules.cmd_fix_submodule,
             cmd_help=
@@ -298,7 +309,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             ],
         ),
         cli_command(
-            "Submodule management",
+            section="Submodule management",
             cmd_name="add-submodule",
             cmd_fn=git_submodules.cmd_add_submodule,
             cmd_help="add a new submodule tracking its default branch and commit the result",
@@ -315,9 +326,9 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                 ),
             ],
         ),
-        ## --- syncing and history ---
+        ## syncing and history
         cli_command(
-            "Syncing and history",
+            section="Syncing and history",
             cmd_name="push",
             cmd_fn=git_sync.cmd_push,
             cmd_help="push the current branch; sets the upstream automatically if it's a new branch",
@@ -329,7 +340,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Syncing and history",
+            section="Syncing and history",
             cmd_name="sync-branch",
             cmd_fn=git_sync.cmd_sync_branch,
             cmd_help="bring the current branch up to date with its upstream (or an explicit remote branch)",
@@ -341,7 +352,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Syncing and history",
+            section="Syncing and history",
             cmd_name="stash-work",
             cmd_fn=git_sync.cmd_stash_work,
             cmd_help="temporarily save uncommitted work so you can switch context; optionally label it",
@@ -353,7 +364,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Syncing and history",
+            section="Syncing and history",
             cmd_name="unstash-work",
             cmd_fn=git_sync.cmd_unstash_work,
             cmd_help="restore the most recently stashed work, or a specific stash by name",
@@ -365,7 +376,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Syncing and history",
+            section="Syncing and history",
             cmd_name="amend-last-commit",
             cmd_fn=git_sync.cmd_amend_last_commit,
             cmd_help="fold staged changes into the last commit; optionally update the message too",
@@ -377,7 +388,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
             )],
         ),
         cli_command(
-            "Syncing and history",
+            section="Syncing and history",
             cmd_name="rename-last-commit",
             cmd_fn=git_sync.cmd_rename_last_commit,
             cmd_help="update the message of the last commit without changing its content (rewrites history)",
@@ -388,7 +399,7 @@ COMMANDS: dict[str, dict[str, Any]] = dict(
                 },
             )],
         ),
-        ## --- utilities ---
+        ## hidden (not promoted) utilities
         cli_command(
             cmd_name="self-check",
             cmd_fn=git_config.check_self,
@@ -436,13 +447,13 @@ def main() -> None:
         metavar="<command>",
     )
     ## register every subcommand and its positional args in one pass over COMMANDS
-    for cmd_name, entry in COMMANDS.items():
-        subparser = sub_parsers.add_parser(cmd_name, help=entry["help"])
-        for arg_name, kwargs in entry["arg_specs"]:
-            subparser.add_argument(arg_name, **kwargs)
+    for cmd_name, cmd_details in COMMANDS.items():
+        subparser = sub_parsers.add_parser(cmd_name, help=cmd_details.help)
+        for arg_name, arg_kwargs in cmd_details.cmd_args:
+            subparser.add_argument(arg_name, **arg_kwargs)
     args = arg_parser.parse_args()
     try:
-        COMMANDS[args.cmd]["handler"](args)
+        COMMANDS[args.cmd].handler(args)
     except subprocess.CalledProcessError as proc_error:
         sys.exit(proc_error.returncode)
 
