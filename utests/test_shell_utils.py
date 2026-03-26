@@ -70,7 +70,7 @@ def test_log_result_writes_to_stdout(
 def test_run_cmd_dry_run_skips_subprocess():
     config = shell_interface.Config(dry_run=True)
     with patch("subprocess.run") as mock_run:
-        shell_interface.run_cmd(config, "git", "push")
+        shell_interface.run_cmd(config=config, cmd=["git", "push"])
         mock_run.assert_not_called()
 
 
@@ -78,7 +78,7 @@ def test_run_cmd_dry_run_logs_skipped(
     capsys,
 ):
     config = shell_interface.Config(dry_run=True)
-    shell_interface.run_cmd(config, "git", "push")
+    shell_interface.run_cmd(config=config, cmd=["git", "push"])
     captured = capsys.readouterr()
     assert "dryrun" in captured.err
     assert "git push" in captured.err
@@ -88,7 +88,7 @@ def test_run_cmd_executes_when_not_dry_run():
     config = shell_interface.Config(dry_run=False)
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        shell_interface.run_cmd(config, "git", "status")
+        shell_interface.run_cmd(config=config, cmd=["git", "status"])
         mock_run.assert_called_once()
 
 
@@ -98,7 +98,7 @@ def test_run_cmd_logs_command_before_executing(
     config = shell_interface.Config(dry_run=False)
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(returncode=0)
-        shell_interface.run_cmd(config, "git", "status")
+        shell_interface.run_cmd(config=config, cmd=["git", "status"])
         captured = capsys.readouterr()
         assert "git status" in captured.err
 
@@ -111,13 +111,13 @@ def test_run_cmd_logs_command_before_executing(
 def test_run_cmd_and_capture_dry_run_skips_subprocess():
     config = shell_interface.Config(dry_run=True)
     with patch("subprocess.run") as mock_run:
-        shell_interface.run_cmd_and_capture_output(config, "git", "rev-list", "--count", "HEAD")
+        shell_interface.run_cmd_and_capture_output(config=config, cmd=["git", "rev-list", "--count", "HEAD"])
         mock_run.assert_not_called()
 
 
 def test_run_cmd_and_capture_dry_run_returns_empty():
     config = shell_interface.Config(dry_run=True)
-    result = shell_interface.run_cmd_and_capture_output(config, "git", "rev-list", "--count", "HEAD")
+    result = shell_interface.run_cmd_and_capture_output(config=config, cmd=["git", "rev-list", "--count", "HEAD"])
     assert result == ""
 
 
@@ -131,7 +131,7 @@ def test_query_cmd_always_executes_regardless_of_dry_run():
     ## by verifying subprocess.run is called even when a dry-run Config would suppress run_cmd
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = MagicMock(stdout="main\n", returncode=0)
-        shell_interface.query_cmd("git", "branch", "--show-current")
+        shell_interface.query_cmd(cmd=["git", "branch", "--show-current"])
         mock_run.assert_called_once()
 
 

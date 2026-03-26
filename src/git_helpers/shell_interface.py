@@ -55,36 +55,36 @@ class _Markers(str, Enum):
 
 
 @dataclass(frozen=True)
-class _Style:
+class _Theme:
     color: _Colors
     marker: _Markers
 
 
-class _Theme:
-    STEP = _Style(
+class _Themes:
+    STEP = _Theme(
         color=_Colors.WHITE,
         marker=_Markers.CIRCLE_OPEN,
-    )  # narrating a major decision point
-    SUCCESS = _Style(
+    )
+    SUCCESS = _Theme(
         color=_Colors.GREEN,
         marker=_Markers.CIRCLE_CLOSED,
-    )  # positive outcome or result
-    ACTION = _Style(
+    )
+    ACTION = _Theme(
         color=_Colors.BLUE,
         marker=_Markers.ARROW,
-    )  # executing a mutating command
-    SKIPPED = _Style(
+    )
+    SKIPPED = _Theme(
         color=_Colors.ORANGE,
         marker=_Markers.ARROW,
-    )  # skipped in dry-run mode
-    ERROR = _Style(
+    )
+    ERROR = _Theme(
         color=_Colors.RED,
         marker=_Markers.CIRCLE_CLOSED,
-    )  # fatal error
-    CONTEXT = _Style(
+    )
+    CONTEXT = _Theme(
         color=_Colors.GRAY,
         marker=_Markers.ARROW,
-    )  # metadata, bindings, read-only commands
+    )
 
 
 def log_msg(
@@ -98,16 +98,16 @@ def log_step(
     msg: str,
 ) -> None:
     """Narrate a major decision point within a command."""
-    style = _Theme.STEP
-    _CONSOLE.print(f"[{style.color.value}]{style.marker.value}[/] {msg}")
+    theme = _Themes.STEP
+    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value}[/] {msg}")
 
 
 def log_outcome(
     msg: str,
 ) -> None:
     """Record which path was taken after a branch or decision."""
-    style = _Theme.SUCCESS
-    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {msg}[/]")
+    theme = _Themes.SUCCESS
+    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {msg}[/]")
 
 
 def bind_var(
@@ -115,24 +115,24 @@ def bind_var(
     var_value: str,
 ) -> None:
     """Log a variable name alongside the value it was resolved to."""
-    style = _Theme.CONTEXT
-    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {var_name} = {var_value}[/]")
+    theme = _Themes.CONTEXT
+    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {var_name} = {var_value}[/]")
 
 
 def log_result(
     msg: str,
 ) -> None:
     """Print a user-facing result to stdout."""
-    style = _Theme.SUCCESS
-    _CONSOLE_OUT.print(f"[{style.color.value}]{style.marker.value} {msg}[/]")
+    theme = _Themes.SUCCESS
+    _CONSOLE_OUT.print(f"[{theme.color.value}]{theme.marker.value} {msg}[/]")
 
 
 def kill(
     msg: str,
 ) -> NoReturn:
     """Print an error message to stderr and exit the process immediately."""
-    style = _Theme.ERROR
-    _CONSOLE.print(f"[{style.color.value}]{style.marker.value}[/] error: {msg}")
+    theme = _Themes.ERROR
+    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value}[/] error: {msg}")
     sys.exit(1)
 
 
@@ -143,37 +143,37 @@ def kill(
 
 def run_cmd(
     config: Config,
-    *args: str,
+    cmd: list[str],
 ) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
     if config.dry_run:
-        style = _Theme.SKIPPED
-        _CONSOLE.print(f"[{style.color.value}]{style.marker.value} (dryrun) skipped: {' '.join(args)}[/]")
+        theme = _Themes.SKIPPED
+        _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} (dryrun) skipped: {' '.join(cmd)}[/]")
         return
-    style = _Theme.ACTION
-    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {' '.join(args)}[/]")
+    theme = _Themes.ACTION
+    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {' '.join(cmd)}[/]")
     ## `check=True` raises CalledProcessError on non-zero exit, caught in main().
     subprocess.run(
-        args,
+        cmd,
         check=True,
     )
 
 
 def run_cmd_and_capture_output(
     config: Config,
-    *args: str,
+    cmd: list[str],
 ) -> str:
     """Run a mutating git command and return its stdout; empty string in dry-run."""
     if config.dry_run:
-        style = _Theme.SKIPPED
-        _CONSOLE.print(f"[{style.color.value}]{style.marker.value} (dryrun) skipped: {' '.join(args)}[/]")
+        theme = _Themes.SKIPPED
+        _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} (dryrun) skipped: {' '.join(cmd)}[/]")
         return ""
-    style = _Theme.ACTION
-    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {' '.join(args)}[/]")
+    theme = _Themes.ACTION
+    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {' '.join(cmd)}[/]")
     ## `capture_output=True` redirects both stdout and stderr so they don't
     ## print to the terminal; `text=True` decodes bytes to str automatically.
     result = subprocess.run(
-        args,
+        cmd,
         capture_output=True,
         text=True,
         check=True,
@@ -182,44 +182,36 @@ def run_cmd_and_capture_output(
 
 
 def query_cmd(
-    *args: str,
+    cmd: list[str],
+    error_on_failure: bool = True,
 ) -> str:
-    """Run a read-only git command and return its stdout; always executes, even in dry-run."""
-    style = _Theme.CONTEXT
-    _CONSOLE.print(f"[{style.color.value}]{style.marker.value} {' '.join(args)}[/]")
+    """Run a read-only git command, log it, and return its stdout; always executes, even in dry-run.
+
+    When error_on_failure=False, a non-zero exit returns an empty string instead of raising.
+    Use this for commands where "not found" is a valid outcome rather than an error.
+    """
+    theme = _Themes.CONTEXT
+    _CONSOLE.print(f"[{theme.color.value}]{theme.marker.value} {' '.join(cmd)}[/]")
     result = subprocess.run(
-        args,
+        cmd,
         capture_output=True,
         text=True,
-        check=True,
     )
+    if error_on_failure and result.returncode != 0:
+        raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
     return result.stdout.strip()
 
 
 def probe_cmd(
-    *args: str,
+    cmd: list[str],
 ) -> int:
     """Run a command silently and return its exit code; used for boolean existence checks."""
     ## output is suppressed entirely — callers only care whether the command succeeded or failed.
     result = subprocess.run(
-        args,
+        cmd,
         capture_output=True,
     )
     return result.returncode
-
-
-def query_cmd_or_empty(
-    *args: str,
-) -> str:
-    """Run a read-only git command and return stdout, or empty string if the command fails."""
-    ## unlike query_cmd(), no check=True — used when failure is a valid outcome (e.g. -q flag commands
-    ## that exit non-zero to signal "not found" rather than an actual error).
-    result = subprocess.run(
-        args,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout.strip()
 
 
 ## } MODULE
