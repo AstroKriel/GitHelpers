@@ -19,7 +19,12 @@ def cmd_rename_last_commit(
     """Replace the message of the most recent commit; rewrites history — avoid if already pushed."""
     repo_state.require_repo()
     ## verify there is at least one commit to amend; a brand-new repo has no HEAD.
-    cmd_verify_head = ["git", "rev-parse", "--verify", "HEAD"]
+    cmd_verify_head = [
+        "git",
+        "rev-parse",
+        "--verify",
+        "HEAD",
+    ]
     if shell_interface.probe_cmd(cmd_verify_head) != 0:
         shell_interface.kill("no commits yet (nothing to amend)")
     ## argparse splits the message into words via nargs="+"; rejoin into a single string.
@@ -33,8 +38,17 @@ def cmd_rename_last_commit(
     ## `--amend` replaces the most recent commit with a new one that has the
     ## same tree/parent but a different message. The SHA changes, so force-push
     ## would be needed if this commit is already on a shared remote.
-    cmd_amend_message = ["git", "commit", "--amend", "-m", new_message]
-    shell_interface.run_cmd(config=config, cmd=cmd_amend_message)
+    cmd_amend_message = [
+        "git",
+        "commit",
+        "--amend",
+        "-m",
+        new_message,
+    ]
+    shell_interface.run_cmd(
+        config=config,
+        cmd=cmd_amend_message,
+    )
     shell_interface.log_outcome("amended last commit message")
 
 
@@ -55,14 +69,29 @@ def cmd_push(
     if repo_state.has_upstream():
         ## upstream already configured — plain push uses it automatically.
         shell_interface.log_outcome("using plain push (upstream already set)")
-        cmd_push_existing = ["git", "push"] + extra_args
-        shell_interface.run_cmd(config=config, cmd=cmd_push_existing)
+        cmd_push_existing = [
+            "git",
+            "push",
+        ] + extra_args
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_push_existing,
+        )
     else:
         ## no upstream yet: push and set it in one step with `-u`.
         ## `HEAD` means "push the current branch, whatever it's named".
         shell_interface.log_outcome(f"creating upstream and pushing with -u to {remote_name}/<same-name>")
-        cmd_push_set_upstream = ["git", "push", "-u", remote_name, "HEAD"] + extra_args
-        shell_interface.run_cmd(config=config, cmd=cmd_push_set_upstream)
+        cmd_push_set_upstream = [
+            "git",
+            "push",
+            "-u",
+            remote_name,
+            "HEAD",
+        ] + extra_args
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_push_set_upstream,
+        )
 
 
 def cmd_sync_branch(
@@ -82,8 +111,16 @@ def cmd_sync_branch(
     repo_state.ensure_clean_worktree(config)
     shell_interface.log_step("fetching from remote")
     ## fetch before any merge/pull so we're working with up-to-date remote refs.
-    cmd_fetch_remote = ["git", "fetch", "--prune", remote_name]
-    shell_interface.run_cmd(config=config, cmd=cmd_fetch_remote)
+    cmd_fetch_remote = [
+        "git",
+        "fetch",
+        "--prune",
+        remote_name,
+    ]
+    shell_interface.run_cmd(
+        config=config,
+        cmd=cmd_fetch_remote,
+    )
     shell_interface.log_step("deciding on the sync method")
     if base_name:
         if "/" not in base_name:
@@ -96,15 +133,30 @@ def cmd_sync_branch(
         ## `--ff` means: fast-forward if possible (no merge commit needed when
         ## the histories are linear), but fall back to a real merge commit if
         ## the branches have diverged. This is the least-surprising default.
-        cmd_merge_base = ["git", "merge", "--ff", base_name]
-        shell_interface.run_cmd(config=config, cmd=cmd_merge_base)
+        cmd_merge_base = [
+            "git",
+            "merge",
+            "--ff",
+            base_name,
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_merge_base,
+        )
         shell_interface.log_outcome(f"synced by merging '{base_name}' (fast-forward if possible)")
     elif repo_state.has_upstream():
         shell_interface.log_step("pulling with --ff")
         ## same semantics as above but via `pull`, which combines fetch + merge
         ## against the configured upstream in one step.
-        cmd_pull_ff = ["git", "pull", "--ff"]
-        shell_interface.run_cmd(config=config, cmd=cmd_pull_ff)
+        cmd_pull_ff = [
+            "git",
+            "pull",
+            "--ff",
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_pull_ff,
+        )
         shell_interface.log_outcome("synced via 'git pull --ff'")
     else:
         shell_interface.kill(
@@ -126,13 +178,29 @@ def cmd_stash_work(
         shell_interface.log_step("stashing work with label")
         ## `-m` attaches a descriptive message to the stash entry, making it
         ## identifiable by name when listing or popping later.
-        cmd_stash_named = ["git", "stash", "push", "-m", name]
-        shell_interface.run_cmd(config=config, cmd=cmd_stash_named)
+        cmd_stash_named = [
+            "git",
+            "stash",
+            "push",
+            "-m",
+            name,
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_stash_named,
+        )
         shell_interface.log_outcome(f"stashed work as '{name}'")
     else:
         shell_interface.log_step("stashing work")
-        cmd_stash_push = ["git", "stash", "push"]
-        shell_interface.run_cmd(config=config, cmd=cmd_stash_push)
+        cmd_stash_push = [
+            "git",
+            "stash",
+            "push",
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_stash_push,
+        )
         shell_interface.log_outcome("stashed work")
 
 
@@ -150,7 +218,11 @@ def cmd_unstash_work(
         shell_interface.log_step("finding stash entry by name")
         ## `stash list` prints entries like: stash@{0}: On main: <message>
         ## search for the label to find the matching index.
-        cmd_list_stashes = ["git", "stash", "list"]
+        cmd_list_stashes = [
+            "git",
+            "stash",
+            "list",
+        ]
         stash_list = shell_interface.query_cmd(cmd=cmd_list_stashes, error_on_failure=False)
         stash_ref = ""
         for line in (stash_list.splitlines() if stash_list else []):
@@ -164,13 +236,28 @@ def cmd_unstash_work(
             var_value=stash_ref,
         )
         shell_interface.log_step(f"popping {stash_ref}")
-        cmd_pop_named_stash = ["git", "stash", "pop", stash_ref]
-        shell_interface.run_cmd(config=config, cmd=cmd_pop_named_stash)
+        cmd_pop_named_stash = [
+            "git",
+            "stash",
+            "pop",
+            stash_ref,
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_pop_named_stash,
+        )
         shell_interface.log_outcome(f"restored stash '{name}'")
     else:
         shell_interface.log_step("popping most recent stash entry")
-        cmd_pop_stash = ["git", "stash", "pop"]
-        shell_interface.run_cmd(config=config, cmd=cmd_pop_stash)
+        cmd_pop_stash = [
+            "git",
+            "stash",
+            "pop",
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_pop_stash,
+        )
         shell_interface.log_outcome("restored most recent stash")
 
 
@@ -180,7 +267,12 @@ def cmd_amend_last_commit(
 ) -> None:
     """Amend the last commit with currently staged changes; optionally update the message too."""
     repo_state.require_repo()
-    cmd_verify_head = ["git", "rev-parse", "--verify", "HEAD"]
+    cmd_verify_head = [
+        "git",
+        "rev-parse",
+        "--verify",
+        "HEAD",
+    ]
     if shell_interface.probe_cmd(cmd_verify_head) != 0:
         shell_interface.kill("no commits yet (nothing to amend)")
     shell_interface.log_step("amending last commit with staged changes")
@@ -193,13 +285,30 @@ def cmd_amend_last_commit(
             var_value=new_message,
         )
         ## amend tree and message together.
-        cmd_amend_with_message = ["git", "commit", "--amend", "-m", new_message]
-        shell_interface.run_cmd(config=config, cmd=cmd_amend_with_message)
+        cmd_amend_with_message = [
+            "git",
+            "commit",
+            "--amend",
+            "-m",
+            new_message,
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_amend_with_message,
+        )
         shell_interface.log_outcome("amended last commit with staged changes and new message")
     else:
         ## `--no-edit` keeps the existing commit message unchanged.
-        cmd_amend_no_edit = ["git", "commit", "--amend", "--no-edit"]
-        shell_interface.run_cmd(config=config, cmd=cmd_amend_no_edit)
+        cmd_amend_no_edit = [
+            "git",
+            "commit",
+            "--amend",
+            "--no-edit",
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_amend_no_edit,
+        )
         shell_interface.log_outcome("amended last commit with staged changes (message unchanged)")
 
 

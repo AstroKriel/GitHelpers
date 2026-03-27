@@ -26,7 +26,13 @@ def cmd_delete_local_branch(
     ## `-d` is the safe delete: git refuses if the branch has commits that
     ## haven't been merged into its upstream or HEAD. Use `-D` to force.
     ## `--` separates the flag from the branch name to avoid ambiguity.
-    cmd_delete_branch = ["git", "branch", "-d", "--", branch_name]
+    cmd_delete_branch = [
+        "git",
+        "branch",
+        "-d",
+        "--",
+        branch_name,
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_delete_branch,
@@ -43,7 +49,12 @@ def cmd_prune_gone_locals(
     shell_interface.log_step("refreshing remote-tracking refs (fetch --prune)")
     ## `--prune` deletes local tracking refs (e.g. origin/feature-x) for
     ## branches that have been deleted on the remote since the last fetch.
-    cmd_fetch_prune = ["git", "fetch", "--prune", "--quiet"]
+    cmd_fetch_prune = [
+        "git",
+        "fetch",
+        "--prune",
+        "--quiet",
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_fetch_prune,
@@ -70,7 +81,13 @@ def cmd_prune_gone_locals(
     )
     shell_interface.log_step("deleting [gone] local branches (-d)")
     for branch_name in gone_branches:
-        cmd_delete_gone_branch = ["git", "branch", "-d", "--", branch_name]
+        cmd_delete_gone_branch = [
+            "git",
+            "branch",
+            "-d",
+            "--",
+            branch_name,
+        ]
         shell_interface.run_cmd(
             config=config,
             cmd=cmd_delete_gone_branch,
@@ -97,7 +114,12 @@ def cmd_prune_merged_locals(
         var_name="base_name",
         var_value=base_name,
     )
-    cmd_get_current_branch = ["git", "rev-parse", "--abbrev-ref", "HEAD"]
+    cmd_get_current_branch = [
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "HEAD",
+    ]
     current_branch_name = shell_interface.query_cmd(cmd=cmd_get_current_branch)
     shell_interface.log_step(
         f"finding local branches merged into '{base_name}' (excluding current and main/master)",
@@ -107,7 +129,13 @@ def cmd_prune_merged_locals(
     ## never delete the current branch, main, or master even if technically merged —
     ## main/master are protected by convention; current branch can't be deleted while checked out.
     excluded_branches = {current_branch_name, "main", "master"}
-    cmd_list_merged_branches = ["git", "branch", "--merged", base_name, "--format=%(refname:short)"]
+    cmd_list_merged_branches = [
+        "git",
+        "branch",
+        "--merged",
+        base_name,
+        "--format=%(refname:short)",
+    ]
     merged_branches_output = shell_interface.query_cmd(cmd=cmd_list_merged_branches)
     branches_to_delete = [
         branch_name for branch_name in merged_branches_output.splitlines()
@@ -122,7 +150,13 @@ def cmd_prune_merged_locals(
     )
     shell_interface.log_step("deleting merged local branches (-d)")
     for branch_name in branches_to_delete:
-        cmd_delete_merged_branch = ["git", "branch", "-d", "--", branch_name]
+        cmd_delete_merged_branch = [
+            "git",
+            "branch",
+            "-d",
+            "--",
+            branch_name,
+        ]
         shell_interface.run_cmd(
             config=config,
             cmd=cmd_delete_merged_branch,
@@ -138,7 +172,12 @@ def cmd_cleanup_local_branches(
     repo_state.require_repo()
     repo_state.require_attached()
     shell_interface.log_step("refreshing remote-tracking refs (fetch --prune)")
-    cmd_fetch_prune = ["git", "fetch", "--prune", "--quiet"]
+    cmd_fetch_prune = [
+        "git",
+        "fetch",
+        "--prune",
+        "--quiet",
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_fetch_prune,
@@ -174,7 +213,12 @@ def cmd_track_remote_branch(
         var_value=local_branch_name,
     )
     shell_interface.log_step("fetching latest remote refs")
-    cmd_fetch_remote = ["git", "fetch", "--prune", remote_branch.split("/")[0]]
+    cmd_fetch_remote = [
+        "git",
+        "fetch",
+        "--prune",
+        remote_branch.split("/")[0],
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_fetch_remote,
@@ -182,7 +226,14 @@ def cmd_track_remote_branch(
     shell_interface.log_step("creating local branch and setting it to track the remote branch")
     ## `switch -c` creates and checks out the new branch.
     ## `--track` configures the upstream so future pull/push know where to go.
-    cmd_checkout_tracking_branch = ["git", "switch", "-c", local_branch_name, "--track", remote_branch]
+    cmd_checkout_tracking_branch = [
+        "git",
+        "switch",
+        "-c",
+        local_branch_name,
+        "--track",
+        remote_branch,
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_checkout_tracking_branch,
@@ -207,7 +258,12 @@ def cmd_create_branch_from_default(
         var_value=remote_name,
     )
     shell_interface.log_step("fetching remote refs")
-    cmd_fetch_remote = ["git", "fetch", "--prune", remote_name]
+    cmd_fetch_remote = [
+        "git",
+        "fetch",
+        "--prune",
+        remote_name,
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_fetch_remote,
@@ -241,7 +297,13 @@ def cmd_create_branch_from_default(
     shell_interface.log_step("publishing branch and setting upstream (-u)")
     ## `HEAD` pushes the current branch; `-u` sets the upstream so subsequent
     ## `git push` / `git pull` work without arguments.
-    cmd_publish_branch = ["git", "push", "-u", remote_name, "HEAD"]
+    cmd_publish_branch = [
+        "git",
+        "push",
+        "-u",
+        remote_name,
+        "HEAD",
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_publish_branch,
@@ -275,7 +337,12 @@ def cmd_create_branch_from_remote(
         var_value=remote_name,
     )
     shell_interface.log_step("fetching remote refs")
-    cmd_fetch_remote = ["git", "fetch", "--prune", remote_name]
+    cmd_fetch_remote = [
+        "git",
+        "fetch",
+        "--prune",
+        remote_name,
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_fetch_remote,
@@ -283,14 +350,27 @@ def cmd_create_branch_from_remote(
     shell_interface.log_step("creating local branch from explicit start point (no tracking)")
     ## `--no-track`: don't track the start point; the branch will track its own
     ## remote counterpart after the push below, not the branch it was cut from.
-    cmd_create_branch = ["git", "switch", "-c", new_branch_name, "--no-track", start_ref]
+    cmd_create_branch = [
+        "git",
+        "switch",
+        "-c",
+        new_branch_name,
+        "--no-track",
+        start_ref,
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_create_branch,
     )
     shell_interface.log_step("publishing branch and setting upstream (-u)")
     ## `-u` wires up the upstream so future push/pull work without arguments.
-    cmd_publish_branch = ["git", "push", "-u", remote_name, "HEAD"]
+    cmd_publish_branch = [
+        "git",
+        "push",
+        "-u",
+        remote_name,
+        "HEAD",
+    ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_publish_branch,

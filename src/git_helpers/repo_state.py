@@ -16,7 +16,11 @@ def require_repo() -> None:
     """Exit with an error if the cwd is not inside a git repository."""
     ## `rev-parse --is-inside-work-tree` is the canonical way to test whether
     ## the cwd is anywhere inside a git repo (works from any subdirectory).
-    cmd_check_repo = ["git", "rev-parse", "--is-inside-work-tree"]
+    cmd_check_repo = [
+        "git",
+        "rev-parse",
+        "--is-inside-work-tree",
+    ]
     if shell_interface.probe_cmd(cmd_check_repo) != 0:
         shell_interface.kill("not inside a git repo")
 
@@ -26,7 +30,10 @@ def require_remote() -> None:
     require_repo()
     ## `git remote` with no args prints one remote name per line; empty output
     ## means no remotes have been added yet.
-    cmd_list_remotes = ["git", "remote"]
+    cmd_list_remotes = [
+        "git",
+        "remote",
+    ]
     remotes = shell_interface.query_cmd(cmd=cmd_list_remotes)
     if not remotes:
         shell_interface.kill("no remotes configured (try: git remote add origin <url>)")
@@ -37,12 +44,20 @@ def get_default_remote_name() -> str:
     require_remote()
     ## prefer 'origin' — it's the conventional name git uses when you clone.
     ## `remote get-url` succeeds only if the remote actually exists.
-    cmd_check_origin = ["git", "remote", "get-url", "origin"]
+    cmd_check_origin = [
+        "git",
+        "remote",
+        "get-url",
+        "origin",
+    ]
     if shell_interface.probe_cmd(cmd_check_origin) == 0:
         shell_interface.log_outcome("selecting 'origin' as default remote")
         return "origin"
     ## no 'origin'; fall back to whatever remote was configured first.
-    cmd_list_remotes = ["git", "remote"]
+    cmd_list_remotes = [
+        "git",
+        "remote",
+    ]
     remotes = shell_interface.query_cmd(cmd=cmd_list_remotes).splitlines()
     if remotes:
         shell_interface.log_outcome(f"selecting first configured remote: {remotes[0]}")
@@ -59,7 +74,12 @@ def get_default_branch_name() -> str:
     ## It's populated by `git remote set-head` or automatically on clone.
     ## `-q` suppresses the error if the ref doesn't exist; we check stdout instead.
     ## error_on_failure=False returns "" when the ref doesn't exist; -q suppresses git's own error output.
-    cmd_read_remote_head = ["git", "symbolic-ref", "-q", f"refs/remotes/{remote_name}/HEAD"]
+    cmd_read_remote_head = [
+        "git",
+        "symbolic-ref",
+        "-q",
+        f"refs/remotes/{remote_name}/HEAD",
+    ]
     ref_value = shell_interface.query_cmd(
         cmd=cmd_read_remote_head,
         error_on_failure=False,
@@ -79,7 +99,13 @@ def has_upstream() -> bool:
     ## `@{u}` is git shorthand for the upstream of the current branch.
     ## `--abbrev-ref --symbolic-full-name` prints it as e.g. "origin/main".
     ## The command exits non-zero if no upstream is configured.
-    cmd_check_upstream = ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]
+    cmd_check_upstream = [
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{u}",
+    ]
     return shell_interface.probe_cmd(cmd_check_upstream) == 0
 
 
@@ -89,13 +115,23 @@ def current_branch() -> str:
     ## `rev-parse --abbrev-ref HEAD` prints the branch name, or the literal
     ## string "HEAD" when in detached HEAD state (i.e. checked out to a commit
     ## rather than a branch).
-    cmd_get_branch_name = ["git", "rev-parse", "--abbrev-ref", "HEAD"]
+    cmd_get_branch_name = [
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "HEAD",
+    ]
     branch_name = shell_interface.query_cmd(cmd=cmd_get_branch_name)
     if branch_name == "HEAD":
         ## detached HEAD: no branch name is available, so use the short SHA instead.
         ## a SHA (Secure Hash Algorithm) is the unique 40-hex-character fingerprint
         ## git assigns to every commit; `--short` trims it to 7 chars for readability.
-        cmd_get_short_sha = ["git", "rev-parse", "--short", "HEAD"]
+        cmd_get_short_sha = [
+            "git",
+            "rev-parse",
+            "--short",
+            "HEAD",
+        ]
         short_sha = shell_interface.query_cmd(cmd=cmd_get_short_sha)
         shell_interface.log_outcome(f"detached HEAD at {short_sha}")
         return f"DETACHED@{short_sha}"
@@ -114,8 +150,17 @@ def ensure_clean_worktree(
     ## `git diff --quiet` exits non-zero if there are unstaged changes.
     ## `git diff --cached --quiet` exits non-zero if there are staged-but-uncommitted changes.
     ## both must pass for the worktree to be considered clean.
-    cmd_check_unstaged = ["git", "diff", "--quiet"]
-    cmd_check_staged = ["git", "diff", "--cached", "--quiet"]
+    cmd_check_unstaged = [
+        "git",
+        "diff",
+        "--quiet",
+    ]
+    cmd_check_staged = [
+        "git",
+        "diff",
+        "--cached",
+        "--quiet",
+    ]
     has_unstaged_changes = shell_interface.probe_cmd(cmd_check_unstaged) != 0
     has_staged_changes = shell_interface.probe_cmd(cmd_check_staged) != 0
     is_dirty = has_unstaged_changes or has_staged_changes
@@ -131,7 +176,12 @@ def is_detached() -> bool:
     ## `symbolic-ref HEAD` prints the full ref name (e.g. refs/heads/main) when
     ## on a branch, and exits non-zero (printing nothing) in detached HEAD state.
     ## `-q` suppresses the error message so we can check stdout cleanly.
-    cmd_get_head_ref = ["git", "symbolic-ref", "-q", "HEAD"]
+    cmd_get_head_ref = [
+        "git",
+        "symbolic-ref",
+        "-q",
+        "HEAD",
+    ]
     head_ref = shell_interface.query_cmd(cmd=cmd_get_head_ref, error_on_failure=False)
     shell_interface.bind_var(
         var_name="head_ref",
