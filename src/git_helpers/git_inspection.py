@@ -41,7 +41,13 @@ def show_upstream_state(
         "--symbolic-full-name",
         "@{u}",
     ]
-    upstream_name = shell_interface.query_cmd(cmd=cmd_resolve_upstream) if repo_state.has_upstream() else ""
+    if repo_state.has_upstream():
+        upstream_name = shell_interface.query_cmd(
+            cmd=cmd_resolve_upstream,
+            error_on_failure=True,
+        )
+    else:
+        upstream_name = ""
     if upstream_name:
         shell_interface.log_result(f"upstream:     {upstream_name}")
         shell_interface.log_step("showing the latest commit on the upstream")
@@ -113,7 +119,10 @@ def count_ahead_behind(
         "--symbolic-full-name",
         "@{u}",
     ]
-    upstream_name = shell_interface.query_cmd(cmd=cmd_resolve_upstream)
+    upstream_name = shell_interface.query_cmd(
+        cmd=cmd_resolve_upstream,
+        error_on_failure=True,
+    )
     shell_interface.bind_var(
         var_name="upstream_name",
         var_value=upstream_name,
@@ -174,7 +183,10 @@ def show_unpulled_commits(
         "--symbolic-full-name",
         "@{u}",
     ]
-    upstream_name = shell_interface.query_cmd(cmd=cmd_resolve_upstream)
+    upstream_name = shell_interface.query_cmd(
+        cmd=cmd_resolve_upstream,
+        error_on_failure=True,
+    )
     shell_interface.bind_var(
         var_name="upstream_name",
         var_value=upstream_name,
@@ -216,7 +228,10 @@ def show_local_remotes(
         "remote",
         "-v",
     ]
-    remotes_output = shell_interface.query_cmd(cmd=cmd_list_remotes)
+    remotes_output = shell_interface.query_cmd(
+        cmd=cmd_list_remotes,
+        error_on_failure=True,
+    )
     for line in sorted(set(remotes_output.splitlines())):
         shell_interface.log_result(line)
 
@@ -263,9 +278,17 @@ def show_submodules_status(
         "submodule",
         "status",
     ]
-    submodules_output = shell_interface.query_cmd(cmd=cmd_submodule_status, error_on_failure=False)
-    for line in (submodules_output.splitlines()
-                 if submodules_output else ["no submodules or not initialized"]):
+    submodules_output = shell_interface.query_cmd(
+        cmd=cmd_submodule_status,
+        error_on_failure=False,
+    )
+    if submodules_output:
+        submodule_lines = submodules_output.splitlines()
+    else:
+        submodule_lines = [
+            "no submodules or not initialized",
+        ]
+    for line in submodule_lines:
         shell_interface.log_result(line)
 
 

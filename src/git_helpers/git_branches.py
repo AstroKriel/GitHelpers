@@ -70,7 +70,10 @@ def cmd_prune_gone_locals(
         "--format=%(refname:short) %(upstream:track)",
         "refs/heads/",
     ]
-    all_branches_output = shell_interface.query_cmd(cmd=cmd_list_branch_tracking)
+    all_branches_output = shell_interface.query_cmd(
+        cmd=cmd_list_branch_tracking,
+        error_on_failure=True,
+    )
     gone_branches = [line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line]
     if not gone_branches:
         shell_interface.log_outcome("no [gone] local branches")
@@ -105,9 +108,9 @@ def cmd_prune_merged_locals(
     if not base_name:
         ## auto-detect the base: ask the remote what its default branch is.
         ## fall back to "origin/main" if the remote hasn't advertised one.
-        remote_name = repo_state.get_default_remote_name()
+        default_remote_name = repo_state.get_default_remote_name()
         default_branch_name = repo_state.get_default_branch_name()
-        base_name = f"{remote_name}/{default_branch_name}" if default_branch_name else "origin/main"
+        base_name = f"{default_remote_name}/{default_branch_name}" if default_branch_name else "origin/main"
     if "/" not in base_name:
         shell_interface.kill("base must be remote-qualified, e.g. origin/main")
     shell_interface.bind_var(
@@ -120,7 +123,10 @@ def cmd_prune_merged_locals(
         "--abbrev-ref",
         "HEAD",
     ]
-    current_branch_name = shell_interface.query_cmd(cmd=cmd_get_current_branch)
+    current_branch_name = shell_interface.query_cmd(
+        cmd=cmd_get_current_branch,
+        error_on_failure=True,
+    )
     shell_interface.log_step(
         f"finding local branches merged into '{base_name}' (excluding current and main/master)",
     )
@@ -136,7 +142,10 @@ def cmd_prune_merged_locals(
         base_name,
         "--format=%(refname:short)",
     ]
-    merged_branches_output = shell_interface.query_cmd(cmd=cmd_list_merged_branches)
+    merged_branches_output = shell_interface.query_cmd(
+        cmd=cmd_list_merged_branches,
+        error_on_failure=True,
+    )
     branches_to_delete = [
         branch_name for branch_name in merged_branches_output.splitlines()
         if branch_name and branch_name not in excluded_branches
@@ -252,32 +261,32 @@ def cmd_create_branch_from_default(
         var_value=new_branch_name,
     )
     shell_interface.log_step("selecting default remote")
-    remote_name = repo_state.get_default_remote_name()
+    default_remote_name = repo_state.get_default_remote_name()
     shell_interface.bind_var(
-        var_name="remote_name",
-        var_value=remote_name,
+        var_name="default_remote_name",
+        var_value=default_remote_name,
     )
     shell_interface.log_step("fetching remote refs")
     cmd_fetch_remote = [
         "git",
         "fetch",
         "--prune",
-        remote_name,
+        default_remote_name,
     ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_fetch_remote,
     )
     shell_interface.log_step("discovering remote default branch (<remote>/HEAD)")
-    base_branch_name = repo_state.get_default_branch_name()
-    if not base_branch_name:
+    default_branch_name = repo_state.get_default_branch_name()
+    if not default_branch_name:
         shell_interface.kill(
-            f"no remote default branch set (refs/remotes/{remote_name}/HEAD unknown); "
-            f"be explicit: git_helpers create-branch-from-remote {new_branch_name} {remote_name}/<base>",
+            f"no remote default branch set (refs/remotes/{default_remote_name}/HEAD unknown); "
+            f"be explicit: git_helpers create-branch-from-remote {new_branch_name} {default_remote_name}/<base>",
         )
     shell_interface.bind_var(
-        var_name="base_branch_name",
-        var_value=base_branch_name,
+        var_name="default_branch_name",
+        var_value=default_branch_name,
     )
     shell_interface.log_step("creating local branch from remote default (no tracking)")
     ## `--no-track` means the new branch does NOT track the base it was created
@@ -288,7 +297,7 @@ def cmd_create_branch_from_default(
         "-c",
         new_branch_name,
         "--no-track",
-        f"{remote_name}/{base_branch_name}",
+        f"{default_remote_name}/{default_branch_name}",
     ]
     shell_interface.run_cmd(
         config=config,
@@ -301,7 +310,7 @@ def cmd_create_branch_from_default(
         "git",
         "push",
         "-u",
-        remote_name,
+        default_remote_name,
         "HEAD",
     ]
     shell_interface.run_cmd(
@@ -309,7 +318,7 @@ def cmd_create_branch_from_default(
         cmd=cmd_publish_branch,
     )
     shell_interface.log_outcome(
-        f"created '{new_branch_name}' from '{remote_name}/{base_branch_name}' and set upstream to '{remote_name}/{new_branch_name}'",
+        f"created '{new_branch_name}' from '{default_remote_name}/{default_branch_name}' and set upstream to '{default_remote_name}/{new_branch_name}'",
     )
 
 
@@ -331,17 +340,17 @@ def cmd_create_branch_from_remote(
         var_value=start_ref,
     )
     shell_interface.log_step("selecting default remote")
-    remote_name = repo_state.get_default_remote_name()
+    default_remote_name = repo_state.get_default_remote_name()
     shell_interface.bind_var(
-        var_name="remote_name",
-        var_value=remote_name,
+        var_name="default_remote_name",
+        var_value=default_remote_name,
     )
     shell_interface.log_step("fetching remote refs")
     cmd_fetch_remote = [
         "git",
         "fetch",
         "--prune",
-        remote_name,
+        default_remote_name,
     ]
     shell_interface.run_cmd(
         config=config,
@@ -368,7 +377,7 @@ def cmd_create_branch_from_remote(
         "git",
         "push",
         "-u",
-        remote_name,
+        default_remote_name,
         "HEAD",
     ]
     shell_interface.run_cmd(
@@ -376,7 +385,7 @@ def cmd_create_branch_from_remote(
         cmd=cmd_publish_branch,
     )
     shell_interface.log_outcome(
-        f"created '{new_branch_name}' from '{start_ref}' and set upstream to '{remote_name}/{new_branch_name}'",
+        f"created '{new_branch_name}' from '{start_ref}' and set upstream to '{default_remote_name}/{new_branch_name}'",
     )
 
 

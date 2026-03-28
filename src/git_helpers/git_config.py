@@ -86,17 +86,21 @@ def show_global_config(
             "--get",
             key,
         ]
-        return shell_interface.query_cmd(cmd=cmd_read_global_config, error_on_failure=False) or "(unset)"
+        raw_value = shell_interface.query_cmd(
+            cmd=cmd_read_global_config,
+            error_on_failure=False,
+        )
+        return raw_value or "(unset)"
 
     shell_interface.log_result("global git configuration:")
-    for label, key in [
-        ("pull.rebase", "pull.rebase"),
-        ("pull.ff", "pull.ff"),
-        ("merge.ff", "merge.ff"),
-        ("rerere.enabled", "rerere.enabled"),
+    for key in [
+            "pull.rebase",
+            "pull.ff",
+            "merge.ff",
+            "rerere.enabled",
     ]:
-        ## `{label:<15}` left-aligns the label in a 15-char field so values line up.
-        shell_interface.log_result(f"  {label:<15} = {read_config_value(key)}")
+        ## `{key:<15}` left-aligns the key in a 15-char field so values line up.
+        shell_interface.log_result(f"  {key:<15} = {read_config_value(key)}")
     shell_interface.log_result(
         "tip: edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'",
     )

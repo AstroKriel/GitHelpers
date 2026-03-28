@@ -16,7 +16,14 @@ from typing import Any
 from rich.console import Console
 
 ## local
-from git_helpers import git_config, git_inspection, git_branches, git_submodules, git_sync, shell_interface
+from git_helpers import (
+    git_config,
+    git_inspection,
+    git_branches,
+    git_submodules,
+    git_sync,
+    shell_interface,
+)
 
 ##
 ## === COMMAND LINE INTERFACE
@@ -26,12 +33,11 @@ from git_helpers import git_config, git_inspection, git_branches, git_submodules
 class _HelpFormatter(argparse.HelpFormatter):
 
     def __init__(self, prog: str) -> None:
-        ## pre-set _action_max_length so all subcommand names fit in the left column;
-        ## argparse's default computation underestimates the threshold.
+        ## change the width of columns, so command names fit in the left column
         super().__init__(
             prog,
-            max_help_position=100,
-            width=120,
+            width=120,  # first colum
+            max_help_position=100,  # second column
         )
         self._action_max_length = 30
 
@@ -55,8 +61,6 @@ def cli_command(
     is_hidden: bool = False,
 ) -> tuple[str, CommandDetails]:
     """Build a (name, cmd_details) pair for COMMANDS; handler is auto-generated from cmd_args."""
-    ## normalise to a list; each cmd_details is (arg_name, arg_kwargs) where arg_name becomes both the
-    ## argparse positional name and the attribute read back off the parsed Namespace
     cmd_args = cmd_args or []
 
     ## build Config from global flags, then pass it as the first positional arg to cmd_fn

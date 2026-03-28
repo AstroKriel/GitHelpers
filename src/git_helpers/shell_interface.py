@@ -234,7 +234,12 @@ def query_cmd(
         text=True,
     )
     if error_on_failure and result.returncode != 0:
-        raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+        raise subprocess.CalledProcessError(
+            returncode=result.returncode,
+            cmd=cmd,
+            output=result.stdout,
+            stderr=result.stderr,
+        )
     return result.stdout.strip()
 
 

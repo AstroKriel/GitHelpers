@@ -34,7 +34,10 @@ def require_remote() -> None:
         "git",
         "remote",
     ]
-    remotes = shell_interface.query_cmd(cmd=cmd_list_remotes)
+    remotes = shell_interface.query_cmd(
+        cmd=cmd_list_remotes,
+        error_on_failure=True,
+    )
     if not remotes:
         shell_interface.kill("no remotes configured (try: git remote add origin <url>)")
 
@@ -58,7 +61,10 @@ def get_default_remote_name() -> str:
         "git",
         "remote",
     ]
-    remotes = shell_interface.query_cmd(cmd=cmd_list_remotes).splitlines()
+    remotes = shell_interface.query_cmd(
+        cmd=cmd_list_remotes,
+        error_on_failure=True,
+    ).splitlines()
     if remotes:
         shell_interface.log_outcome(f"selecting first configured remote: {remotes[0]}")
         return remotes[0]
@@ -68,7 +74,7 @@ def get_default_remote_name() -> str:
 def get_default_branch_name() -> str:
     """Return the remote's advertised default branch name, or an empty string if unknown."""
     require_remote()
-    remote_name = get_default_remote_name()
+    default_remote_name = get_default_remote_name()
     ## `refs/remotes/<remote>/HEAD` is a symbolic ref that the remote sets to
     ## point at its default branch (e.g. refs/remotes/origin/HEAD -> origin/main).
     ## It's populated by `git remote set-head` or automatically on clone.
@@ -78,7 +84,7 @@ def get_default_branch_name() -> str:
         "git",
         "symbolic-ref",
         "-q",
-        f"refs/remotes/{remote_name}/HEAD",
+        f"refs/remotes/{default_remote_name}/HEAD",
     ]
     ref_value = shell_interface.query_cmd(
         cmd=cmd_read_remote_head,
@@ -88,9 +94,9 @@ def get_default_branch_name() -> str:
         shell_interface.log_outcome("no remote default branch advertised")
         return ""
     ## strip the leading "refs/remotes/<remote>/" to get just the branch name.
-    branch_name = ref_value.removeprefix(f"refs/remotes/{remote_name}/")
-    shell_interface.log_outcome(f"remote default branch is '{branch_name}'")
-    return branch_name
+    default_branch_name = ref_value.removeprefix(f"refs/remotes/{default_remote_name}/")
+    shell_interface.log_outcome(f"remote default branch is '{default_branch_name}'")
+    return default_branch_name
 
 
 def has_upstream() -> bool:
@@ -121,8 +127,11 @@ def current_branch() -> str:
         "--abbrev-ref",
         "HEAD",
     ]
-    branch_name = shell_interface.query_cmd(cmd=cmd_get_branch_name)
-    if branch_name == "HEAD":
+    current_branch_name = shell_interface.query_cmd(
+        cmd=cmd_get_branch_name,
+        error_on_failure=True,
+    )
+    if current_branch_name == "HEAD":
         ## detached HEAD: no branch name is available, so use the short SHA instead.
         ## a SHA (Secure Hash Algorithm) is the unique 40-hex-character fingerprint
         ## git assigns to every commit; `--short` trims it to 7 chars for readability.
@@ -132,11 +141,14 @@ def current_branch() -> str:
             "--short",
             "HEAD",
         ]
-        short_sha = shell_interface.query_cmd(cmd=cmd_get_short_sha)
+        short_sha = shell_interface.query_cmd(
+            cmd=cmd_get_short_sha,
+            error_on_failure=True,
+        )
         shell_interface.log_outcome(f"detached HEAD at {short_sha}")
         return f"DETACHED@{short_sha}"
-    shell_interface.log_outcome(f"on branch '{branch_name}'")
-    return branch_name
+    shell_interface.log_outcome(f"on branch '{current_branch_name}'")
+    return current_branch_name
 
 
 def ensure_clean_worktree(
@@ -182,7 +194,10 @@ def is_detached() -> bool:
         "-q",
         "HEAD",
     ]
-    head_ref = shell_interface.query_cmd(cmd=cmd_get_head_ref, error_on_failure=False)
+    head_ref = shell_interface.query_cmd(
+        cmd=cmd_get_head_ref,
+        error_on_failure=False,
+    )
     shell_interface.bind_var(
         var_name="head_ref",
         var_value=head_ref or "<empty>",

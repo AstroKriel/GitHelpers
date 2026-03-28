@@ -60,10 +60,10 @@ def cmd_push(
     repo_state.require_remote()
     repo_state.require_attached()
     shell_interface.log_step("publishing current branch")
-    remote_name = repo_state.get_default_remote_name()
+    default_remote_name = repo_state.get_default_remote_name()
     shell_interface.bind_var(
-        var_name="remote_name",
-        var_value=remote_name,
+        var_name="default_remote_name",
+        var_value=default_remote_name,
     )
     shell_interface.log_step("detecting whether upstream is already set")
     if repo_state.has_upstream():
@@ -80,12 +80,14 @@ def cmd_push(
     else:
         ## no upstream yet: push and set it in one step with `-u`.
         ## `HEAD` means "push the current branch, whatever it's named".
-        shell_interface.log_outcome(f"creating upstream and pushing with -u to {remote_name}/<same-name>")
+        shell_interface.log_outcome(
+            f"creating upstream and pushing with -u to {default_remote_name}/<same-name>",
+        )
         cmd_push_set_upstream = [
             "git",
             "push",
             "-u",
-            remote_name,
+            default_remote_name,
             "HEAD",
         ] + extra_args
         shell_interface.run_cmd(
@@ -102,10 +104,10 @@ def cmd_sync_branch(
     repo_state.require_remote()
     repo_state.require_attached()
     shell_interface.log_step("identifying default remote")
-    remote_name = repo_state.get_default_remote_name()
+    default_remote_name = repo_state.get_default_remote_name()
     shell_interface.bind_var(
-        var_name="remote_name",
-        var_value=remote_name,
+        var_name="default_remote_name",
+        var_value=default_remote_name,
     )
     shell_interface.log_step("verifying clean worktree (unless --allow-dirty)")
     repo_state.ensure_clean_worktree(config)
@@ -115,7 +117,7 @@ def cmd_sync_branch(
         "git",
         "fetch",
         "--prune",
-        remote_name,
+        default_remote_name,
     ]
     shell_interface.run_cmd(
         config=config,
@@ -223,7 +225,10 @@ def cmd_unstash_work(
             "stash",
             "list",
         ]
-        stash_list = shell_interface.query_cmd(cmd=cmd_list_stashes, error_on_failure=False)
+        stash_list = shell_interface.query_cmd(
+            cmd=cmd_list_stashes,
+            error_on_failure=False,
+        )
         stash_ref = ""
         for line in (stash_list.splitlines() if stash_list else []):
             if name in line:
