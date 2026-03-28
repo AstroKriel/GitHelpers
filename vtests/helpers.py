@@ -67,7 +67,7 @@ def local_branches(
     return result.stdout.strip().splitlines()
 
 
-def current_commit_message(
+def current_commit_msg(
     repo_dir: Path,
 ) -> str:
     """Return the subject line of the most recent commit."""

@@ -84,20 +84,20 @@ def test_sync_branch_with_explicit_base(
 ##
 
 
-def test_rename_last_commit_changes_message(
+def test_rename_last_commit_changes_msg(
     make_repo_: Path,
 ) -> None:
-    original_msg = vtest_helpers.current_commit_message(make_repo_)
+    original_msg = vtest_helpers.current_commit_msg(make_repo_)
     git_sync.cmd_rename_last_commit(Config(), ["new", "commit", "message"])
-    assert vtest_helpers.current_commit_message(make_repo_) == "new commit message"
-    assert vtest_helpers.current_commit_message(make_repo_) != original_msg
+    assert vtest_helpers.current_commit_msg(make_repo_) == "new commit message"
+    assert vtest_helpers.current_commit_msg(make_repo_) != original_msg
 
 
 def test_rename_last_commit_joins_words(
     make_repo_: Path,
 ) -> None:
     git_sync.cmd_rename_last_commit(Config(), ["fix", "typo", "in", "readme"])
-    assert vtest_helpers.current_commit_message(make_repo_) == "fix typo in readme"
+    assert vtest_helpers.current_commit_msg(make_repo_) == "fix typo in readme"
 
 
 def test_rename_last_commit_preserves_sha_prefix(
@@ -128,23 +128,23 @@ def test_amend_last_includes_staged_changes(
     assert "staged.txt" in files_in_last_commit
 
 
-def test_amend_last_with_message_updates_message(
+def test_amend_last_with_msg_updates_msg(
     make_repo_: Path,
 ) -> None:
     (make_repo_ / "staged.txt").write_text("content")
     vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
     git_sync.cmd_amend_last_commit(Config(), ["updated", "message"])
-    assert vtest_helpers.current_commit_message(make_repo_) == "updated message"
+    assert vtest_helpers.current_commit_msg(make_repo_) == "updated message"
 
 
-def test_amend_last_without_message_keeps_message(
+def test_amend_last_without_msg_keeps_msg(
     make_repo_: Path,
 ) -> None:
-    original_msg = vtest_helpers.current_commit_message(make_repo_)
+    original_msg = vtest_helpers.current_commit_msg(make_repo_)
     (make_repo_ / "staged.txt").write_text("content")
     vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
     git_sync.cmd_amend_last_commit(Config(), [])
-    assert vtest_helpers.current_commit_message(make_repo_) == original_msg
+    assert vtest_helpers.current_commit_msg(make_repo_) == original_msg
 
 
 def test_amend_last_changes_sha(

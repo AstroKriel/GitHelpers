@@ -14,7 +14,7 @@ from git_helpers import shell_interface, repo_state
 
 def cmd_rename_last_commit(
     config: shell_interface.Config,
-    message: list[str],
+    msg: list[str],
 ) -> None:
     """Replace the message of the most recent commit; rewrites history — avoid if already pushed."""
     repo_state.require_repo()
@@ -28,26 +28,26 @@ def cmd_rename_last_commit(
     if shell_interface.probe_cmd(cmd_verify_head) != 0:
         shell_interface.kill("no commits yet (nothing to amend)")
     ## argparse splits the message into words via nargs="+"; rejoin into a single string.
-    new_message = " ".join(message)
+    new_msg = " ".join(msg)
     shell_interface.bind_var(
-        var_name="new_message",
-        var_value=new_message,
+        var_name="new_msg",
+        var_value=new_msg,
     )
     shell_interface.log_step("renaming last commit")
     shell_interface.log_msg("note: this rewrites commit history; avoid if already pushed")
     ## `--amend` replaces the most recent commit with a new one that has the
     ## same tree/parent but a different message. The SHA changes, so force-push
     ## would be needed if this commit is already on a shared remote.
-    cmd_amend_message = [
+    cmd_amend_msg = [
         "git",
         "commit",
         "--amend",
         "-m",
-        new_message,
+        new_msg,
     ]
     shell_interface.run_cmd(
         config=config,
-        cmd=cmd_amend_message,
+        cmd=cmd_amend_msg,
     )
     shell_interface.log_outcome("amended last commit message")
 
@@ -268,7 +268,7 @@ def cmd_unstash_work(
 
 def cmd_amend_last_commit(
     config: shell_interface.Config,
-    message: list[str],
+    msg: list[str],
 ) -> None:
     """Amend the last commit with currently staged changes; optionally update the message too."""
     repo_state.require_repo()
@@ -282,24 +282,24 @@ def cmd_amend_last_commit(
         shell_interface.kill("no commits yet (nothing to amend)")
     shell_interface.log_step("amending last commit with staged changes")
     shell_interface.log_msg("note: this rewrites commit history; avoid if already pushed")
-    if message:
+    if msg:
         ## argparse nargs="*" returns a list; rejoin into a single string.
-        new_message = " ".join(message)
+        new_msg = " ".join(msg)
         shell_interface.bind_var(
-            var_name="new_message",
-            var_value=new_message,
+            var_name="new_msg",
+            var_value=new_msg,
         )
         ## amend tree and message together.
-        cmd_amend_with_message = [
+        cmd_amend_with_msg = [
             "git",
             "commit",
             "--amend",
             "-m",
-            new_message,
+            new_msg,
         ]
         shell_interface.run_cmd(
             config=config,
-            cmd=cmd_amend_with_message,
+            cmd=cmd_amend_with_msg,
         )
         shell_interface.log_outcome("amended last commit with staged changes and new message")
     else:

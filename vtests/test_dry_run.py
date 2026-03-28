@@ -29,12 +29,12 @@ def test_dry_run_delete_branch_leaves_branch_intact(
     assert "dry-target" in vtest_helpers.local_branches(make_repo_)
 
 
-def test_dry_run_rename_last_commit_leaves_message_unchanged(
+def test_dry_run_rename_last_commit_leaves_msg_unchanged(
     make_repo_: Path,
 ) -> None:
-    original_msg = vtest_helpers.current_commit_message(make_repo_)
+    original_msg = vtest_helpers.current_commit_msg(make_repo_)
     git_sync.cmd_rename_last_commit(Config(dry_run=True), ["completely", "different", "message"])
-    assert vtest_helpers.current_commit_message(make_repo_) == original_msg
+    assert vtest_helpers.current_commit_msg(make_repo_) == original_msg
 
 
 def test_dry_run_rename_last_commit_leaves_sha_unchanged(

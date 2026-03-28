@@ -385,7 +385,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             cmd_fn=git_sync.cmd_amend_last_commit,
             cmd_help="fold staged changes into the last commit; optionally update the message too",
             cmd_args=[(
-                "message",
+                "msg",
                 {
                     "nargs": "*",
                 },
@@ -397,7 +397,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             cmd_fn=git_sync.cmd_rename_last_commit,
             cmd_help="update the message of the last commit without changing its content (rewrites history)",
             cmd_args=[(
-                "message",
+                "msg",
                 {
                     "nargs": "+",
                 },
