@@ -150,12 +150,10 @@ def count_ahead_behind(
         "--count",
         f"HEAD...{upstream_name}",
     ]
-    ahead_behind_counts = shell_interface.run_cmd_and_capture_output(
-        config=config,
+    ahead_behind_counts = shell_interface.query_cmd(
         cmd=cmd_count_ahead_behind,
+        error_on_failure=True,
     )
-    if not ahead_behind_counts and config.dry_run:
-        return
     ahead_count, behind_count = ahead_behind_counts.split()
     shell_interface.bind_var(
         var_name="ahead_count",
