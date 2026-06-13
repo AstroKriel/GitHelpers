@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 ## local
-from git_helpers import git_submodules
+from git_helpers.commands import git_submodules
 from git_helpers.shell_interface import Config
 from vtests.helpers import GIT_USER, git, make_commit
 

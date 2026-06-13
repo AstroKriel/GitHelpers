@@ -56,13 +56,13 @@ class TestLogOutcome_Output:
 
 class TestBindVar_Output:
 
-    def test_includes_arrow_and_values(
+    def test_includes_dot_and_values(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         shell_interface.bind_var("branch_name", "main")
         captured = capsys.readouterr()
-        assert "→" in captured.err
+        assert "·" in captured.err
         assert "branch_name" in captured.err
         assert "main" in captured.err
 

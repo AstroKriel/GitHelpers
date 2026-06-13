@@ -16,13 +16,13 @@ from typing import Any
 from rich.console import Console
 
 ## local
-from git_helpers import (
+from git_helpers import shell_interface
+from git_helpers.commands import (
     git_config,
     git_inspection,
     git_branches,
     git_submodules,
     git_sync,
-    shell_interface,
 )
 
 ##

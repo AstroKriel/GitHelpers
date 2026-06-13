@@ -8,8 +8,8 @@
 from pathlib import Path
 
 ## local
-from git_helpers import git_branches
-from git_helpers import git_sync
+from git_helpers.commands import git_branches
+from git_helpers.commands import git_sync
 from git_helpers.shell_interface import Config
 from vtests import helpers as vtest_helpers
 
