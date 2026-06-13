@@ -15,15 +15,16 @@ from git_helpers import shell_interface
 def cmd_set_global_config(
     config: shell_interface.Config,
 ) -> None:
-    """Write FF-first merge defaults and enable rerere to ~/.gitconfig."""
-    ## pull.rebase=false: when pulling, merge diverged branches instead of
-    ## rebasing them. Safer default — rebase rewrites history.
+    """Write pull-rebase and FF-first merge defaults, and enable rerere, in ~/.gitconfig."""
+    ## pull.rebase=true: when pulling, replay local commits on top of the
+    ## remote instead of creating a merge commit. Keeps history linear and
+    ## is the right default for multi-device workflows.
     cmd_set_pull_rebase = [
         "git",
         "config",
         "--global",
         "pull.rebase",
-        "false",
+        "true",
     ]
     shell_interface.run_cmd(
         config=config,
@@ -66,7 +67,7 @@ def cmd_set_global_config(
         config=config,
         cmd=cmd_set_rerere,
     )
-    shell_interface.log_result("installed FF-first merge defaults globally in ~/.gitconfig")
+    shell_interface.log_result("installed pull-rebase and FF-first merge defaults globally in ~/.gitconfig")
 
 
 def show_global_config(
