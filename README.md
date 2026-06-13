@@ -136,9 +136,9 @@ git_helpers --allow-dirty <cmd>  # skip the clean worktree check
 |---|---|---|
 | `○` | white | action starting |
 | `●` | green | action outcome |
+| `●` | red | error |
 | `→` | blue | command being run |
 | `→` | orange | skipped (dry-run) |
-| `●` | red | error |
 | `→` | gray | read-only lookup command |
 | `·` | gray | resolved value / context |
 
