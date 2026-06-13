@@ -141,7 +141,7 @@ class _GroupedHelpAction(argparse.Action):
         console.print(f"\t[#32CD32]{'● green':<30}[/]action outcome")
         console.print(f"\t[#FF4500]{'● red':<30}[/]error")
         console.print(f"\t[#2A71F6]{'→ blue':<30}[/]command being run")
-        console.print(f"\t[#E48500]{'→ orange':<30}[/]skipped (dry-run)")
+        console.print(f"\t[#E48500]{'→ orange':<30}[/]skipped command (dry-run)")
         console.print(f"\t[#818181]{'→ gray':<30}[/]read-only lookup command")
         console.print(f"\t[#818181]{'· gray':<30}[/]resolved value / context")
         console.print()
