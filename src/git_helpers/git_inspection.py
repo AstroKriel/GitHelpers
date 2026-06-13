@@ -286,8 +286,39 @@ def show_diff_committed(
         base = repo_state.get_default_branch_name()
         if not base:
             shell_interface.kill("could not infer default branch; pass base explicitly")
+    branch = repo_state.current_branch()
+    if branch == base:
+        shell_interface.kill(
+            f"already on '{base}'; show-diff-committed compares a feature branch to its base"
+            " — use show-diff-last N for commit-range diffs"
+        )
     shell_interface.log_step(f"showing committed changes vs '{base}'")
     cmd = ["git", "diff", f"{base}...HEAD"]
+    if path:
+        cmd += ["--", path]
+    shell_interface.run_cmd(config=config, cmd=cmd)
+
+
+def show_diff_last(
+    config: shell_interface.Config,
+    num_commits: int,
+    include_uncommitted: bool = False,
+    path: str | None = None,
+) -> None:
+    """Show changes over the last N commits, optionally including uncommitted local changes."""
+    repo_state.require_repo()
+    if num_commits < 1:
+        shell_interface.kill("num_commits must be at least 1")
+    shell_interface.bind_var(
+        var_name="num_commits",
+        var_value=str(num_commits),
+    )
+    if include_uncommitted:
+        shell_interface.log_step(f"showing changes over last {num_commits} commits including local changes")
+        cmd = ["git", "diff", f"HEAD~{num_commits}"]
+    else:
+        shell_interface.log_step(f"showing committed changes over last {num_commits} commits")
+        cmd = ["git", "diff", f"HEAD~{num_commits}", "HEAD"]
     if path:
         cmd += ["--", path]
     shell_interface.run_cmd(config=config, cmd=cmd)

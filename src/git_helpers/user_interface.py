@@ -248,6 +248,34 @@ COMMANDS: dict[str, CommandDetails] = dict(
                 ),
             ],
         ),
+        cli_command(
+            section="Inspection",
+            cmd_name="show-diff-last",
+            cmd_fn=git_inspection.show_diff_last,
+            cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",
+            cmd_args=[
+                (
+                    "num_commits",
+                    {
+                        "type": int,
+                    },
+                ),
+                (
+                    "--include-uncommitted",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                    },
+                ),
+                (
+                    "path",
+                    {
+                        "nargs": "?",
+                        "default": None,
+                    },
+                ),
+            ],
+        ),
         ## branch management
         cli_command(
             section="Branch management",
