@@ -22,7 +22,7 @@ class TestLogMsg_Output:
 
     def test_writes_to_stderr(
         self,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         shell_interface.log_msg("hello")
         captured = capsys.readouterr()
@@ -34,7 +34,7 @@ class TestLogStep_Output:
 
     def test_includes_prefix_and_message(
         self,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         shell_interface.log_step("doing something")
         captured = capsys.readouterr()
@@ -46,7 +46,7 @@ class TestLogOutcome_Output:
 
     def test_includes_prefix_and_message(
         self,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         shell_interface.log_outcome("it worked")
         captured = capsys.readouterr()
@@ -58,7 +58,7 @@ class TestBindVar_Output:
 
     def test_includes_arrow_and_values(
         self,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         shell_interface.bind_var("branch_name", "main")
         captured = capsys.readouterr()
@@ -71,7 +71,7 @@ class TestLogResult_Output:
 
     def test_writes_to_stdout(
         self,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         shell_interface.log_result("all good")
         captured = capsys.readouterr()
@@ -92,7 +92,7 @@ class TestRunCmd_DryRun:
 
     def test_logs_skipped(
         self,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         config = shell_interface.Config(dry_run=True)
         shell_interface.run_cmd(config=config, cmd=["git", "push"])
@@ -111,7 +111,7 @@ class TestRunCmd_DryRun:
 
     def test_logs_command_before_executing(
         self,
-        capsys: pytest.CaptureFixture,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         config = shell_interface.Config(dry_run=False)
         with patch("subprocess.run") as mock_run:
