@@ -52,6 +52,7 @@ class _Markers(str, Enum):
     CIRCLE_OPEN = "\u25CB"  # ○
     CIRCLE_CLOSED = "\u25CF"  # ●
     ARROW = "\u2192"  # →
+    DOT = "\u00B7"  # ·
 
 
 @dataclass(frozen=True)
@@ -82,9 +83,13 @@ class _Themes:
         color=_Colors.RED,
         marker=_Markers.CIRCLE_CLOSED,
     )
-    CONTEXT = _Theme(
+    QUERY = _Theme(
         color=_Colors.GRAY,
         marker=_Markers.ARROW,
+    )
+    CONTEXT = _Theme(
+        color=_Colors.GRAY,
+        marker=_Markers.DOT,
     )
 
 
@@ -225,7 +230,7 @@ def query_cmd(
     Use this for commands where "not found" is a valid outcome rather than an error.
     """
     _print_cmd(
-        theme=_Themes.CONTEXT,
+        theme=_Themes.QUERY,
         cmd=cmd,
         cmd_prefix=" ",
     )
