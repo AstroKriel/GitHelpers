@@ -209,13 +209,65 @@ def test_show_diff_committed_infers_default_branch(
     make_repo_with_remote: tuple[Path, Path],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    repo_dir, remote_dir = make_repo_with_remote
+    repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, 1)
     git_inspection.show_diff_committed(Config(dry_run=True))
     out = capsys.readouterr().err
     assert "main...HEAD" in out
+
+
+def test_show_diff_committed_kills_when_on_base_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    ## still on main; passing base explicitly so the guard fires regardless of remote HEAD config
+    with pytest.raises(SystemExit):
+        git_inspection.show_diff_committed(Config(), base="main")
+
+
+##
+## === show-diff-last
+##
+
+
+def test_show_diff_last_committed_uses_correct_refs(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    vtest_helpers.make_commits(make_repo_, 3)
+    git_inspection.show_diff_last(Config(dry_run=True), num_commits=3)
+    out = capsys.readouterr().err
+    assert "HEAD~3 HEAD" in out
+
+
+def test_show_diff_last_include_uncommitted_omits_head_arg(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    vtest_helpers.make_commits(make_repo_, 2)
+    git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, include_uncommitted=True)
+    out = capsys.readouterr().err
+    assert "HEAD~2" in out
+    assert "HEAD~2 HEAD" not in out
+
+
+def test_show_diff_last_with_path_scopes_command(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    vtest_helpers.make_commits(make_repo_, 2)
+    git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, path=".commit_counter")
+    out = capsys.readouterr().err
+    assert "HEAD~2" in out
+    assert ".commit_counter" in out
+
+
+def test_show_diff_last_kills_on_zero_commits(
+    make_repo_: Path,
+) -> None:
+    with pytest.raises(SystemExit):
+        git_inspection.show_diff_last(Config(), num_commits=0)
 
 
 ## } SCRIPT
