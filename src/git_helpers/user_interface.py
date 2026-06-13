@@ -193,11 +193,11 @@ COMMANDS: dict[str, CommandDetails] = dict(
             cmd_fn=git_inspection.show_recent_commits,
             cmd_help="show the last N commits on the current branch (default: 20)",
             cmd_args=[(
-                "max_entries",
+                "--max-entries",
                 {
-                    "nargs": "?",
                     "type": int,
                     "default": 20,
+                    "metavar": "N",
                 },
             )],
         ),
@@ -219,10 +219,10 @@ COMMANDS: dict[str, CommandDetails] = dict(
             cmd_fn=git_inspection.show_diff,
             cmd_help="show all local changes vs HEAD (staged and unstaged); optionally scope to a path",
             cmd_args=[(
-                "path",
+                "--path",
                 {
-                    "nargs": "?",
                     "default": None,
+                    "metavar": "path",
                 },
             )],
         ),
@@ -240,10 +240,10 @@ COMMANDS: dict[str, CommandDetails] = dict(
                     },
                 ),
                 (
-                    "path",
+                    "--path",
                     {
-                        "nargs": "?",
                         "default": None,
+                        "metavar": "path",
                     },
                 ),
             ],
@@ -255,9 +255,11 @@ COMMANDS: dict[str, CommandDetails] = dict(
             cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",
             cmd_args=[
                 (
-                    "num_commits",
+                    "--num-commits",
                     {
                         "type": int,
+                        "required": True,
+                        "metavar": "N",
                     },
                 ),
                 (
@@ -268,10 +270,10 @@ COMMANDS: dict[str, CommandDetails] = dict(
                     },
                 ),
                 (
-                    "path",
+                    "--path",
                     {
-                        "nargs": "?",
                         "default": None,
+                        "metavar": "path",
                     },
                 ),
             ],
