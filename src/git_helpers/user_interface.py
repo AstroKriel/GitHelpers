@@ -135,6 +135,14 @@ class _GroupedHelpAction(argparse.Action):
         console.print(f"  [cyan]{'--dry-run':<30}[/cyan]print commands without executing them")
         console.print(f"  [cyan]{'--allow-dirty':<30}[/cyan]skip the clean worktree check")
         console.print()
+        console.print("[bold]Output legend[/bold]")
+        console.print(f"  [#FFFFFF]{'○ white':<30}[/]step starting")
+        console.print(f"  [#32CD32]{'● green':<30}[/]success / outcome")
+        console.print(f"  [#2A71F6]{'→ blue':<30}[/]command being run")
+        console.print(f"  [#E48500]{'→ orange':<30}[/]skipped (dry-run)")
+        console.print(f"  [#FF4500]{'● red':<30}[/]error")
+        console.print(f"  [#818181]{'→ gray':<30}[/]context / bound variable")
+        console.print()
         parser.exit()
 
 
