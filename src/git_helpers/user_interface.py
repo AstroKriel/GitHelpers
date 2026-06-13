@@ -492,7 +492,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             section="Summary",
             cmd_name="scan-repos",
             cmd_fn=git_scan.scan_repos,
-            cmd_help="scan for git repos from CWD and report dirty, unpushed, and recently active ones",
+            cmd_help="scan for git repos from CWD and report dirty, unpushed, and recently active ones; count commits per repo when --since is given",
             cmd_args=[
                 (
                     "--depth",

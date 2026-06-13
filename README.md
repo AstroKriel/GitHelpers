@@ -110,10 +110,10 @@ git_helpers rename-last-commit <msg>     # update the message of the last commit
 
 **Summary**
 ```bash
-git_helpers scan-repos [--depth N] [--since DAYS]  # scan for git repos from CWD; report dirty, unpushed, and recently active ones
+git_helpers scan-repos [--depth N] [--since DAYS]  # scan for git repos from CWD; report dirty, unpushed, and recently active ones; count commits per repo when --since is given
 ```
 
-`--depth N` (default: 3) controls how many directory levels to descend. `--since DAYS` filters to repos with a commit in the last N days; without it, only repos needing attention (dirty or unpushed) are shown.
+`--depth N` (default: 3) controls how many directory levels to descend. `--since DAYS` filters to repos with a commit in the last N days and counts commits per repo within that window; without it, only repos needing attention (dirty or unpushed) are shown.
 
 ---
 

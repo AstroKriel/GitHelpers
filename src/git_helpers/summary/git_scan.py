@@ -194,7 +194,7 @@ def scan_repos(
     since: int | None = None,
     is_fetch_skipped: bool = False,
 ) -> None:
-    """Scan for git repos from CWD and report dirty, unpushed, and recently active ones."""
+    """Scan for git repos from CWD and report dirty, unpushed, and recently active ones; count commits per repo when --since is given."""
     root = Path.cwd()
     shell_interface.log_step(f"scanning from {root} (depth {depth})")
     repos = _find_repos(root=root, max_depth=depth)
