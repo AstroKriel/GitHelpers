@@ -262,6 +262,37 @@ def show_recent_commits(
     )
 
 
+def show_diff(
+    config: shell_interface.Config,
+    path: str | None = None,
+) -> None:
+    """Show all local changes vs HEAD — staged, unstaged, and uncommitted."""
+    repo_state.require_repo()
+    shell_interface.log_step("showing local changes vs HEAD")
+    cmd = ["git", "diff", "HEAD"]
+    if path:
+        cmd += ["--", path]
+    shell_interface.run_cmd(config=config, cmd=cmd)
+
+
+def show_diff_committed(
+    config: shell_interface.Config,
+    base: str | None = None,
+    path: str | None = None,
+) -> None:
+    """Show all committed changes on the current branch vs a base branch."""
+    repo_state.require_repo()
+    if not base:
+        base = repo_state.get_default_branch_name()
+        if not base:
+            shell_interface.kill("could not infer default branch; pass base explicitly")
+    shell_interface.log_step(f"showing committed changes vs '{base}'")
+    cmd = ["git", "diff", f"{base}...HEAD"]
+    if path:
+        cmd += ["--", path]
+    shell_interface.run_cmd(config=config, cmd=cmd)
+
+
 def show_submodules_status(
     _config: shell_interface.Config,
 ) -> None:

@@ -73,7 +73,7 @@ def cli_command(
         )
         return cmd_fn(
             config,
-            *[getattr(args, arg_name) for arg_name, _ in cmd_args],
+            *[getattr(args, arg_name.lstrip("-").replace("-", "_")) for arg_name, _ in cmd_args],
         )
 
     return (
@@ -204,6 +204,41 @@ COMMANDS: dict[str, CommandDetails] = dict(
             cmd_name="show-submodules-status",
             cmd_fn=git_inspection.show_submodules_status,
             cmd_help="show the current state of each submodule (commit SHA and init status)",
+        ),
+        cli_command(
+            section="Inspection",
+            cmd_name="show-diff",
+            cmd_fn=git_inspection.show_diff,
+            cmd_help="show all local changes vs HEAD (staged and unstaged); optionally scope to a path",
+            cmd_args=[(
+                "path",
+                {
+                    "nargs": "?",
+                    "default": None,
+                },
+            )],
+        ),
+        cli_command(
+            section="Inspection",
+            cmd_name="show-diff-committed",
+            cmd_fn=git_inspection.show_diff_committed,
+            cmd_help="show committed changes on the current branch vs a base (default: remote default branch)",
+            cmd_args=[
+                (
+                    "--base",
+                    {
+                        "default": None,
+                        "metavar": "branch",
+                    },
+                ),
+                (
+                    "path",
+                    {
+                        "nargs": "?",
+                        "default": None,
+                    },
+                ),
+            ],
         ),
         ## branch management
         cli_command(

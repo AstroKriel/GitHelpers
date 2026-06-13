@@ -148,4 +148,74 @@ def test_is_detached_exits_0_when_detached(
     assert exc.value.code == 0
 
 
+##
+## === show-diff
+##
+
+
+def test_show_diff_runs_without_error(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    (make_repo_ / "dirty.txt").write_text("change")
+    vtest_helpers.git(["add", "dirty.txt"], cwd=make_repo_)
+    git_inspection.show_diff(Config(dry_run=True))
+    out = capsys.readouterr().err
+    assert "git diff HEAD" in out
+
+
+def test_show_diff_with_path_scopes_command(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    (make_repo_ / "dirty.txt").write_text("change")
+    vtest_helpers.git(["add", "dirty.txt"], cwd=make_repo_)
+    git_inspection.show_diff(Config(dry_run=True), path="dirty.txt")
+    out = capsys.readouterr().err
+    assert "dirty.txt" in out
+
+
+##
+## === show-diff-committed
+##
+
+
+def test_show_diff_committed_with_explicit_base(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture,
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, 2)
+    git_inspection.show_diff_committed(Config(dry_run=True), base="main")
+    out = capsys.readouterr().err
+    assert "main...HEAD" in out
+
+
+def test_show_diff_committed_with_path(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture,
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, 1)
+    git_inspection.show_diff_committed(Config(dry_run=True), base="main", path=".commit_counter")
+    out = capsys.readouterr().err
+    assert "main...HEAD" in out
+    assert ".commit_counter" in out
+
+
+def test_show_diff_committed_infers_default_branch(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture,
+) -> None:
+    repo_dir, remote_dir = make_repo_with_remote
+    vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, 1)
+    git_inspection.show_diff_committed(Config(dry_run=True))
+    out = capsys.readouterr().err
+    assert "main...HEAD" in out
+
+
 ## } SCRIPT
