@@ -7,9 +7,6 @@
 ## stdlib
 import argparse
 
-## third-party
-import pytest
-
 ## local
 from git_helpers import user_interface
 from git_helpers.shell_interface import Config
@@ -85,7 +82,7 @@ class TestCliCommand_ArgMapping:
     def test_named_flag_and_positional_arg_together(
         self,
     ) -> None:
-        received: list = []
+        received: list[str | None] = []
 
         def fn(
             config: Config,

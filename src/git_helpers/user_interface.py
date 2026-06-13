@@ -10,7 +10,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, override
+from typing import Any
 
 ## third-party
 from rich.console import Console
@@ -106,7 +106,6 @@ class _GroupedHelpAction(argparse.Action):
             help=help,
         )
 
-    @override
     def __call__(
         self,
         parser: argparse.ArgumentParser,
