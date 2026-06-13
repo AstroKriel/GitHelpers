@@ -93,7 +93,7 @@ class TestGetRepoStatus_DirtyFiles:
         scan_root: Path,
     ) -> None:
         repo = make_repo_at(scan_root / "proj")
-        status = git_scan._get_repo_status(repo)
+        status = git_scan._get_repo_status(repo, fetch=False)
         assert status.dirty_files == 0
 
     def test_dirty_repo_counts_modified_files(
@@ -102,19 +102,19 @@ class TestGetRepoStatus_DirtyFiles:
     ) -> None:
         repo = make_repo_at(scan_root / "proj")
         (repo / "dirty.txt").write_text("changes")
-        status = git_scan._get_repo_status(repo)
+        status = git_scan._get_repo_status(repo, fetch=False)
         assert status.dirty_files == 1
 
 
-class TestGetRepoStatus_Unpushed:
+class TestGetRepoStatus_Diverged:
 
-    def test_no_upstream_means_no_unpushed(
+    def test_no_upstream_means_no_divergence(
         self,
         scan_root: Path,
     ) -> None:
         repo = make_repo_at(scan_root / "proj")
-        status = git_scan._get_repo_status(repo)
-        assert status.unpushed == []
+        status = git_scan._get_repo_status(repo, fetch=False)
+        assert status.diverged == []
 
     def test_detects_commits_ahead_of_upstream(
         self,
@@ -126,12 +126,13 @@ class TestGetRepoStatus_Unpushed:
         git(["remote", "add", "origin", str(remote)], cwd=repo)
         git(["push", "-u", "origin", "main"], cwd=repo)
         make_commit(repo, "extra")
-        status = git_scan._get_repo_status(repo)
-        assert len(status.unpushed) == 1
-        assert status.unpushed[0].name == "main"
-        assert status.unpushed[0].commits_ahead == 1
+        status = git_scan._get_repo_status(repo, fetch=False)
+        assert len(status.diverged) == 1
+        assert status.diverged[0].name == "main"
+        assert status.diverged[0].commits_ahead == 1
+        assert status.diverged[0].commits_behind == 0
 
-    def test_pushed_repo_has_no_unpushed_branches(
+    def test_detects_commits_behind_upstream(
         self,
         scan_root: Path,
         tmp_path: Path,
@@ -140,8 +141,31 @@ class TestGetRepoStatus_Unpushed:
         repo = make_repo_at(scan_root / "proj")
         git(["remote", "add", "origin", str(remote)], cwd=repo)
         git(["push", "-u", "origin", "main"], cwd=repo)
-        status = git_scan._get_repo_status(repo)
-        assert status.unpushed == []
+        ## a second clone pushes a new commit to the remote
+        other = tmp_path / "other"
+        git(["clone", str(remote), str(other)], cwd=tmp_path)
+        for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
+            git(["config", key, val], cwd=other)
+        make_commit(other, "remote commit")
+        git(["push"], cwd=other)
+        ## repo fetches and now sees it is behind
+        status = git_scan._get_repo_status(repo, fetch=True)
+        assert len(status.diverged) == 1
+        assert status.diverged[0].name == "main"
+        assert status.diverged[0].commits_ahead == 0
+        assert status.diverged[0].commits_behind == 1
+
+    def test_pushed_repo_has_no_divergence(
+        self,
+        scan_root: Path,
+        tmp_path: Path,
+    ) -> None:
+        remote = make_bare_remote(tmp_path / "remote.git")
+        repo = make_repo_at(scan_root / "proj")
+        git(["remote", "add", "origin", str(remote)], cwd=repo)
+        git(["push", "-u", "origin", "main"], cwd=repo)
+        status = git_scan._get_repo_status(repo, fetch=False)
+        assert status.diverged == []
 
 
 class TestGetRepoStatus_LastCommit:
@@ -151,7 +175,7 @@ class TestGetRepoStatus_LastCommit:
         scan_root: Path,
     ) -> None:
         repo = make_repo_at(scan_root / "proj")
-        status = git_scan._get_repo_status(repo)
+        status = git_scan._get_repo_status(repo, fetch=False)
         assert status.last_commit_age_days < 1
         assert status.last_commit_rel != "(no commits)"
 
@@ -169,11 +193,11 @@ class TestScanRepos_Output:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         (scan_root / "empty").mkdir()
-        git_scan.scan_repos(_CONFIG, depth=1)
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=True)
         captured = capsys.readouterr()
         assert "no git repos found" in captured.err
 
-    def test_all_clean_shows_clean_outcome(
+    def test_all_clean_shows_synced_outcome(
         self,
         scan_root: Path,
         tmp_path: Path,
@@ -183,9 +207,9 @@ class TestScanRepos_Output:
         repo = make_repo_at(scan_root / "proj")
         git(["remote", "add", "origin", str(remote)], cwd=repo)
         git(["push", "-u", "origin", "main"], cwd=repo)
-        git_scan.scan_repos(_CONFIG, depth=1)
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=True)
         captured = capsys.readouterr()
-        assert "all repos are clean and pushed" in captured.err
+        assert "all repos are clean and synced" in captured.err
 
     def test_dirty_repo_shown_in_output(
         self,
@@ -194,7 +218,7 @@ class TestScanRepos_Output:
     ) -> None:
         repo = make_repo_at(scan_root / "proj")
         (repo / "dirty.txt").write_text("changes")
-        git_scan.scan_repos(_CONFIG, depth=1)
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=True)
         captured = capsys.readouterr()
         assert "proj" in captured.err
         assert "dirty" in captured.err
@@ -210,10 +234,34 @@ class TestScanRepos_Output:
         git(["remote", "add", "origin", str(remote)], cwd=repo)
         git(["push", "-u", "origin", "main"], cwd=repo)
         make_commit(repo, "extra")
-        git_scan.scan_repos(_CONFIG, depth=1)
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=True)
         captured = capsys.readouterr()
         assert "proj" in captured.err
         assert "unpushed" in captured.err
+
+    def test_unpulled_repo_shown_in_output(
+        self,
+        scan_root: Path,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        remote = make_bare_remote(tmp_path / "remote.git")
+        repo = make_repo_at(scan_root / "proj")
+        git(["remote", "add", "origin", str(remote)], cwd=repo)
+        git(["push", "-u", "origin", "main"], cwd=repo)
+        other = tmp_path / "other"
+        git(["clone", str(remote), str(other)], cwd=tmp_path)
+        for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
+            git(["config", key, val], cwd=other)
+        make_commit(other, "remote commit")
+        git(["push"], cwd=other)
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=True)
+        ## without fetch, behind count is stale: repo must fetch first to see it
+        git_scan._fetch(repo)
+        capsys.readouterr()
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=True)
+        captured = capsys.readouterr()
+        assert "unpulled" in captured.err
 
     def test_since_shows_recently_active_repos(
         self,
@@ -225,7 +273,7 @@ class TestScanRepos_Output:
         repo = make_repo_at(scan_root / "proj")
         git(["remote", "add", "origin", str(remote)], cwd=repo)
         git(["push", "-u", "origin", "main"], cwd=repo)
-        git_scan.scan_repos(_CONFIG, depth=1, since=1)
+        git_scan.scan_repos(_CONFIG, depth=1, since=1, no_fetch=True)
         captured = capsys.readouterr()
         assert "proj" in captured.err
 
@@ -236,10 +284,30 @@ class TestScanRepos_Output:
     ) -> None:
         repo = make_repo_at(scan_root / "proj")
         (repo / "dirty.txt").write_text("changes")
-        git_scan.scan_repos(_CONFIG, depth=1)
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=True)
         captured = capsys.readouterr()
         assert "repos scanned" in captured.err
         assert "dirty" in captured.err
+
+    def test_summary_includes_unpulled_count(
+        self,
+        scan_root: Path,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        remote = make_bare_remote(tmp_path / "remote.git")
+        repo = make_repo_at(scan_root / "proj")
+        git(["remote", "add", "origin", str(remote)], cwd=repo)
+        git(["push", "-u", "origin", "main"], cwd=repo)
+        other = tmp_path / "other"
+        git(["clone", str(remote), str(other)], cwd=tmp_path)
+        for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
+            git(["config", key, val], cwd=other)
+        make_commit(other, "remote commit")
+        git(["push"], cwd=other)
+        git_scan.scan_repos(_CONFIG, depth=1, no_fetch=False)
+        captured = capsys.readouterr()
+        assert "with unpulled commits" in captured.err
 
     def test_shows_repo_relative_path(
         self,
@@ -248,7 +316,7 @@ class TestScanRepos_Output:
     ) -> None:
         repo = make_repo_at(scan_root / "group" / "myproject")
         (repo / "dirty.txt").write_text("changes")
-        git_scan.scan_repos(_CONFIG, depth=2)
+        git_scan.scan_repos(_CONFIG, depth=2, no_fetch=True)
         captured = capsys.readouterr()
         assert "group/myproject" in captured.err
 

@@ -510,6 +510,13 @@ COMMANDS: dict[str, CommandDetails] = dict(
                         "metavar": "DAYS",
                     },
                 ),
+                (
+                    "--no-fetch",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                    },
+                ),
             ],
         ),
         ## hidden (not promoted) utilities
