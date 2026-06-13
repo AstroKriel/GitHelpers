@@ -5,6 +5,7 @@
 ##
 
 ## stdlib
+import configparser
 import re
 import subprocess
 import time
@@ -51,6 +52,22 @@ def _find_repos(
     return sorted(results)
 
 
+def _active_submodule_paths(repo_path: Path) -> list[Path]:
+    gitmodules = repo_path / ".gitmodules"
+    if not gitmodules.exists():
+        return []
+    config = configparser.ConfigParser()
+    config.read(gitmodules)
+    paths = []
+    for section in config.sections():
+        if config.get(section, "ignore", fallback="") == "all":
+            continue
+        rel_path = config.get(section, "path", fallback=None)
+        if rel_path:
+            paths.append(repo_path / rel_path)
+    return paths
+
+
 def _walk(
     *,
     path: Path,
@@ -58,8 +75,11 @@ def _walk(
     depth: int,
     results: list[Path],
 ) -> None:
-    if (path / ".git").is_dir():
+    if (path / ".git").exists():
         results.append(path)
+        for sub_path in _active_submodule_paths(path):
+            if sub_path.is_dir():
+                _walk(path=sub_path, max_depth=max_depth, depth=depth, results=results)
         return
     if depth >= max_depth:
         return
