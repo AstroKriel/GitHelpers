@@ -217,21 +217,33 @@ def scan_repos(
     if not repos:
         shell_interface.log_outcome("no git repos found")
         return
-    is_fetching = not is_fetch_skipped
-    statuses = [_get_repo_status(path=repo, is_fetching=is_fetching, since=since) for repo in repos]
     if since is not None:
-        statuses = [status for status in statuses if status.last_commit_age_days <= since]
         shell_interface.bind_var(var_name="since_days", var_value=str(since))
-    to_show = statuses if since is not None else [status for status in statuses if status.dirty_files or status.diverged]
-    if not to_show:
+    is_fetching = not is_fetch_skipped
+    dirty_count = 0
+    unpushed_count = 0
+    unpulled_count = 0
+    anything_shown = False
+    for repo in repos:
+        status = _get_repo_status(path=repo, is_fetching=is_fetching, since=since)
+        if status.dirty_files:
+            dirty_count += 1
+        if any(b.commits_ahead for b in status.diverged):
+            unpushed_count += 1
+        if any(b.commits_behind for b in status.diverged):
+            unpulled_count += 1
+        should_show = (
+            status.last_commit_age_days <= since
+            if since is not None
+            else bool(status.dirty_files or status.diverged)
+        )
+        if should_show:
+            _print_repo_status(status=status)
+            anything_shown = True
+    if not anything_shown:
         shell_interface.log_outcome("all repos are clean and synced")
         return
-    for status in to_show:
-        _print_repo_status(status=status)
-    dirty_count = sum(1 for status in statuses if status.dirty_files)
-    unpushed_count = sum(1 for status in statuses if any(branch.commits_ahead for branch in status.diverged))
-    unpulled_count = sum(1 for status in statuses if any(branch.commits_behind for branch in status.diverged))
-    summary_parts = [f"{len(repos)} repos scanned", f"{dirty_count} dirty"]
+    summary_parts = [f"{len(repos)} repos scanned", f"{dirty_count} dirty repos"]
     if unpushed_count:
         summary_parts.append(f"{unpushed_count} with unpushed commits")
     if unpulled_count:
