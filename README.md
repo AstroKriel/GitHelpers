@@ -108,6 +108,13 @@ git_helpers amend-last-commit [msg]      # fold staged changes into the last com
 git_helpers rename-last-commit <msg>     # update the message of the last commit without changing its content (rewrites history)
 ```
 
+**Summary**
+```bash
+git_helpers scan-repos [--depth N] [--since DAYS]  # scan for git repos from CWD; report dirty, unpushed, and recently active ones
+```
+
+`--depth N` (default: 3) controls how many directory levels to descend. `--since DAYS` filters to repos with a commit in the last N days; without it, only repos needing attention (dirty or unpushed) are shown.
+
 ---
 
 ## Global flags
@@ -162,18 +169,23 @@ uv run pytest vtests/
 GitHelpers/
 ├── src/
 │   └── git_helpers/
-│       ├── user_interface.py   # [entrypoint] argparse wiring and main()
-│       ├── git_config.py       # [commands] global git config commands
-│       ├── git_inspection.py   # [commands] read-only inspection commands
-│       ├── git_branches.py     # [commands] branch management commands
-│       ├── git_submodules.py   # [commands] submodule commands
-│       ├── git_sync.py         # [commands] push, sync, stash, and history commands
-│       ├── repo_state.py       # [internal] repo state queries and guards
-│       └── shell_interface.py  # [internal] config, logging, subprocess wrappers
-├── utests/                     # unit tests
-├── vtests/                     # validation tests
-├── pyproject.toml              # package metadata; registers the git_helpers command
-├── uv.lock                     # pinned dependency versions
+│       ├── user_interface.py      # [entrypoint] argparse wiring and main()
+│       ├── repo_state.py          # [internal] repo state queries and guards
+│       ├── shell_interface.py     # [internal] config, logging, subprocess wrappers
+│       ├── commands/
+│       │   ├── git_config.py      # global git config commands
+│       │   ├── git_inspection.py  # read-only inspection commands
+│       │   ├── git_branches.py    # branch management commands
+│       │   ├── git_submodules.py  # submodule commands
+│       │   └── git_sync.py        # push, sync, stash, and history commands
+│       └── summary/
+│           └── git_scan.py        # cross-repo scan command
+├── utests/                        # unit tests (no real git repos)
+├── vtests/
+│   ├── commands/                  # validation tests for commands/
+│   └── summary/                   # validation tests for summary/
+├── pyproject.toml                 # package metadata; registers the git_helpers command
+├── uv.lock                        # pinned dependency versions
 ├── .gitignore
 └── README.md
 ```

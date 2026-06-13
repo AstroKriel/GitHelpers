@@ -24,6 +24,7 @@ from git_helpers.commands import (
     git_submodules,
     git_sync,
 )
+from git_helpers.summary import git_scan
 
 ##
 ## === COMMAND LINE INTERFACE
@@ -485,6 +486,31 @@ COMMANDS: dict[str, CommandDetails] = dict(
                     "nargs": "+",
                 },
             )],
+        ),
+        ## summary
+        cli_command(
+            section="Summary",
+            cmd_name="scan-repos",
+            cmd_fn=git_scan.scan_repos,
+            cmd_help="scan for git repos from CWD and report dirty, unpushed, and recently active ones",
+            cmd_args=[
+                (
+                    "--depth",
+                    {
+                        "type": int,
+                        "default": 3,
+                        "metavar": "N",
+                    },
+                ),
+                (
+                    "--since",
+                    {
+                        "type": int,
+                        "default": None,
+                        "metavar": "DAYS",
+                    },
+                ),
+            ],
         ),
         ## hidden (not promoted) utilities
         cli_command(
