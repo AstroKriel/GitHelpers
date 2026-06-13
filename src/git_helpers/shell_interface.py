@@ -9,7 +9,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from enum import Enum
-from typing import NoReturn
+from typing import NoReturn, final
 
 ## third-party
 from rich.console import Console
@@ -60,6 +60,7 @@ class _Theme:
     marker: _Markers
 
 
+@final
 class _Themes:
     STEP = _Theme(
         color=_Colors.WHITE,

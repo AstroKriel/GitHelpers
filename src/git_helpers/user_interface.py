@@ -10,7 +10,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, override
 
 ## third-party
 from rich.console import Console
@@ -39,7 +39,7 @@ class _HelpFormatter(argparse.HelpFormatter):
             width=120,  # first colum
             max_help_position=100,  # second column
         )
-        self._action_max_length = 30
+        self._action_max_length: int = 30
 
 
 @dataclass(frozen=True)
@@ -106,6 +106,7 @@ class _GroupedHelpAction(argparse.Action):
             help=help,
         )
 
+    @override
     def __call__(
         self,
         parser: argparse.ArgumentParser,
