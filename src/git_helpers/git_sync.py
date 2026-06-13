@@ -68,7 +68,7 @@ def cmd_push(
     shell_interface.log_step("detecting whether upstream is already set")
     if repo_state.has_upstream():
         ## upstream already configured — plain push uses it automatically.
-        shell_interface.log_outcome("using plain push (upstream already set)")
+        shell_interface.log_step("upstream already set; using plain push")
         cmd_push_existing = [
             "git",
             "push",
@@ -77,11 +77,12 @@ def cmd_push(
             config=config,
             cmd=cmd_push_existing,
         )
+        shell_interface.log_outcome("pushed current branch")
     else:
         ## no upstream yet: push and set it in one step with `-u`.
         ## `HEAD` means "push the current branch, whatever it's named".
-        shell_interface.log_outcome(
-            f"creating upstream and pushing with -u to {default_remote_name}/<same-name>",
+        shell_interface.log_step(
+            f"no upstream set; pushing with -u to {default_remote_name}/<same-name>",
         )
         cmd_push_set_upstream = [
             "git",
@@ -94,6 +95,7 @@ def cmd_push(
             config=config,
             cmd=cmd_push_set_upstream,
         )
+        shell_interface.log_outcome(f"pushed and set upstream to {default_remote_name}/<same-name>")
 
 
 def cmd_sync_branch(
@@ -149,10 +151,12 @@ def cmd_sync_branch(
     elif repo_state.has_upstream():
         shell_interface.log_step("pulling with --ff")
         ## same semantics as above but via `pull`, which combines fetch + merge
-        ## against the configured upstream in one step.
+        ## against the configured upstream in one step. `--no-rebase` overrides
+        ## the global pull.rebase=true so this command keeps its merge semantics.
         cmd_pull_ff = [
             "git",
             "pull",
+            "--no-rebase",
             "--ff",
         ]
         shell_interface.run_cmd(

@@ -67,7 +67,7 @@ def cmd_set_global_config(
         config=config,
         cmd=cmd_set_rerere,
     )
-    shell_interface.log_result("installed pull-rebase and FF-first merge defaults globally in ~/.gitconfig")
+    shell_interface.log_outcome("installed pull-rebase and FF-first merge defaults globally in ~/.gitconfig")
 
 
 def show_global_config(
@@ -93,7 +93,7 @@ def show_global_config(
         )
         return raw_value or "(unset)"
 
-    shell_interface.log_result("global git configuration:")
+    shell_interface.log_step("global git configuration:")
     for key in [
             "pull.rebase",
             "pull.ff",
