@@ -428,7 +428,7 @@ class TestScanRepos_Output:
         captured = capsys.readouterr()
         assert "commits" in captured.err
 
-    def test_shows_repo_relative_path(
+    def test_shows_repo_absolute_path(
         self,
         scan_root: Path,
         capsys: pytest.CaptureFixture[str],
@@ -437,7 +437,7 @@ class TestScanRepos_Output:
         (repo / "dirty.txt").write_text("changes")
         git_scan.scan_repos(_CONFIG, depth=2, is_fetch_skipped=True)
         captured = capsys.readouterr()
-        assert "group/myproject" in captured.err
+        assert str(repo) in captured.err
 
 
 ## } V-TEST

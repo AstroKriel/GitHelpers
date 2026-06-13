@@ -178,13 +178,8 @@ def _get_repo_status(
 def _print_repo_status(
     *,
     status: _RepoStatus,
-    root: Path,
 ) -> None:
-    try:
-        label = str(status.path.relative_to(root))
-    except ValueError:
-        label = str(status.path)
-    shell_interface.log_step(label)
+    shell_interface.log_step(str(status.path))
     shell_interface.bind_var(var_name="last commit", var_value=status.last_commit_rel)
     if status.commits_in_window:
         shell_interface.bind_var(var_name="commits", var_value=str(status.commits_in_window))
@@ -232,7 +227,7 @@ def scan_repos(
         shell_interface.log_outcome("all repos are clean and synced")
         return
     for status in to_show:
-        _print_repo_status(status=status, root=root)
+        _print_repo_status(status=status)
     dirty_count = sum(1 for status in statuses if status.dirty_files)
     unpushed_count = sum(1 for status in statuses if any(branch.commits_ahead for branch in status.diverged))
     unpulled_count = sum(1 for status in statuses if any(branch.commits_behind for branch in status.diverged))
