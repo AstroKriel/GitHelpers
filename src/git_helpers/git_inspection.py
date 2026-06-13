@@ -31,7 +31,6 @@ def show_upstream_state(
     repo_state.require_repo()
     shell_interface.log_step("identifying current branch")
     current_branch_name = repo_state.current_branch()
-    shell_interface.log_result(f"local branch: {current_branch_name}")
     shell_interface.log_step("resolving upstream (if any)")
     ## resolve `@{u}` to a human-readable name like "origin/main".
     cmd_resolve_upstream = [
@@ -65,10 +64,8 @@ def show_upstream_state(
             config=config,
             cmd=cmd_show_upstream_commit,
         )
-        shell_interface.log_outcome(f"upstream detected: {upstream_name}")
     else:
         shell_interface.log_outcome("no upstream configured for current branch")
-        shell_interface.log_result("upstream:     (none)")
 
 
 def show_branches_status(
