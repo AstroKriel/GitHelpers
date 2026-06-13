@@ -40,4 +40,25 @@ def make_bare_remote(path: Path) -> Path:
     return path
 
 
+def add_submodule(
+    parent_repo: Path,
+    sub_source: Path,
+    sub_name: str,
+) -> Path:
+    """Add sub_source as a submodule of parent_repo; returns the submodule worktree path."""
+    git(["-c", "protocol.file.allow=always", "submodule", "add", str(sub_source), sub_name], cwd=parent_repo)
+    git(["commit", "-m", f"add {sub_name} submodule"], cwd=parent_repo)
+    return parent_repo / sub_name
+
+
+def set_submodule_ignore_all(
+    repo: Path,
+    sub_name: str,
+) -> None:
+    """Set ignore = all on a submodule entry in .gitmodules and commit."""
+    git(["config", "-f", ".gitmodules", f"submodule.{sub_name}.ignore", "all"], cwd=repo)
+    git(["add", ".gitmodules"], cwd=repo)
+    git(["commit", "-m", f"set {sub_name} ignore = all"], cwd=repo)
+
+
 ## } V-TEST CONFTEST

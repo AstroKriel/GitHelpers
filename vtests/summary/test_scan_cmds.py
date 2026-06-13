@@ -14,7 +14,7 @@ import pytest
 from git_helpers import shell_interface
 from git_helpers.summary import git_scan
 from vtests.helpers import git, make_commit
-from vtests.summary.conftest import make_bare_remote, make_repo_at
+from vtests.summary.conftest import add_submodule, make_bare_remote, make_repo_at, set_submodule_ignore_all
 
 ##
 ## === HELPERS
@@ -79,6 +79,95 @@ class TestFindRepos_Discovery:
         (scan_root / "empty").mkdir()
         repos = git_scan._find_repos(root=scan_root, max_depth=2)
         assert repos == []
+
+
+##
+## === SUBMODULE PARSING
+##
+
+
+class TestActiveSubmodulePaths_Parsing:
+
+    def test_returns_empty_when_no_gitmodules(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        paths = git_scan._active_submodule_paths(tmp_path)
+        assert paths == []
+
+    def test_returns_path_for_active_submodule(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "sub"]\n\tpath = sub\n\turl = https://example.com/sub.git\n'
+        )
+        paths = git_scan._active_submodule_paths(tmp_path)
+        assert paths == [tmp_path / "sub"]
+
+    def test_skips_submodule_with_ignore_all(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "sub"]\n\tpath = sub\n\turl = https://example.com/sub.git\n\tignore = all\n'
+        )
+        paths = git_scan._active_submodule_paths(tmp_path)
+        assert paths == []
+
+    def test_returns_only_active_when_mixed(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / ".gitmodules").write_text(
+            '[submodule "active"]\n\tpath = active\n\turl = https://example.com/a.git\n'
+            '[submodule "passive"]\n\tpath = passive\n\turl = https://example.com/p.git\n\tignore = all\n'
+        )
+        paths = git_scan._active_submodule_paths(tmp_path)
+        assert paths == [tmp_path / "active"]
+
+
+##
+## === SUBMODULE RECURSION
+##
+
+
+class TestFindRepos_SubmoduleRecursion:
+
+    def test_finds_submodule_with_git_file(
+        self,
+        scan_root: Path,
+        tmp_path: Path,
+    ) -> None:
+        parent = make_repo_at(scan_root / "parent")
+        sub_source = make_repo_at(tmp_path / "sub_source")
+        add_submodule(parent, sub_source, "sub")
+        repos = git_scan._find_repos(root=scan_root, max_depth=1)
+        assert scan_root / "parent" / "sub" in repos
+
+    def test_recurses_into_active_submodule(
+        self,
+        scan_root: Path,
+        tmp_path: Path,
+    ) -> None:
+        parent = make_repo_at(scan_root / "parent")
+        sub_source = make_repo_at(tmp_path / "sub_source")
+        add_submodule(parent, sub_source, "active")
+        repos = git_scan._find_repos(root=scan_root, max_depth=1)
+        assert scan_root / "parent" in repos
+        assert scan_root / "parent" / "active" in repos
+
+    def test_does_not_recurse_into_ignored_submodule(
+        self,
+        scan_root: Path,
+        tmp_path: Path,
+    ) -> None:
+        parent = make_repo_at(scan_root / "parent")
+        sub_source = make_repo_at(tmp_path / "sub_source")
+        add_submodule(parent, sub_source, "passive")
+        set_submodule_ignore_all(parent, "passive")
+        repos = git_scan._find_repos(root=scan_root, max_depth=1)
+        assert scan_root / "parent" / "passive" not in repos
 
 
 ##
@@ -166,6 +255,26 @@ class TestGetRepoStatus_Diverged:
         git(["push", "-u", "origin", "main"], cwd=repo)
         status = git_scan._get_repo_status(path=repo, is_fetching=False)
         assert status.diverged == []
+
+
+class TestGetRepoStatus_CommitsInWindow:
+
+    def test_zero_when_since_not_given(
+        self,
+        scan_root: Path,
+    ) -> None:
+        repo = make_repo_at(scan_root / "proj")
+        status = git_scan._get_repo_status(path=repo, is_fetching=False)
+        assert status.commits_in_window == 0
+
+    def test_counts_recent_commits_within_window(
+        self,
+        scan_root: Path,
+    ) -> None:
+        repo = make_repo_at(scan_root / "proj")
+        make_commit(repo, msg="second")
+        status = git_scan._get_repo_status(path=repo, is_fetching=False, since=1)
+        assert status.commits_in_window == 2
 
 
 class TestGetRepoStatus_LastCommit:
@@ -308,6 +417,16 @@ class TestScanRepos_Output:
         git_scan.scan_repos(_CONFIG, depth=1, is_fetch_skipped=False)
         captured = capsys.readouterr()
         assert "with unpulled commits" in captured.err
+
+    def test_since_shows_commit_count_in_output(
+        self,
+        scan_root: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        make_repo_at(scan_root / "proj")
+        git_scan.scan_repos(_CONFIG, depth=1, since=1, is_fetch_skipped=True)
+        captured = capsys.readouterr()
+        assert "commits" in captured.err
 
     def test_shows_repo_relative_path(
         self,
