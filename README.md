@@ -2,6 +2,8 @@
 
 `git_helpers` is a command line tool that packages up common `git` workflows into single commands. Each command operates on the `git` repo in your current directory, narrates what it's doing, and prints the underlying `git` commands it runs; that way you learn the mechanics while getting the job done.
 
+---
+
 ## Getting setup
 
 Before you start, you'll need [uv](https://docs.astral.sh/uv/).
@@ -21,13 +23,15 @@ git_helpers self-check  # verify git is on your PATH
 git_helpers --help      # list all available commands
 ```
 
-`uv` places installed tools in `~/.local/bin`, so if `git_helpers` isn't found after the install, add the following to your shell config (`~/.zshrc` for zsh, and `~/.bashrc` for bash):
+`uv` places installed tools in `~/.local/bin`, so if `git_helpers` isn't found after the install, add the following to your shell config (`~/.zshrc` for zsh, `~/.bashrc` for bash):
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## Update GitHelpers
+---
+
+## Update
 
 From your local GitHelpers clone, pull the latest changes and reinstall:
 
@@ -36,33 +40,44 @@ git pull
 uv tool install . --reinstall
 ```
 
-## Uninstall GitHelpers
+---
+
+## Uninstall
 
 ```bash
 uv tool uninstall git_helpers
 ```
 
+---
+
 ## Available commands
 
 Run any command from inside a git repo. Use `git_helpers --help` to see all available commands, or `git_helpers <command> --help` for details on a specific one.
 
-Note that below `<arg>` means required, and `[arg]` means optional.
+In the listings below, `<arg>` means a required positional argument, `[arg]` means optional, and `[--flag]` means an optional flag.
 
 **Global git configuration**
 ```bash
-git_helpers set-global-config   # set sensible merge rules in ~/.gitconfig (fast-forward preferred, rerere enabled)
+git_helpers set-global-config   # set pull.rebase=true, FF-first merge defaults, and rerere in ~/.gitconfig
 git_helpers show-global-config  # show the current values of the git settings this tool manages
 ```
 
 **Inspecting repo state**
 ```bash
-git_helpers show-branches-status     # see all local branches and whether they're ahead or behind their remote (fetches first)
-git_helpers count-ahead-behind       # show how many commits the current branch is ahead of and behind its upstream
-git_helpers show-upstream-state      # show which remote branch the current branch is tracking and its latest commit
-git_helpers show-unpulled-commits    # list commits on the remote that haven't been pulled yet
-git_helpers show-recent-commits [N]  # show the last N commits on the current branch (default: 20)
-git_helpers show-local-remotes       # list all configured remotes and their URLs
-git_helpers show-submodules-status   # show the current state of each submodule (commit SHA and init status)
+git_helpers show-branches-status                                          # see all local branches and whether they're ahead or behind their remote (fetches first)
+git_helpers count-ahead-behind                                            # show how many commits the current branch is ahead of and behind its upstream
+git_helpers show-upstream-state                                           # show which remote branch the current branch is tracking and its latest commit
+git_helpers show-unpulled-commits                                         # list commits on the remote that haven't been pulled yet
+git_helpers show-recent-commits [--max-entries N] [--show-files-changed]  # show the last N commits on the current branch (default: 20); add --show-files-changed to list files changed per commit
+git_helpers show-local-remotes                                            # list all configured remotes and their URLs
+git_helpers show-submodules-status                                        # show the current state of each submodule (commit SHA and init status)
+```
+
+**Inspecting diffs**
+```bash
+git_helpers show-diff [--path path]                                               # show all local changes vs HEAD (staged and unstaged)
+git_helpers show-diff-committed [--base branch] [--path path]                     # show committed changes on the current feature branch vs a base branch (default: remote default)
+git_helpers show-diff-last --num-commits N [--include-uncommitted] [--path path]  # show changes over the last N commits; add --include-uncommitted to include local changes
 ```
 
 **Managing branches**
@@ -93,6 +108,8 @@ git_helpers amend-last-commit [msg]      # fold staged changes into the last com
 git_helpers rename-last-commit <msg>     # update the message of the last commit without changing its content (rewrites history)
 ```
 
+---
+
 ## Global flags
 
 These flags apply to any command and are placed before the subcommand:
@@ -103,6 +120,22 @@ git_helpers --allow-dirty <cmd>  # skip the clean worktree check
 ```
 
 `--dry-run` is useful for previewing what a command will do before committing to it.
+
+---
+
+## Output legend
+
+| Symbol | Color | Meaning |
+|---|---|---|
+| `○` | white | step starting |
+| `●` | green | success / outcome |
+| `→` | blue | command being run |
+| `→` | orange | skipped (dry-run) |
+| `●` | red | error |
+| `→` | gray | read-only lookup command |
+| `·` | gray | resolved value / context |
+
+---
 
 ## Run test suites
 
@@ -121,9 +154,11 @@ uv run pytest utests/
 uv run pytest vtests/
 ```
 
+---
+
 ## File structure
 
-```
+```text
 GitHelpers/
 ├── src/
 │   └── git_helpers/
@@ -142,6 +177,8 @@ GitHelpers/
 ├── .gitignore
 └── README.md
 ```
+
+---
 
 ## License
 
