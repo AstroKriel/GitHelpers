@@ -46,7 +46,7 @@ class _HelpFormatter(argparse.HelpFormatter):
 class CommandDetails:
     help: str
     cmd_args: list[tuple[str, dict[str, Any]]]
-    handler: Callable[[argparse.Namespace], Any]
+    handler: Callable[[argparse.Namespace], None]
     section: str
     is_hidden: bool
 
@@ -55,7 +55,7 @@ def cli_command(
     section: str = "",
     *,
     cmd_name: str,
-    cmd_fn: Callable[..., Any],
+    cmd_fn: Callable[..., None],
     cmd_help: str = "",
     cmd_args: list[tuple[str, dict[str, Any]]] | None = None,
     is_hidden: bool = False,
@@ -66,7 +66,7 @@ def cli_command(
     ## build Config from global flags, then pass it as the first positional arg to cmd_fn
     def handler(
         args: argparse.Namespace,
-    ) -> Any:
+    ) -> None:
         config = shell_interface.Config(
             dry_run=args.dry_run,
             allow_dirty=args.allow_dirty,
@@ -111,7 +111,7 @@ class _GroupedHelpAction(argparse.Action):
         self,
         parser: argparse.ArgumentParser,
         namespace: argparse.Namespace,
-        values: str | Sequence[Any] | None,
+        values: str | Sequence[str] | None,
         option_string: str | None = None,
     ) -> None:
         console = Console()
