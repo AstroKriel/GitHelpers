@@ -19,14 +19,14 @@ from git_helpers import shell_interface
 ##
 
 
-@dataclass
+@dataclass(frozen=True)
 class _BranchStatus:
     name: str
     commits_ahead: int = 0
     commits_behind: int = 0
 
 
-@dataclass
+@dataclass(frozen=True)
 class _RepoStatus:
     path: Path
     dirty_files: int
@@ -41,15 +41,17 @@ class _RepoStatus:
 
 
 def _find_repos(
+    *,
     root: Path,
     max_depth: int,
 ) -> list[Path]:
     results: list[Path] = []
-    _walk(root, max_depth, 0, results)
+    _walk(path=root, max_depth=max_depth, depth=0, results=results)
     return sorted(results)
 
 
 def _walk(
+    *,
     path: Path,
     max_depth: int,
     depth: int,
@@ -63,7 +65,7 @@ def _walk(
     try:
         for child in sorted(path.iterdir()):
             if child.is_dir() and not child.name.startswith("."):
-                _walk(child, max_depth, depth + 1, results)
+                _walk(path=child, max_depth=max_depth, depth=depth + 1, results=results)
     except PermissionError:
         pass
 
@@ -92,14 +94,15 @@ def _fetch(
 
 
 def _get_repo_status(
+    *,
     path: Path,
-    fetch: bool = True,
+    is_fetching: bool = True,
 ) -> _RepoStatus:
-    if fetch:
+    if is_fetching:
         _fetch(path)
 
     dirty_output = _query(["git", "status", "--porcelain"], path)
-    dirty_files = len([ln for ln in dirty_output.splitlines() if ln.strip()])
+    dirty_files = len([line for line in dirty_output.splitlines() if line.strip()])
 
     ref_output = _query(
         ["git", "for-each-ref", "--format=%(refname:short) %(upstream:track)", "refs/heads/"],
@@ -108,7 +111,7 @@ def _get_repo_status(
     diverged: list[_BranchStatus] = []
     for line in ref_output.splitlines():
         parts = line.split(" ", 1)
-        branch = parts[0]
+        branch_name = parts[0]
         track = parts[1] if len(parts) > 1 else ""
         ahead_match = re.search(r"ahead (\d+)", track)
         behind_match = re.search(r"behind (\d+)", track)
@@ -116,7 +119,7 @@ def _get_repo_status(
         commits_behind = int(behind_match.group(1)) if behind_match else 0
         if commits_ahead or commits_behind:
             diverged.append(_BranchStatus(
-                name=branch,
+                name=branch_name,
                 commits_ahead=commits_ahead,
                 commits_behind=commits_behind,
             ))
@@ -145,6 +148,7 @@ def _get_repo_status(
 
 
 def _print_repo_status(
+    *,
     status: _RepoStatus,
     root: Path,
 ) -> None:
@@ -178,30 +182,30 @@ def scan_repos(
     config: shell_interface.Config,
     depth: int,
     since: int | None = None,
-    no_fetch: bool = False,
+    is_fetch_skipped: bool = False,
 ) -> None:
     """Scan for git repos from CWD and report dirty, unpushed, and recently active ones."""
     root = Path.cwd()
     shell_interface.log_step(f"scanning from {root} (depth {depth})")
-    repos = _find_repos(root, depth)
+    repos = _find_repos(root=root, max_depth=depth)
     shell_interface.bind_var(var_name="repos_found", var_value=str(len(repos)))
     if not repos:
         shell_interface.log_outcome("no git repos found")
         return
-    fetch = not no_fetch
-    statuses = [_get_repo_status(r, fetch=fetch) for r in repos]
+    is_fetching = not is_fetch_skipped
+    statuses = [_get_repo_status(path=repo, is_fetching=is_fetching) for repo in repos]
     if since is not None:
-        statuses = [s for s in statuses if s.last_commit_age_days <= since]
+        statuses = [status for status in statuses if status.last_commit_age_days <= since]
         shell_interface.bind_var(var_name="since_days", var_value=str(since))
-    to_show = statuses if since is not None else [s for s in statuses if s.dirty_files or s.diverged]
+    to_show = statuses if since is not None else [status for status in statuses if status.dirty_files or status.diverged]
     if not to_show:
         shell_interface.log_outcome("all repos are clean and synced")
         return
     for status in to_show:
-        _print_repo_status(status, root)
-    dirty_count = sum(1 for s in statuses if s.dirty_files)
-    unpushed_count = sum(1 for s in statuses if any(b.commits_ahead for b in s.diverged))
-    unpulled_count = sum(1 for s in statuses if any(b.commits_behind for b in s.diverged))
+        _print_repo_status(status=status, root=root)
+    dirty_count = sum(1 for status in statuses if status.dirty_files)
+    unpushed_count = sum(1 for status in statuses if any(branch.commits_ahead for branch in status.diverged))
+    unpulled_count = sum(1 for status in statuses if any(branch.commits_behind for branch in status.diverged))
     summary_parts = [f"{len(repos)} repos scanned", f"{dirty_count} dirty"]
     if unpushed_count:
         summary_parts.append(f"{unpushed_count} with unpushed commits")
