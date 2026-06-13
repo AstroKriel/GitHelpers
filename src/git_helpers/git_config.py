@@ -102,8 +102,9 @@ def show_global_config(
     ]:
         ## `{key:<15}` left-aligns the key in a 15-char field so values line up.
         shell_interface.log_result(f"\t{key:<15} = {read_config_value(key)}")
-    shell_interface.log_result(
-        "tip: edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'",
+    shell_interface.bind_var(
+        var_name="tip",
+        var_value="edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'",
     )
 
 
