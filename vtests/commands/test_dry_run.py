@@ -22,7 +22,7 @@ def test_dry_run_delete_branch_leaves_branch_intact(
     make_repo_: Path,
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "dry-target"], cwd=make_repo_)
-    vtest_helpers.make_commit(make_repo_, "dry commit")
+    vtest_helpers.make_commit(make_repo_, msg="dry commit")
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
     vtest_helpers.git(["merge", "dry-target"], cwd=make_repo_)
     git_branches.cmd_delete_local_branch(Config(dry_run=True), "dry-target")
@@ -55,7 +55,7 @@ def test_dry_run_sync_branch_leaves_head_unchanged(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commit(second_dir, "remote commit")
+    vtest_helpers.make_commit(second_dir, msg="remote commit")
     vtest_helpers.git(["push"], cwd=second_dir)
     ## dry-run sync should leave HEAD where it is
     before_sha = vtest_helpers.head_sha(repo_dir)
@@ -73,7 +73,7 @@ def test_dry_run_push_does_not_push(
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
     remote_sha_before = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
-    vtest_helpers.make_commit(repo_dir, "local only")
+    vtest_helpers.make_commit(repo_dir, msg="local only")
     git_sync.cmd_push(Config(dry_run=True), [])
     remote_sha_after = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
     assert remote_sha_before == remote_sha_after

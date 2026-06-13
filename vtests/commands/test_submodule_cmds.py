@@ -33,7 +33,7 @@ def sub_remote(
     git(["clone", str(remote_dir), str(work_dir)], cwd=tmp_path)
     for key, val in GIT_USER.items():
         git(["config", key, val], cwd=work_dir)
-    make_commit(work_dir, "sub init")
+    make_commit(work_dir, msg="sub init")
     git(["push", "-u", "origin", "main"], cwd=work_dir)
     return remote_dir
 
@@ -54,7 +54,7 @@ def make_repo_with_submodule(
     git(["init", "-b", "main"], cwd=parent)
     for key, val in GIT_USER.items():
         git(["config", key, val], cwd=parent)
-    make_commit(parent, "parent init")
+    make_commit(parent, msg="parent init")
     ## allow local-path submodule clones — git 2.38+ restricts the file protocol by default.
     ## env vars are inherited by all subprocess calls (including git clone inside submodule add).
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
@@ -70,7 +70,7 @@ def make_repo_with_submodule(
     git(["clone", str(sub_remote), str(sub_seed2)], cwd=tmp_path)
     for key, val in GIT_USER.items():
         git(["config", key, val], cwd=sub_seed2)
-    make_commit(sub_seed2, "sub update")
+    make_commit(sub_seed2, msg="sub update")
     git(["push"], cwd=sub_seed2)
     ## detach HEAD in the submodule at the old commit — simulates a fresh `git submodule update`
     git(["-C", "sub", "checkout", "--detach", "HEAD"], cwd=parent)

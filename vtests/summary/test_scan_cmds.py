@@ -125,7 +125,7 @@ class TestGetRepoStatus_Diverged:
         repo = make_repo_at(scan_root / "proj")
         git(["remote", "add", "origin", str(remote)], cwd=repo)
         git(["push", "-u", "origin", "main"], cwd=repo)
-        make_commit(repo, "extra")
+        make_commit(repo, msg="extra")
         status = git_scan._get_repo_status(path=repo, is_fetching=False)
         assert len(status.diverged) == 1
         assert status.diverged[0].name == "main"
@@ -146,7 +146,7 @@ class TestGetRepoStatus_Diverged:
         git(["clone", str(remote), str(other)], cwd=tmp_path)
         for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
             git(["config", key, val], cwd=other)
-        make_commit(other, "remote commit")
+        make_commit(other, msg="remote commit")
         git(["push"], cwd=other)
         ## repo fetches and now sees it is behind
         status = git_scan._get_repo_status(path=repo, is_fetching=True)
@@ -233,7 +233,7 @@ class TestScanRepos_Output:
         repo = make_repo_at(scan_root / "proj")
         git(["remote", "add", "origin", str(remote)], cwd=repo)
         git(["push", "-u", "origin", "main"], cwd=repo)
-        make_commit(repo, "extra")
+        make_commit(repo, msg="extra")
         git_scan.scan_repos(_CONFIG, depth=1, is_fetch_skipped=True)
         captured = capsys.readouterr()
         assert "proj" in captured.err
@@ -253,7 +253,7 @@ class TestScanRepos_Output:
         git(["clone", str(remote), str(other)], cwd=tmp_path)
         for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
             git(["config", key, val], cwd=other)
-        make_commit(other, "remote commit")
+        make_commit(other, msg="remote commit")
         git(["push"], cwd=other)
         git_scan.scan_repos(_CONFIG, depth=1, is_fetch_skipped=True)
         ## without fetch, behind count is stale: repo must fetch first to see it
@@ -303,7 +303,7 @@ class TestScanRepos_Output:
         git(["clone", str(remote), str(other)], cwd=tmp_path)
         for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
             git(["config", key, val], cwd=other)
-        make_commit(other, "remote commit")
+        make_commit(other, msg="remote commit")
         git(["push"], cwd=other)
         git_scan.scan_repos(_CONFIG, depth=1, is_fetch_skipped=False)
         captured = capsys.readouterr()

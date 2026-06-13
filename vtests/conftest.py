@@ -29,7 +29,7 @@ def make_repo_(
     git(["init", "-b", "main"], cwd=repo_dir)
     for key, val in GIT_USER.items():
         git(["config", key, val], cwd=repo_dir)
-    make_commit(repo_dir, "init")
+    make_commit(repo_dir, msg="init")
     monkeypatch.chdir(repo_dir)
     return repo_dir
 
@@ -51,7 +51,7 @@ def make_repo_with_remote(
     for key, val in GIT_USER.items():
         git(["config", key, val], cwd=repo_dir)
     git(["remote", "add", "origin", str(remote_dir)], cwd=repo_dir)
-    make_commit(repo_dir, "init")
+    make_commit(repo_dir, msg="init")
     git(["push", "-u", "origin", "main"], cwd=repo_dir)
     monkeypatch.chdir(repo_dir)
     return repo_dir, remote_dir

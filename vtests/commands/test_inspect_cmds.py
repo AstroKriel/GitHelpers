@@ -24,14 +24,14 @@ from vtests import helpers as vtest_helpers
 def test_show_recent_commits_runs_without_error(
     make_repo_: Path,
 ) -> None:
-    vtest_helpers.make_commits(make_repo_, 5)
+    vtest_helpers.make_commits(make_repo_, num_commits=5)
     git_inspection.show_recent_commits(Config(), max_entries=3)
 
 
 def test_show_recent_commits_default_max_entries(
     make_repo_: Path,
 ) -> None:
-    vtest_helpers.make_commits(make_repo_, 5)
+    vtest_helpers.make_commits(make_repo_, num_commits=5)
     git_inspection.show_recent_commits(Config())
 
 
@@ -39,7 +39,7 @@ def test_show_recent_commits_stat_includes_stat_flag(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    vtest_helpers.make_commits(make_repo_, 2)
+    vtest_helpers.make_commits(make_repo_, num_commits=2)
     git_inspection.show_recent_commits(Config(dry_run=True), show_files_changed=True)
     out = capsys.readouterr().err
     assert "--stat" in out
@@ -55,7 +55,7 @@ def test_ahead_behind_shows_correct_counts(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    vtest_helpers.make_commits(repo_dir, 2, prefix="local")
+    vtest_helpers.make_commits(repo_dir, num_commits=2, prefix="local")
     git_inspection.count_ahead_behind(Config())
     out = capsys.readouterr().out
     assert "ahead: 2" in out
@@ -73,7 +73,7 @@ def test_ahead_behind_behind_counts(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, 3, prefix="remote")
+    vtest_helpers.make_commits(second_dir, num_commits=3, prefix="remote")
     vtest_helpers.git(["push"], cwd=second_dir)
     ## fetch to update tracking refs without pulling
     vtest_helpers.git(["fetch"], cwd=repo_dir)
@@ -125,7 +125,7 @@ def test_unpulled_commits_shows_remote_commits(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, 2, prefix="upstream commit")
+    vtest_helpers.make_commits(second_dir, num_commits=2, prefix="upstream commit")
     vtest_helpers.git(["push"], cwd=second_dir)
     git_inspection.show_unpulled_commits(Config())
     ## the run_cmd output goes to the terminal (subprocess), but the function
@@ -196,7 +196,7 @@ def test_show_diff_committed_with_explicit_base(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
-    vtest_helpers.make_commits(repo_dir, 2)
+    vtest_helpers.make_commits(repo_dir, num_commits=2)
     git_inspection.show_diff_committed(Config(dry_run=True), base="main")
     out = capsys.readouterr().err
     assert "main...HEAD" in out
@@ -208,7 +208,7 @@ def test_show_diff_committed_with_path(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
-    vtest_helpers.make_commits(repo_dir, 1)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
     git_inspection.show_diff_committed(Config(dry_run=True), base="main", path=".commit_counter")
     out = capsys.readouterr().err
     assert "main...HEAD" in out
@@ -222,7 +222,7 @@ def test_show_diff_committed_infers_default_branch(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
-    vtest_helpers.make_commits(repo_dir, 1)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
     git_inspection.show_diff_committed(Config(dry_run=True))
     out = capsys.readouterr().err
     assert "main...HEAD" in out
@@ -245,7 +245,7 @@ def test_show_diff_last_committed_uses_correct_refs(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    vtest_helpers.make_commits(make_repo_, 3)
+    vtest_helpers.make_commits(make_repo_, num_commits=3)
     git_inspection.show_diff_last(Config(dry_run=True), num_commits=3)
     out = capsys.readouterr().err
     assert "HEAD~3 HEAD" in out
@@ -255,7 +255,7 @@ def test_show_diff_last_include_uncommitted_omits_head_arg(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    vtest_helpers.make_commits(make_repo_, 2)
+    vtest_helpers.make_commits(make_repo_, num_commits=2)
     git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, include_uncommitted=True)
     out = capsys.readouterr().err
     assert "HEAD~2" in out
@@ -266,7 +266,7 @@ def test_show_diff_last_with_path_scopes_command(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    vtest_helpers.make_commits(make_repo_, 2)
+    vtest_helpers.make_commits(make_repo_, num_commits=2)
     git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, path=".commit_counter")
     out = capsys.readouterr().err
     assert "HEAD~2" in out

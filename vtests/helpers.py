@@ -24,6 +24,7 @@ GIT_USER = {
 
 def git(
     args: list[str],
+    *,
     cwd: Path,
 ) -> subprocess.CompletedProcess[str]:
     """Run a git command in the given directory; raises on non-zero exit."""
@@ -38,6 +39,7 @@ def git(
 
 def make_commit(
     repo_dir: Path,
+    *,
     msg: str = "test commit",
     filename: str = ".commit_counter",
 ) -> str:
@@ -52,11 +54,12 @@ def make_commit(
 
 def make_commits(
     repo_dir: Path,
+    *,
     num_commits: int,
     prefix: str = "commit",
 ) -> list[str]:
     """Make num_commits commits and return their short SHAs."""
-    return [make_commit(repo_dir, f"{prefix} {commit_index + 1}") for commit_index in range(num_commits)]
+    return [make_commit(repo_dir, msg=f"{prefix} {commit_index + 1}") for commit_index in range(num_commits)]
 
 
 def local_branches(

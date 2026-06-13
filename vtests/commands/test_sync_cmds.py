@@ -50,7 +50,7 @@ def test_sync_branch_pulls_remote_commits(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, 2, prefix="remote commit")
+    vtest_helpers.make_commits(second_dir, num_commits=2, prefix="remote commit")
     vtest_helpers.git(["push"], cwd=second_dir)
     ## sync should bring those commits into the local repo
     before_sha = vtest_helpers.head_sha(repo_dir)
@@ -65,7 +65,7 @@ def test_sync_branch_with_explicit_base(
     repo_dir, _ = make_repo_with_remote
     ## create a feature branch with some commits
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
-    vtest_helpers.make_commits(repo_dir, 2, prefix="feature")
+    vtest_helpers.make_commits(repo_dir, num_commits=2, prefix="feature")
     vtest_helpers.git(["push", "-u", "origin", "feature"], cwd=repo_dir)
     ## add commits to main on remote
     second_dir = repo_dir.parent / "second"
@@ -73,7 +73,7 @@ def test_sync_branch_with_explicit_base(
     vtest_helpers.git(["clone", str(repo_dir.parent / "remote.git"), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commit(second_dir, "main update", filename=".main_counter")
+    vtest_helpers.make_commit(second_dir, msg="main update", filename=".main_counter")
     vtest_helpers.git(["push"], cwd=second_dir)
     ## sync feature branch against origin/main
     git_sync.cmd_sync_branch(Config(), "origin/main")
@@ -167,7 +167,7 @@ def test_push_sets_upstream_when_none(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "no-upstream"], cwd=repo_dir)
-    vtest_helpers.make_commit(repo_dir, "branch commit")
+    vtest_helpers.make_commit(repo_dir, msg="branch commit")
     git_sync.cmd_push(Config(), [])
     upstream = vtest_helpers.git(
         ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
@@ -180,7 +180,7 @@ def test_push_with_existing_upstream_pushes_commit(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
-    vtest_helpers.make_commit(repo_dir, "new commit")
+    vtest_helpers.make_commit(repo_dir, msg="new commit")
     local_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=repo_dir).stdout.strip()
     git_sync.cmd_push(Config(), [])
     remote_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()

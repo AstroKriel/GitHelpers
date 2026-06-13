@@ -94,6 +94,7 @@ class _Themes:
 
 
 def _print_cmd(
+    *,
     theme: _Theme,
     cmd: list[str],
     cmd_prefix: str,
@@ -132,6 +133,7 @@ def log_outcome(
 
 
 def bind_var(
+    *,
     var_name: str,
     var_value: str,
 ) -> None:

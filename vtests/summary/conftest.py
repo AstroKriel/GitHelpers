@@ -30,7 +30,7 @@ def make_repo_at(path: Path) -> Path:
     git(["init", "-b", "main"], cwd=path)
     for key, val in GIT_USER.items():
         git(["config", key, val], cwd=path)
-    make_commit(path, "init")
+    make_commit(path, msg="init")
     return path
 
 

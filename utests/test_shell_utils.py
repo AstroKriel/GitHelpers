@@ -60,7 +60,7 @@ class TestBindVar_Output:
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        shell_interface.bind_var("branch_name", "main")
+        shell_interface.bind_var(var_name="branch_name", var_value="main")
         captured = capsys.readouterr()
         assert "·" in captured.err
         assert "branch_name" in captured.err

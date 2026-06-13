@@ -42,7 +42,7 @@ def test_delete_local_branch_refuses_unmerged_branch(
     make_repo_: Path,
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "unmerged"], cwd=make_repo_)
-    vtest_helpers.make_commit(make_repo_, "unmerged commit")
+    vtest_helpers.make_commit(make_repo_, msg="unmerged commit")
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
     ## git refuses -d on unmerged branches — raises CalledProcessError
     with pytest.raises(subprocess.CalledProcessError):
@@ -75,7 +75,7 @@ def test_prune_gone_locals_leaves_active_branches(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "active-branch"], cwd=repo_dir)
-    vtest_helpers.make_commit(repo_dir, "active commit")
+    vtest_helpers.make_commit(repo_dir, msg="active commit")
     vtest_helpers.git(["push", "-u", "origin", "active-branch"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     git_branches.cmd_prune_gone_locals(Config())
@@ -92,7 +92,7 @@ def test_prune_merged_locals_removes_merged_branch(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "merged-feature"], cwd=repo_dir)
-    vtest_helpers.make_commit(repo_dir, "feature commit")
+    vtest_helpers.make_commit(repo_dir, msg="feature commit")
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["merge", "merged-feature", "--no-ff", "-m", "merge feature"], cwd=repo_dir)
     vtest_helpers.git(["push"], cwd=repo_dir)
@@ -113,7 +113,7 @@ def test_prune_merged_locals_never_deletes_current_branch(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "current"], cwd=repo_dir)
-    vtest_helpers.make_commit(repo_dir, "current commit")
+    vtest_helpers.make_commit(repo_dir, msg="current commit")
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["merge", "current", "--no-ff", "-m", "merge current"], cwd=repo_dir)
     vtest_helpers.git(["push"], cwd=repo_dir)
@@ -148,7 +148,7 @@ def test_track_remote_branch_defaults_local_name_from_remote(
     ## push a fresh remote branch so there's a distinct ref to track without
     ## conflicting with the existing local 'main'
     vtest_helpers.git(["checkout", "-b", "feature-x"], cwd=repo_dir)
-    vtest_helpers.make_commit(repo_dir, "feature commit")
+    vtest_helpers.make_commit(repo_dir, msg="feature commit")
     vtest_helpers.git(["push", "origin", "feature-x"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["branch", "-D", "feature-x"], cwd=repo_dir)
@@ -226,7 +226,7 @@ def test_cleanup_local_branches_runs_both_passes(
     vtest_helpers.git(["push", "origin", "--delete", "gone"], cwd=repo_dir)
     ## set up a merged branch
     vtest_helpers.git(["checkout", "-b", "merged"], cwd=repo_dir)
-    vtest_helpers.make_commit(repo_dir, "merged commit")
+    vtest_helpers.make_commit(repo_dir, msg="merged commit")
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["merge", "merged", "--no-ff", "-m", "merge merged"], cwd=repo_dir)
     vtest_helpers.git(["push"], cwd=repo_dir)
