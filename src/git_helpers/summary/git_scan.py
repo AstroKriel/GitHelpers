@@ -33,6 +33,7 @@ class _RepoStatus:
     diverged: list[_BranchStatus] = field(default_factory=list)
     last_commit_rel: str = "(no commits)"
     last_commit_age_days: float = float("inf")
+    commits_in_window: int = 0
 
 
 ##
@@ -97,6 +98,7 @@ def _get_repo_status(
     *,
     path: Path,
     is_fetching: bool = True,
+    since: int | None = None,
 ) -> _RepoStatus:
     if is_fetching:
         _fetch(path)
@@ -133,12 +135,18 @@ def _get_repo_status(
         last_commit_rel = "(no commits)"
         last_commit_age_days = float("inf")
 
+    commits_in_window = 0
+    if since is not None:
+        count_output = _query(["git", "log", "--oneline", f"--after={since} days ago"], path)
+        commits_in_window = len(count_output.splitlines()) if count_output else 0
+
     return _RepoStatus(
         path=path,
         dirty_files=dirty_files,
         diverged=diverged,
         last_commit_rel=last_commit_rel,
         last_commit_age_days=last_commit_age_days,
+        commits_in_window=commits_in_window,
     )
 
 
@@ -158,6 +166,8 @@ def _print_repo_status(
         label = str(status.path)
     shell_interface.log_step(label)
     shell_interface.bind_var(var_name="last commit", var_value=status.last_commit_rel)
+    if status.commits_in_window:
+        shell_interface.bind_var(var_name="commits", var_value=str(status.commits_in_window))
     if status.dirty_files:
         shell_interface.bind_var(var_name="dirty", var_value=f"{status.dirty_files} file(s)")
     for branch in status.diverged:
@@ -193,7 +203,7 @@ def scan_repos(
         shell_interface.log_outcome("no git repos found")
         return
     is_fetching = not is_fetch_skipped
-    statuses = [_get_repo_status(path=repo, is_fetching=is_fetching) for repo in repos]
+    statuses = [_get_repo_status(path=repo, is_fetching=is_fetching, since=since) for repo in repos]
     if since is not None:
         statuses = [status for status in statuses if status.last_commit_age_days <= since]
         shell_interface.bind_var(var_name="since_days", var_value=str(since))
