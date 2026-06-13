@@ -28,7 +28,7 @@ dev = [
     "pytest>=8.0",
 ]
 
-[tool.pyright]
+[tool.basedpyright]
 include = ["src", "utests", "vtests"]
 extraPaths = ["src", "."]
 venvPath = "."
@@ -39,3 +39,6 @@ reportMissingTypeStubs = false
 reportUnusedParameter = "none"
 reportImplicitStringConcatenation = "none"
 reportUnusedCallResult = "none"
+reportImplicitOverride = "none"
+reportExplicitAny = "none"
+reportAny = "none"
