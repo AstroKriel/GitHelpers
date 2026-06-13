@@ -35,6 +35,16 @@ def test_show_recent_commits_default_max_entries(
     git_inspection.show_recent_commits(Config())
 
 
+def test_show_recent_commits_stat_includes_stat_flag(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    vtest_helpers.make_commits(make_repo_, 2)
+    git_inspection.show_recent_commits(Config(dry_run=True), show_files_changed=True)
+    out = capsys.readouterr().err
+    assert "--stat" in out
+
+
 ##
 ## === ahead-behind
 ##

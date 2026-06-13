@@ -192,14 +192,23 @@ COMMANDS: dict[str, CommandDetails] = dict(
             cmd_name="show-recent-commits",
             cmd_fn=git_inspection.show_recent_commits,
             cmd_help="show the last N commits on the current branch (default: 20)",
-            cmd_args=[(
-                "--max-entries",
-                {
-                    "type": int,
-                    "default": 20,
-                    "metavar": "N",
-                },
-            )],
+            cmd_args=[
+                (
+                    "--max-entries",
+                    {
+                        "type": int,
+                        "default": 20,
+                        "metavar": "N",
+                    },
+                ),
+                (
+                    "--show-files-changed",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                    },
+                ),
+            ],
         ),
         cli_command(
             section="Inspection",
@@ -217,7 +226,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             section="Inspection",
             cmd_name="show-diff",
             cmd_fn=git_inspection.show_diff,
-            cmd_help="show all local changes vs HEAD (staged and unstaged); optionally scope to a path",
+            cmd_help="show all local changes vs HEAD; optionally scope to a filepath",
             cmd_args=[(
                 "--path",
                 {

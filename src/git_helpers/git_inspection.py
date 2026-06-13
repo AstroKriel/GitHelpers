@@ -237,6 +237,7 @@ def show_local_remotes(
 def show_recent_commits(
     config: shell_interface.Config,
     max_entries: int = 20,
+    show_files_changed: bool = False,
 ) -> None:
     """Print the most recent N commits on the current branch (default 20)."""
     repo_state.require_repo()
@@ -247,6 +248,7 @@ def show_recent_commits(
     shell_interface.log_step("showing recent commits on current branch")
     ## `--oneline` = one commit per line (short SHA + subject).
     ## `--decorate` = show branch/tag pointers next to commits.
+    ## `--stat` = list files changed and insertion/deletion counts per commit.
     ## `-n` = limit to the most recent N entries.
     cmd_show_recent_commits = [
         "git",
@@ -256,6 +258,8 @@ def show_recent_commits(
         "-n",
         str(max_entries),
     ]
+    if show_files_changed:
+        cmd_show_recent_commits.append("--stat")
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_show_recent_commits,
