@@ -42,7 +42,7 @@ def test_show_recent_commits_default_max_entries(
 
 def test_ahead_behind_shows_correct_counts(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.make_commits(repo_dir, 2, prefix="local")
@@ -54,7 +54,7 @@ def test_ahead_behind_shows_correct_counts(
 
 def test_ahead_behind_behind_counts(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
     ## push commits from a second clone to simulate another user's work
@@ -80,7 +80,7 @@ def test_ahead_behind_behind_counts(
 
 def test_local_remotes_lists_origin(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     git_inspection.show_local_remotes(Config())
     out = capsys.readouterr().out
@@ -89,7 +89,7 @@ def test_local_remotes_lists_origin(
 
 def test_local_remotes_lists_multiple_remotes(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
     vtest_helpers.git(["remote", "add", "upstream", str(remote_dir)], cwd=repo_dir)
@@ -106,7 +106,7 @@ def test_local_remotes_lists_multiple_remotes(
 
 def test_unpulled_commits_shows_remote_commits(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
     ## push commits from a second clone
@@ -155,7 +155,7 @@ def test_is_detached_exits_0_when_detached(
 
 def test_show_diff_runs_without_error(
     make_repo_: Path,
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     (make_repo_ / "dirty.txt").write_text("change")
     vtest_helpers.git(["add", "dirty.txt"], cwd=make_repo_)
@@ -166,7 +166,7 @@ def test_show_diff_runs_without_error(
 
 def test_show_diff_with_path_scopes_command(
     make_repo_: Path,
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     (make_repo_ / "dirty.txt").write_text("change")
     vtest_helpers.git(["add", "dirty.txt"], cwd=make_repo_)
@@ -182,7 +182,7 @@ def test_show_diff_with_path_scopes_command(
 
 def test_show_diff_committed_with_explicit_base(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
@@ -194,7 +194,7 @@ def test_show_diff_committed_with_explicit_base(
 
 def test_show_diff_committed_with_path(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
@@ -207,7 +207,7 @@ def test_show_diff_committed_with_path(
 
 def test_show_diff_committed_infers_default_branch(
     make_repo_with_remote: tuple[Path, Path],
-    capsys: pytest.CaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)

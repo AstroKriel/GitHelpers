@@ -25,7 +25,7 @@ GIT_USER = {
 def git(
     args: list[str],
     cwd: Path,
-) -> subprocess.CompletedProcess:
+) -> subprocess.CompletedProcess[str]:
     """Run a git command in the given directory; raises on non-zero exit."""
     return subprocess.run(
         ["git"] + args,
