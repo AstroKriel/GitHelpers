@@ -128,7 +128,7 @@ class TestRunCmdAndCaptureOutput_DryRun:
     ) -> None:
         config = shell_interface.Config(dry_run=True)
         with patch("subprocess.run") as mock_run:
-            shell_interface.run_cmd_and_capture_output(
+            _ = shell_interface.run_cmd_and_capture_output(
                 config=config,
                 cmd=["git", "rev-list", "--count", "HEAD"],
             )
@@ -154,7 +154,7 @@ class TestQueryCmd_Behaviour:
         ## by verifying subprocess.run is called even when a dry-run Config would suppress run_cmd
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(stdout="main\n", returncode=0)
-            shell_interface.query_cmd(cmd=["git", "branch", "--show-current"])
+            _ = shell_interface.query_cmd(cmd=["git", "branch", "--show-current"])
             mock_run.assert_called_once()
 
 

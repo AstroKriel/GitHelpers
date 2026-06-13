@@ -87,6 +87,6 @@ class TestConfig_Flags(unittest.TestCase):
 ##
 
 if __name__ == "__main__":
-    unittest.main()
+    _ = unittest.main()
 
 ## } U-TEST
