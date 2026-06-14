@@ -261,6 +261,13 @@ COMMANDS: dict[str, CommandDetails] = dict(
         ),
         cli_command(
             section="Inspection",
+            cmd_name="show-commit",
+            cmd_fn=git_inspection.show_commit,
+            cmd_help="show the message and diff introduced by a specific commit",
+            cmd_args=[("commit", {})],
+        ),
+        cli_command(
+            section="Inspection",
             cmd_name="show-diff-last",
             cmd_fn=git_inspection.show_diff_last,
             cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",

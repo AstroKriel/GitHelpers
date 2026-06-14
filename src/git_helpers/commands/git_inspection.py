@@ -300,6 +300,16 @@ def show_diff_committed(
     shell_interface.run_cmd(config=config, cmd=cmd)
 
 
+def show_commit(
+    config: shell_interface.Config,
+    commit: str,
+) -> None:
+    """Show the message and diff introduced by a specific commit."""
+    repo_state.require_repo()
+    shell_interface.log_step(f"showing changes introduced by {commit}")
+    shell_interface.run_cmd(config=config, cmd=["git", "show", commit])
+
+
 def show_diff_last(
     config: shell_interface.Config,
     num_commits: int,
