@@ -228,6 +228,18 @@ def test_show_diff_committed_infers_default_branch(
     assert "main...HEAD" in out
 
 
+def test_show_diff_committed_name_only_includes_flag(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
+    git_inspection.show_diff_committed(Config(dry_run=True), base="main", name_only=True)
+    out = capsys.readouterr().err
+    assert "--name-only" in out
+
+
 def test_show_diff_committed_kills_when_on_base_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
