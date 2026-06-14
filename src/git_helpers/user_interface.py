@@ -214,6 +214,13 @@ COMMANDS: dict[str, CommandDetails] = dict(
         ),
         cli_command(
             section="Inspection",
+            cmd_name="show-commit",
+            cmd_fn=git_inspection.show_commit,
+            cmd_help="show the message and diff introduced by a specific commit",
+            cmd_args=[("commit", {})],
+        ),
+        cli_command(
+            section="Inspection",
             cmd_name="show-local-remotes",
             cmd_fn=git_inspection.show_local_remotes,
             cmd_help="list all configured remotes and their URLs",
@@ -239,35 +246,6 @@ COMMANDS: dict[str, CommandDetails] = dict(
         ),
         cli_command(
             section="Inspection",
-            cmd_name="show-diff-committed",
-            cmd_fn=git_inspection.show_diff_committed,
-            cmd_help="show committed changes on the current branch vs a base (default: remote default branch)",
-            cmd_args=[
-                (
-                    "--base",
-                    {
-                        "default": None,
-                        "metavar": "branch",
-                    },
-                ),
-                (
-                    "--path",
-                    {
-                        "default": None,
-                        "metavar": "path",
-                    },
-                ),
-            ],
-        ),
-        cli_command(
-            section="Inspection",
-            cmd_name="show-commit",
-            cmd_fn=git_inspection.show_commit,
-            cmd_help="show the message and diff introduced by a specific commit",
-            cmd_args=[("commit", {})],
-        ),
-        cli_command(
-            section="Inspection",
             cmd_name="show-diff-last",
             cmd_fn=git_inspection.show_diff_last,
             cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",
@@ -285,6 +263,28 @@ COMMANDS: dict[str, CommandDetails] = dict(
                     {
                         "action": "store_true",
                         "default": False,
+                    },
+                ),
+                (
+                    "--path",
+                    {
+                        "default": None,
+                        "metavar": "path",
+                    },
+                ),
+            ],
+        ),
+        cli_command(
+            section="Inspection",
+            cmd_name="show-diff-committed",
+            cmd_fn=git_inspection.show_diff_committed,
+            cmd_help="show committed changes on the current branch vs a base (default: remote default branch)",
+            cmd_args=[
+                (
+                    "--base",
+                    {
+                        "default": None,
+                        "metavar": "branch",
                     },
                 ),
                 (
