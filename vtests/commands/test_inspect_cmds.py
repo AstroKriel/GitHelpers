@@ -197,9 +197,9 @@ def test_show_diff_committed_with_explicit_base(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=2)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="main")
+    git_inspection.show_diff_committed(Config(dry_run=True), base="main", no_fetch=True)
     out = capsys.readouterr().err
-    assert "main...HEAD" in out
+    assert "origin/main...HEAD" in out
 
 
 def test_show_diff_committed_with_path(
@@ -209,9 +209,9 @@ def test_show_diff_committed_with_path(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="main", path=".commit_counter")
+    git_inspection.show_diff_committed(Config(dry_run=True), base="main", no_fetch=True, path=".commit_counter")
     out = capsys.readouterr().err
-    assert "main...HEAD" in out
+    assert "origin/main...HEAD" in out
     assert ".commit_counter" in out
 
 
@@ -223,9 +223,21 @@ def test_show_diff_committed_infers_default_branch(
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True))
+    git_inspection.show_diff_committed(Config(dry_run=True), no_fetch=True)
     out = capsys.readouterr().err
-    assert "main...HEAD" in out
+    assert "origin/main...HEAD" in out
+
+
+def test_show_diff_committed_fetches_by_default(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
+    git_inspection.show_diff_committed(Config(dry_run=True), base="main")
+    out = capsys.readouterr().err
+    assert "git fetch" in out
 
 
 def test_show_diff_committed_name_only_includes_flag(
@@ -235,7 +247,7 @@ def test_show_diff_committed_name_only_includes_flag(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="main", name_only=True)
+    git_inspection.show_diff_committed(Config(dry_run=True), base="main", name_only=True, no_fetch=True)
     out = capsys.readouterr().err
     assert "--name-only" in out
 
@@ -245,7 +257,7 @@ def test_show_diff_committed_kills_when_on_base_branch(
 ) -> None:
     ## still on main; passing base explicitly so the guard fires regardless of remote HEAD config
     with pytest.raises(SystemExit):
-        git_inspection.show_diff_committed(Config(), base="main")
+        git_inspection.show_diff_committed(Config(), base="main", no_fetch=True)
 
 
 ##

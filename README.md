@@ -78,7 +78,7 @@ git_helpers show-submodules-status                                        # show
 ```bash
 git_helpers show-diff [--path path]                                               # show all local changes vs HEAD (staged and unstaged)
 git_helpers show-diff-last --num-commits N [--include-uncommitted] [--path path]  # show changes over the last N commits; add --include-uncommitted to include local changes
-git_helpers show-diff-committed [--base branch] [--name-only] [--path path]       # show committed changes on the current feature branch vs a base branch (default: remote default); add --name-only to list filenames only
+git_helpers show-diff-committed [--base branch] [--name-only] [--no-fetch] [--path path]  # show committed changes on the current feature branch vs a base branch (default: remote default); fetches first by default
 ```
 
 **Managing branches**

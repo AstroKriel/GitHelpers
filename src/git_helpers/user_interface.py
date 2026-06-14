@@ -279,7 +279,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             section="Inspecting diffs",
             cmd_name="show-diff-committed",
             cmd_fn=git_inspection.show_diff_committed,
-            cmd_help="show committed changes on the current branch vs a base (default: remote default branch); add --name-only to list filenames only",
+            cmd_help="show committed changes on the current branch vs a base (default: remote default branch); fetches first by default",
             cmd_args=[
                 (
                     "--base",
@@ -290,6 +290,13 @@ COMMANDS: dict[str, CommandDetails] = dict(
                 ),
                 (
                     "--name-only",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                    },
+                ),
+                (
+                    "--no-fetch",
                     {
                         "action": "store_true",
                         "default": False,

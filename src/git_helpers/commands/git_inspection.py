@@ -280,22 +280,28 @@ def show_diff_committed(
     config: shell_interface.Config,
     base: str | None = None,
     name_only: bool = False,
+    no_fetch: bool = False,
     path: str | None = None,
 ) -> None:
-    """Show all committed changes on the current branch vs a base branch."""
+    """Show all committed changes on the current branch vs a base branch; fetches first by default."""
     repo_state.require_repo()
+    remote = repo_state.get_default_remote_name()
+    if not no_fetch:
+        shell_interface.log_step(f"fetching from {remote}")
+        shell_interface.run_cmd(config=config, cmd=["git", "fetch", "--quiet", remote])
     if not base:
         base = repo_state.get_default_branch_name()
         if not base:
             shell_interface.kill("could not infer default branch; pass base explicitly")
+    remote_base = f"{remote}/{base}"
     branch = repo_state.current_branch()
     if branch == base:
         shell_interface.kill(
             f"already on '{base}'; show-diff-committed compares a feature branch to its base"
             "; use show-diff-last N for commit-range diffs"
         )
-    shell_interface.log_step(f"showing committed changes vs '{base}'")
-    cmd = ["git", "diff", f"{base}...HEAD"]
+    shell_interface.log_step(f"showing committed changes vs '{remote_base}'")
+    cmd = ["git", "diff", f"{remote_base}...HEAD"]
     if name_only:
         cmd.append("--name-only")
     if path:
