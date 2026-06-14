@@ -279,6 +279,7 @@ def show_diff(
 def show_diff_committed(
     config: shell_interface.Config,
     base: str | None = None,
+    name_only: bool = False,
     path: str | None = None,
 ) -> None:
     """Show all committed changes on the current branch vs a base branch."""
@@ -295,6 +296,8 @@ def show_diff_committed(
         )
     shell_interface.log_step(f"showing committed changes vs '{base}'")
     cmd = ["git", "diff", f"{base}...HEAD"]
+    if name_only:
+        cmd.append("--name-only")
     if path:
         cmd += ["--", path]
     shell_interface.run_cmd(config=config, cmd=cmd)
