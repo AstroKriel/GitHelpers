@@ -153,44 +153,44 @@ COMMANDS: dict[str, CommandDetails] = dict(
     [
         ## global configuration
         cli_command(
-            section="Global configuration",
+            section="Global git configuration",
             cmd_name="set-global-config",
             cmd_fn=git_config.cmd_set_global_config,
             cmd_help="set sensible merge rules in ~/.gitconfig (fast-forward preferred, rerere enabled)",
         ),
         cli_command(
-            section="Global configuration",
+            section="Global git configuration",
             cmd_name="show-global-config",
             cmd_fn=git_config.show_global_config,
             cmd_help="show the current values of the git settings this tool manages",
         ),
         ## inspection
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="show-upstream-state",
             cmd_fn=git_inspection.show_upstream_state,
             cmd_help="show which remote branch the current branch is tracking and its latest commit",
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="show-branches-status",
             cmd_fn=git_inspection.show_branches_status,
             cmd_help="see all local branches and whether they're ahead or behind their remote (fetches first)",
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="count-ahead-behind",
             cmd_fn=git_inspection.count_ahead_behind,
             cmd_help="show how many commits the current branch is ahead of and behind its upstream",
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="show-unpulled-commits",
             cmd_fn=git_inspection.show_unpulled_commits,
             cmd_help="list commits on the remote that haven't been pulled yet",
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="show-recent-commits",
             cmd_fn=git_inspection.show_recent_commits,
             cmd_help="show the last N commits on the current branch (default: 20)",
@@ -213,26 +213,26 @@ COMMANDS: dict[str, CommandDetails] = dict(
             ],
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="show-commit",
             cmd_fn=git_inspection.show_commit,
             cmd_help="show the message and diff introduced by a specific commit",
             cmd_args=[("commit", {})],
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="show-local-remotes",
             cmd_fn=git_inspection.show_local_remotes,
             cmd_help="list all configured remotes and their URLs",
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting repo state",
             cmd_name="show-submodules-status",
             cmd_fn=git_inspection.show_submodules_status,
             cmd_help="show the current state of each submodule (commit SHA and init status)",
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting diffs",
             cmd_name="show-diff",
             cmd_fn=git_inspection.show_diff,
             cmd_help="show all local changes vs HEAD; optionally scope to a filepath",
@@ -245,7 +245,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting diffs",
             cmd_name="show-diff-last",
             cmd_fn=git_inspection.show_diff_last,
             cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",
@@ -275,7 +275,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             ],
         ),
         cli_command(
-            section="Inspection",
+            section="Inspecting diffs",
             cmd_name="show-diff-committed",
             cmd_fn=git_inspection.show_diff_committed,
             cmd_help="show committed changes on the current branch vs a base (default: remote default branch)",
@@ -298,7 +298,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
         ),
         ## branch management
         cli_command(
-            section="Branch management",
+            section="Managing branches",
             cmd_name="create-branch-from-default",
             cmd_fn=git_branches.cmd_create_branch_from_default,
             cmd_help="create and push a new branch from the remote default (e.g. origin/main)",
@@ -308,7 +308,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Branch management",
+            section="Managing branches",
             cmd_name="create-branch-from-remote",
             cmd_fn=git_branches.cmd_create_branch_from_remote,
             cmd_help="create and push a new branch from a specific remote branch",
@@ -324,7 +324,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             ],
         ),
         cli_command(
-            section="Branch management",
+            section="Managing branches",
             cmd_name="track-remote-branch",
             cmd_fn=git_branches.cmd_track_remote_branch,
             cmd_help="create a local tracking branch for an existing remote branch and check it out",
@@ -342,20 +342,20 @@ COMMANDS: dict[str, CommandDetails] = dict(
             ],
         ),
         cli_command(
-            section="Branch management",
+            section="Managing branches",
             cmd_name="delete-local-branch",
             cmd_fn=git_branches.cmd_delete_local_branch,
             cmd_help="delete a local branch safely (refuses if it has unmerged commits)",
             cmd_args=[("branch_name", {})],
         ),
         cli_command(
-            section="Branch management",
+            section="Managing branches",
             cmd_name="prune-gone-locals",
             cmd_fn=git_branches.cmd_prune_gone_locals,
             cmd_help="delete local branches whose remote counterpart has been deleted",
         ),
         cli_command(
-            section="Branch management",
+            section="Managing branches",
             cmd_name="prune-merged-locals",
             cmd_fn=git_branches.cmd_prune_merged_locals,
             cmd_help="delete local branches whose commits are already in the base branch",
@@ -367,7 +367,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Branch management",
+            section="Managing branches",
             cmd_name="cleanup-local-branches",
             cmd_fn=git_branches.cmd_cleanup_local_branches,
             cmd_help="delete all gone and merged local branches in one step",
@@ -380,13 +380,13 @@ COMMANDS: dict[str, CommandDetails] = dict(
         ),
         ## submodule management
         cli_command(
-            section="Submodule management",
+            section="Managing submodules",
             cmd_name="update-submodules",
             cmd_fn=git_submodules.cmd_update_submodules,
             cmd_help="update all submodules to their latest commit on the tracked branch",
         ),
         cli_command(
-            section="Submodule management",
+            section="Managing submodules",
             cmd_name="fix-submodule",
             cmd_fn=git_submodules.cmd_fix_submodule,
             cmd_help=
@@ -404,7 +404,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             ],
         ),
         cli_command(
-            section="Submodule management",
+            section="Managing submodules",
             cmd_name="add-submodule",
             cmd_fn=git_submodules.cmd_add_submodule,
             cmd_help="add a new submodule tracking its default branch and commit the result",
@@ -423,7 +423,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
         ),
         ## syncing and history
         cli_command(
-            section="Syncing and history",
+            section="Syncing and rewriting history",
             cmd_name="push",
             cmd_fn=git_sync.cmd_push,
             cmd_help="push the current branch; sets the upstream automatically if it's a new branch",
@@ -435,7 +435,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Syncing and history",
+            section="Syncing and rewriting history",
             cmd_name="sync-branch",
             cmd_fn=git_sync.cmd_sync_branch,
             cmd_help="bring the current branch up to date with its upstream (or an explicit remote branch)",
@@ -447,7 +447,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Syncing and history",
+            section="Syncing and rewriting history",
             cmd_name="stash-work",
             cmd_fn=git_sync.cmd_stash_work,
             cmd_help="temporarily save uncommitted work so you can switch context; optionally label it",
@@ -459,7 +459,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Syncing and history",
+            section="Syncing and rewriting history",
             cmd_name="unstash-work",
             cmd_fn=git_sync.cmd_unstash_work,
             cmd_help="restore the most recently stashed work, or a specific stash by name",
@@ -471,7 +471,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Syncing and history",
+            section="Syncing and rewriting history",
             cmd_name="amend-last-commit",
             cmd_fn=git_sync.cmd_amend_last_commit,
             cmd_help="fold staged changes into the last commit; optionally update the message too",
@@ -483,7 +483,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             )],
         ),
         cli_command(
-            section="Syncing and history",
+            section="Syncing and rewriting history",
             cmd_name="rename-last-commit",
             cmd_fn=git_sync.cmd_rename_last_commit,
             cmd_help="update the message of the last commit without changing its content (rewrites history)",
