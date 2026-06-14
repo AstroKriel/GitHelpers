@@ -289,15 +289,20 @@ def show_diff_committed(
     if not no_fetch:
         shell_interface.log_step(f"fetching from {remote}")
         shell_interface.run_cmd(config=config, cmd=["git", "fetch", "--quiet", remote])
-    if not base:
-        base = repo_state.get_default_branch_name()
-        if not base:
-            shell_interface.kill("could not infer default branch; pass base explicitly")
-    remote_base = f"{remote}/{base}"
+    if base:
+        if "/" not in base:
+            shell_interface.kill("base must be remote-qualified, e.g. origin/main")
+        remote_base = base
+    else:
+        inferred = repo_state.get_default_branch_name()
+        if not inferred:
+            shell_interface.kill("could not infer default branch; pass base explicitly, e.g. origin/main")
+        remote_base = f"{remote}/{inferred}"
     branch = repo_state.current_branch()
-    if branch == base:
+    base_branch = remote_base.split("/", 1)[-1]
+    if branch == base_branch:
         shell_interface.kill(
-            f"already on '{base}'; show-diff-committed compares a feature branch to its base"
+            f"already on '{base_branch}'; show-diff-committed compares a feature branch to its base"
             "; use show-diff-last N for commit-range diffs"
         )
     shell_interface.log_step(f"showing committed changes vs '{remote_base}'")

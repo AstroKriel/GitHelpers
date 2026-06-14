@@ -279,7 +279,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
             section="Inspecting diffs",
             cmd_name="show-diff-committed",
             cmd_fn=git_inspection.show_diff_committed,
-            cmd_help="show committed changes on the current branch vs a base (default: remote default branch); fetches first by default",
+            cmd_help="show committed changes on the current branch vs a base (default: remote default; explicit --base must be remote-qualified, e.g. origin/main); fetches first by default",
             cmd_args=[
                 (
                     "--base",
