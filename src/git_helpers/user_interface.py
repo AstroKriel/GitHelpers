@@ -201,6 +201,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
                         "type": int,
                         "default": 20,
                         "metavar": "N",
+                        "help": "default: %(default)s",
                     },
                 ),
                 (
@@ -507,6 +508,7 @@ COMMANDS: dict[str, CommandDetails] = dict(
                         "type": int,
                         "default": 3,
                         "metavar": "N",
+                        "help": "default: %(default)s",
                     },
                 ),
                 (
