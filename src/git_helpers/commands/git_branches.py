@@ -63,7 +63,7 @@ def cmd_prune_gone_locals(
     ## `for-each-ref` iterates over all refs matching a pattern. The format
     ## string requests the short branch name and its upstream tracking status.
     ## when the remote branch has been deleted, git marks the tracking status
-    ## as "[gone]" — that's what we filter on.
+    ## as "[gone]"; that's what we filter on.
     cmd_list_branch_tracking = [
         "git",
         "for-each-ref",
@@ -131,8 +131,8 @@ def cmd_prune_merged_locals(
         f"finding local branches merged into '{base_name}' (excluding current and main/master)",
     )
     ## `--merged <ref>` lists branches whose tip is reachable from <ref>,
-    ## meaning all their commits are already in <ref>'s history — safe to delete.
-    ## never delete the current branch, main, or master even if technically merged —
+    ## meaning all their commits are already in <ref>'s history; safe to delete.
+    ## never delete the current branch, main, or master even if technically merged:
     ## main/master are protected by convention; current branch can't be deleted while checked out.
     excluded_branches = {current_branch_name, "main", "master"}
     cmd_list_merged_branches = [
@@ -290,7 +290,7 @@ def cmd_create_branch_from_default(
     )
     shell_interface.log_step("creating local branch from remote default (no tracking)")
     ## `--no-track` means the new branch does NOT track the base it was created
-    ## from — we want it to track its own remote counterpart once pushed, not origin/main.
+    ## from; we want it to track its own remote counterpart once pushed, not origin/main.
     cmd_create_branch = [
         "git",
         "switch",

@@ -39,7 +39,7 @@ def _read_gitmodules_branch(
     submodule_path: str,
 ) -> str | None:
     """Read the tracked branch for a submodule from .gitmodules; returns None if not configured."""
-    ## .gitmodules keys submodules by name, not path — find the name whose path matches first.
+    ## .gitmodules keys submodules by name, not path; find the name whose path matches first.
     ## `--get-regexp` output format: "submodule.<name>.path <value>" (one entry per line).
     cmd_read_gitmodules_paths = [
         "git",
@@ -156,7 +156,7 @@ def cmd_fix_submodule(
         var_value=branch,
     )
     shell_interface.log_step(f"checking out {branch} inside the submodule")
-    ## `git -C <path>` runs the command as if cwd were <path> — avoids needing
+    ## `git -C <path>` runs the command as if cwd were <path>; avoids needing
     ## to actually cd in and out of the submodule directory.
     cmd_checkout_branch = [
         "git",

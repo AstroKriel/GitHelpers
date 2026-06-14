@@ -16,7 +16,7 @@ def cmd_rename_last_commit(
     config: shell_interface.Config,
     msg: list[str],
 ) -> None:
-    """Replace the message of the most recent commit; rewrites history — avoid if already pushed."""
+    """Replace the message of the most recent commit; rewrites history, avoid if already pushed."""
     repo_state.require_repo()
     ## verify there is at least one commit to amend; a brand-new repo has no HEAD.
     cmd_verify_head = [
@@ -67,7 +67,7 @@ def cmd_push(
     )
     shell_interface.log_step("detecting whether upstream is already set")
     if repo_state.has_upstream():
-        ## upstream already configured — plain push uses it automatically.
+        ## upstream already configured; plain push uses it automatically.
         shell_interface.log_step("upstream already set; using plain push")
         cmd_push_existing = [
             "git",

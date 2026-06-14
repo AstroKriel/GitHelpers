@@ -18,8 +18,8 @@ from git_helpers import shell_interface, repo_state
 def check_is_detached(
     _config: shell_interface.Config,
 ) -> None:
-    """Exit 0 if HEAD is detached, 1 if on a branch — usable in shell conditionals."""
-    ## exit 0 (success/true) if detached, 1 (false) if on a branch — matches
+    """Exit 0 if HEAD is detached, 1 if on a branch; usable in shell conditionals."""
+    ## exit 0 (success/true) if detached, 1 (false) if on a branch; matches
     ## the Unix convention so this can be used in shell conditionals.
     sys.exit(0 if repo_state.is_detached() else 1)
 
@@ -198,7 +198,7 @@ def show_unpulled_commits(
     )
     shell_interface.log_step("listing commits present upstream but missing locally")
     ## `HEAD..upstream` (two dots) = commits reachable from upstream but NOT
-    ## from HEAD — i.e. commits that exist on the remote but haven't been pulled yet.
+    ## from HEAD (commits that exist on the remote but haven't been pulled yet).
     cmd_show_unpulled = [
         "git",
         "log",
@@ -267,7 +267,7 @@ def show_diff(
     config: shell_interface.Config,
     path: str | None = None,
 ) -> None:
-    """Show all local changes vs HEAD — staged, unstaged, and uncommitted."""
+    """Show all local changes vs HEAD (staged, unstaged, and uncommitted)."""
     repo_state.require_repo()
     shell_interface.log_step("showing local changes vs HEAD")
     cmd = ["git", "diff", "HEAD"]
@@ -291,7 +291,7 @@ def show_diff_committed(
     if branch == base:
         shell_interface.kill(
             f"already on '{base}'; show-diff-committed compares a feature branch to its base"
-            " — use show-diff-last N for commit-range diffs"
+            "; use show-diff-last N for commit-range diffs"
         )
     shell_interface.log_step(f"showing committed changes vs '{base}'")
     cmd = ["git", "diff", f"{base}...HEAD"]

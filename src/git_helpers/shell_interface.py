@@ -255,7 +255,7 @@ def probe_cmd(
     cmd: list[str],
 ) -> int:
     """Run a command silently and return its exit code; used for boolean existence checks."""
-    ## output is suppressed entirely — callers only care whether the command succeeded or failed.
+    ## output is suppressed entirely; callers only care whether the command succeeded or failed.
     result = subprocess.run(
         cmd,
         capture_output=True,

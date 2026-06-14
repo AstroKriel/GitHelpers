@@ -45,7 +45,7 @@ def require_remote() -> None:
 def get_default_remote_name() -> str:
     """Return the name of the default remote, preferring 'origin' if it exists."""
     require_remote()
-    ## prefer 'origin' — it's the conventional name git uses when you clone.
+    ## prefer 'origin': it's the conventional name git uses when you clone.
     ## `remote get-url` succeeds only if the remote actually exists.
     cmd_check_origin = [
         "git",
