@@ -52,6 +52,16 @@ def _find_repos(
     return sorted(results)
 
 
+def _should_scan_submodules(repo_path: Path) -> bool:
+    result = subprocess.run(
+        ["git", "config", "--local", "git-helpers.scan-submodules"],
+        cwd=repo_path,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip() == "true"
+
+
 def _active_submodule_paths(repo_path: Path) -> list[Path]:
     gitmodules = repo_path / ".gitmodules"
     if not gitmodules.exists():
@@ -77,9 +87,10 @@ def _walk(
 ) -> None:
     if (path / ".git").exists():
         results.append(path)
-        for sub_path in _active_submodule_paths(path):
-            if sub_path.is_dir():
-                _walk(path=sub_path, max_depth=max_depth, depth=depth, results=results)
+        if _should_scan_submodules(path):
+            for sub_path in _active_submodule_paths(path):
+                if sub_path.is_dir():
+                    _walk(path=sub_path, max_depth=max_depth, depth=depth, results=results)
         return
     if depth >= max_depth:
         return
