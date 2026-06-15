@@ -116,6 +116,16 @@ git_helpers scan-repos [--depth N] [--since DAYS]  # scan for git repos from CWD
 
 `--depth N` (default: 3) controls how many directory levels to descend. `--since DAYS` filters to repos with a commit in the last N days and counts commits per repo within that window; without it, only repos needing attention (dirty or unpushed) are shown.
 
+By default, `scan-repos` does not descend into git submodules. Submodule scanning is opt-in per repo; upstream codebases often use submodules for build dependencies rather than active working trees. To opt a repo in, run this once inside it:
+
+```bash
+git config --local git-helpers.scan-submodules true
+```
+
+> **Note:** this setting is stored in `.git/config`, which git does not track, so it is not committed or pushed. Re-run it after a fresh clone.
+
+Within an opted-in repo, individual submodules can still be excluded by adding `ignore = all` to their entry in `.gitmodules`.
+
 ---
 
 ## Global flags
