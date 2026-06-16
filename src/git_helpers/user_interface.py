@@ -230,7 +230,6 @@ _TRACKING_COMMANDS: list[_CommandEntry] = _make_command_group(
                         "type": int,
                         "default": 20,
                         "metavar": "N",
-                        "help": "default: %(default)s",
                     },
                 ),
                 (
@@ -250,6 +249,7 @@ _TRACKING_COMMANDS: list[_CommandEntry] = _make_command_group(
                 (
                     "--base",
                     {
+                        "type": str,
                         "default": None,
                         "metavar": "branch",
                         "help": "remote-qualified, e.g. origin/main (default: remote default)",
@@ -281,7 +281,7 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="show-commit",
             cmd_fn=git_inspection.show_commit,
             cmd_help="show the message and diff introduced by a specific commit",
-            cmd_args=[("commit", {})],
+            cmd_args=[("commit", {"type": str})],
         ),
         cli_command(
             cmd_name="show-diff-uncommitted",
@@ -290,6 +290,7 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "--path",
                 {
+                    "type": str,
                     "default": None,
                     "metavar": "path",
                 },
@@ -318,6 +319,7 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
                 (
                     "--path",
                     {
+                        "type": str,
                         "default": None,
                         "metavar": "path",
                     },
@@ -332,6 +334,7 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
                 (
                     "--base",
                     {
+                        "type": str,
                         "default": None,
                         "metavar": "branch",
                         "help": "remote-qualified, e.g. origin/main (default: remote default)",
@@ -354,6 +357,7 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
                 (
                     "--path",
                     {
+                        "type": str,
                         "default": None,
                         "metavar": "path",
                     },
@@ -373,6 +377,7 @@ _STASHING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "name",
                 {
+                    "type": str,
                     "nargs": "?",
                 },
             )],
@@ -384,6 +389,7 @@ _STASHING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "name",
                 {
+                    "type": str,
                     "nargs": "?",
                 },
             )],
@@ -401,6 +407,7 @@ _EDITING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "msg",
                 {
+                    "type": str,
                     "nargs": "*",
                 },
             )],
@@ -412,6 +419,7 @@ _EDITING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "msg",
                 {
+                    "type": str,
                     "nargs": "+",
                 },
             )],
@@ -429,6 +437,7 @@ _SYNCING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "extra_args",
                 {
+                    "type": str,
                     "nargs": "*",
                 },
             )],
@@ -440,6 +449,7 @@ _SYNCING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "base_name",
                 {
+                    "type": str,
                     "nargs": "?",
                 },
             )],
@@ -456,7 +466,7 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_help="create and push a new branch from the remote default (e.g. origin/main)",
             cmd_args=[(
                 "new_branch_name",
-                {},
+                {"type": str},
             )],
         ),
         cli_command(
@@ -466,11 +476,11 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[
                 (
                     "new_branch_name",
-                    {},
+                    {"type": str},
                 ),
                 (
                     "start_ref",
-                    {},
+                    {"type": str},
                 ),
             ],
         ),
@@ -481,11 +491,12 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[
                 (
                     "remote_branch",
-                    {},
+                    {"type": str},
                 ),
                 (
                     "local_branch",
                     {
+                        "type": str,
                         "nargs": "?",
                     },
                 ),
@@ -495,7 +506,7 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="delete-local-branch",
             cmd_fn=git_branches.cmd_delete_local_branch,
             cmd_help="delete a local branch safely (refuses if it has unmerged commits)",
-            cmd_args=[("branch_name", {})],
+            cmd_args=[("branch_name", {"type": str})],
         ),
         cli_command(
             cmd_name="prune-gone-locals",
@@ -509,6 +520,7 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "base_name",
                 {
+                    "type": str,
                     "nargs": "?",
                 },
             )],
@@ -520,6 +532,7 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[(
                 "base_name",
                 {
+                    "type": str,
                     "nargs": "?",
                 },
             )],
@@ -546,10 +559,11 @@ _SUBMODULES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_help=
             "repair a submodule in detached HEAD state (auto-detects branch, pulls, updates parent pointer)",
             cmd_args=[
-                ("submodule_path", {}),
+                ("submodule_path", {"type": str}),
                 (
                     "branch",
                     {
+                        "type": str,
                         "nargs": "?",
                         "default": None,
                         "metavar": "branch",
@@ -562,11 +576,12 @@ _SUBMODULES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_submodules.cmd_add_submodule,
             cmd_help="add a new submodule tracking its default branch and commit the result",
             cmd_args=[
-                ("url", {}),
-                ("local_name", {}),
+                ("url", {"type": str}),
+                ("local_name", {"type": str}),
                 (
                     "branch",
                     {
+                        "type": str,
                         "nargs": "?",
                         "default": None,
                         "metavar": "branch",
@@ -591,7 +606,6 @@ _SUMMARY_COMMANDS: list[_CommandEntry] = _make_command_group(
                         "type": int,
                         "default": 3,
                         "metavar": "N",
-                        "help": "default: %(default)s",
                     },
                 ),
                 (
@@ -700,7 +714,14 @@ def main() -> None:
     for cmd_name, cmd_details in _ALL_COMMANDS.items():
         subparser = sub_parsers.add_parser(cmd_name, help=cmd_details.help)
         for arg_name, arg_kwargs in cmd_details.cmd_args:
-            subparser.add_argument(arg_name, **arg_kwargs)
+            should_inject = (
+                arg_name.startswith("--")
+                and "help" not in arg_kwargs
+                and arg_kwargs.get("action") != "store_true"
+                and not arg_kwargs.get("required", False)
+            )
+            kwargs = {**arg_kwargs, "help": "(default: %(default)s)"} if should_inject else arg_kwargs
+            subparser.add_argument(arg_name, **kwargs)
     args = arg_parser.parse_args()
     try:
         _ALL_COMMANDS[args.cmd].handler(args)
