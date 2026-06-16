@@ -104,6 +104,58 @@ class TestCliCommand_ArgMapping:
         assert received == ["main", "src/foo.py"]
 
 
+class TestMakeCommandGroup_SectionStamping:
+
+    def test_stamps_section_title_on_every_command(
+        self,
+    ) -> None:
+        def fn(
+            config: Config,
+        ) -> None:
+            return None
+
+        group = user_interface._make_command_group(
+            section_title=user_interface._SectionTitle.STASHING,
+            commands=[
+                user_interface.cli_command(
+                    cmd_name="alpha",
+                    cmd_fn=fn,
+                ),
+                user_interface.cli_command(
+                    cmd_name="beta",
+                    cmd_fn=fn,
+                ),
+            ],
+        )
+        assert [details.section_title for _, details in group] == [
+            user_interface._SectionTitle.STASHING,
+            user_interface._SectionTitle.STASHING,
+        ]
+
+    def test_preserves_command_names_and_order(
+        self,
+    ) -> None:
+        def fn(
+            config: Config,
+        ) -> None:
+            return None
+
+        group = user_interface._make_command_group(
+            section_title=user_interface._SectionTitle.SYNCING,
+            commands=[
+                user_interface.cli_command(
+                    cmd_name="alpha",
+                    cmd_fn=fn,
+                ),
+                user_interface.cli_command(
+                    cmd_name="beta",
+                    cmd_fn=fn,
+                ),
+            ],
+        )
+        assert [cmd_name for cmd_name, _ in group] == ["alpha", "beta"]
+
+
 ##
 ## === ENTRY POINT
 ##

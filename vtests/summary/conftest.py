@@ -61,4 +61,9 @@ def set_submodule_ignore_all(
     git(["commit", "-m", f"set {sub_name} ignore = all"], cwd=repo)
 
 
+def enable_submodule_scanning(repo: Path) -> None:
+    """Opt a repo into submodule scanning via the git-helpers.scan-submodules local config."""
+    git(["config", "--local", "git-helpers.scan-submodules", "true"], cwd=repo)
+
+
 ## } V-TEST CONFTEST

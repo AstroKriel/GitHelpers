@@ -56,29 +56,40 @@ Run any command from inside a git repo. Use `git_helpers --help` to see all avai
 
 In the listings below, `<arg>` means a required positional argument, `[arg]` means optional, and `[--flag]` means an optional flag.
 
-**Global git configuration**
+**Inspecting tracking state**
 ```bash
-git_helpers set-global-config   # set pull.rebase=true, FF-first merge defaults, and rerere in ~/.gitconfig
-git_helpers show-global-config  # show the current values of the git settings this tool manages
-```
-
-**Inspecting repo state**
-```bash
+git_helpers show-local-remotes                                            # list all configured remotes and their URLs
+git_helpers show-upstream-state                                           # show which remote branch the current branch is tracking and its latest commit
 git_helpers show-branches-status                                          # see all local branches and whether they're ahead or behind their remote (fetches first)
 git_helpers count-ahead-behind                                            # show how many commits the current branch is ahead of and behind its upstream
-git_helpers show-upstream-state                                           # show which remote branch the current branch is tracking and its latest commit
 git_helpers show-unpulled-commits                                         # list commits on the remote that haven't been pulled yet
 git_helpers show-recent-commits [--max-entries N] [--show-files-changed]  # show the last N commits on the current branch (default: 20); add --show-files-changed to list files changed per commit
-git_helpers show-commit <commit>                                          # show the message and diff introduced by a specific commit
-git_helpers show-local-remotes                                            # list all configured remotes and their URLs
-git_helpers show-submodules-status                                        # show the current state of each submodule (commit SHA and init status)
 ```
 
-**Inspecting diffs**
+**Inspecting changes**
 ```bash
-git_helpers show-diff [--path path]                                               # show all local changes vs HEAD (staged and unstaged)
-git_helpers show-diff-last --num-commits N [--include-uncommitted] [--path path]  # show changes over the last N commits; add --include-uncommitted to include local changes
-git_helpers show-diff-committed [--base branch] [--name-only] [--no-fetch] [--path path]  # show committed changes on the current feature branch vs a base branch (default: remote default); fetches first by default
+git_helpers show-commit <commit>                                                         # show the message and diff introduced by a specific commit
+git_helpers show-diff [--path path]                                                      # show all local changes vs HEAD (staged and unstaged)
+git_helpers show-diff-last --num-commits N [--include-uncommitted] [--path path]         # show changes over the last N commits; add --include-uncommitted to include local changes
+git_helpers show-diff-committed [--base branch] [--name-only] [--no-fetch] [--path path]  # show committed changes on the current branch vs a base; fetches first (--base must be remote-qualified, e.g. origin/main; default: remote default)
+```
+
+**Stashing work**
+```bash
+git_helpers stash-work [name]    # temporarily save uncommitted work so you can switch context; optionally label it
+git_helpers unstash-work [name]  # restore the most recently stashed work, or a specific stash by name
+```
+
+**Editing the last commit**
+```bash
+git_helpers amend-last-commit [msg]   # fold staged changes into the last commit; optionally update the message too
+git_helpers rename-last-commit <msg>  # update the message of the last commit without changing its content (rewrites history)
+```
+
+**Syncing with the remote**
+```bash
+git_helpers push                         # push the current branch; sets the upstream automatically if it's a new branch
+git_helpers sync-branch [remote/branch]  # bring the current branch up to date with its upstream (or an explicit remote branch)
 ```
 
 **Managing branches**
@@ -92,26 +103,17 @@ git_helpers prune-merged-locals [remote/branch]               # delete local bra
 git_helpers cleanup-local-branches [remote/branch]            # delete all gone and merged local branches in one step
 ```
 
-**Managing submodules**
+**Submodules**
 ```bash
+git_helpers show-submodules-status               # show the current state of each submodule (commit SHA and init status)
 git_helpers update-submodules                    # update all submodules to their latest commit on the tracked branch
 git_helpers fix-submodule <path> [branch]        # repair a submodule in detached HEAD state (auto-detects branch, pulls, updates parent pointer)
 git_helpers add-submodule <url> <name> [branch]  # add a new submodule tracking its default branch and commit the result
 ```
 
-**Syncing and rewriting history**
-```bash
-git_helpers push                         # push the current branch; sets the upstream automatically if it's a new branch
-git_helpers sync-branch [remote/branch]  # bring the current branch up to date with its upstream (or an explicit remote branch)
-git_helpers stash-work [name]            # temporarily save uncommitted work so you can switch context; optionally label it
-git_helpers unstash-work [name]          # restore the most recently stashed work, or a specific stash by name
-git_helpers amend-last-commit [msg]      # fold staged changes into the last commit; optionally update the message too
-git_helpers rename-last-commit <msg>     # update the message of the last commit without changing its content (rewrites history)
-```
-
 **Summary**
 ```bash
-git_helpers scan-repos [--depth N] [--since DAYS]  # scan for git repos from CWD; report dirty, unpushed, and recently active ones; count commits per repo when --since is given
+git_helpers scan-repos [--depth N] [--since DAYS]  # scan below CWD for dirty, unpushed, and recently active git repos
 ```
 
 `--depth N` (default: 3) controls how many directory levels to descend. `--since DAYS` filters to repos with a commit in the last N days and counts commits per repo within that window; without it, only repos needing attention (dirty or unpushed) are shown.
@@ -125,6 +127,12 @@ git config --local git-helpers.scan-submodules true
 > **Note:** this setting is stored in `.git/config`, which git does not track, so it is not committed or pushed. Re-run it after a fresh clone.
 
 Within an opted-in repo, individual submodules can still be excluded by adding `ignore = all` to their entry in `.gitmodules`.
+
+**Global git configuration**
+```bash
+git_helpers set-global-config   # set pull.rebase=true, FF-first merge defaults, and rerere in ~/.gitconfig
+git_helpers show-global-config  # show the current values of the git settings this tool manages
+```
 
 ---
 

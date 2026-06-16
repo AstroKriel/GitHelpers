@@ -76,10 +76,14 @@ def show_branches_status(
     shell_interface.log_step("refreshing remote-tracking information")
     ## `--prune` removes local tracking refs for branches that no longer exist
     ## on the remote, so the status view reflects current reality.
+    ## `--no-recurse-submodules` keeps the fetch on the superproject only; this
+    ## command reports the superproject's branches, so on-demand submodule
+    ## fetching would only add latency and surface unrelated submodule errors.
     cmd_fetch_prune = [
         "git",
         "fetch",
         "--prune",
+        "--no-recurse-submodules",
         "--quiet",
     ]
     shell_interface.run_cmd(
@@ -125,9 +129,11 @@ def count_ahead_behind(
         var_value=upstream_name,
     )
     shell_interface.log_step("fetching latest refs from remote")
+    ## stay on the superproject; this only compares HEAD to its upstream.
     cmd_fetch_quiet = [
         "git",
         "fetch",
+        "--no-recurse-submodules",
         "--quiet",
     ]
     shell_interface.run_cmd(
@@ -187,9 +193,11 @@ def show_unpulled_commits(
         var_value=upstream_name,
     )
     shell_interface.log_step("fetching latest from remote")
+    ## stay on the superproject; this only lists commits missing on HEAD.
     cmd_fetch_quiet = [
         "git",
         "fetch",
+        "--no-recurse-submodules",
         "--quiet",
     ]
     shell_interface.run_cmd(
@@ -288,7 +296,10 @@ def show_diff_committed(
     remote = repo_state.get_default_remote_name()
     if not no_fetch:
         shell_interface.log_step(f"fetching from {remote}")
-        shell_interface.run_cmd(config=config, cmd=["git", "fetch", "--quiet", remote])
+        shell_interface.run_cmd(
+            config=config,
+            cmd=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
+        )
     if base:
         if "/" not in base:
             shell_interface.kill("base must be remote-qualified, e.g. origin/main")

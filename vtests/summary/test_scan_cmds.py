@@ -14,7 +14,13 @@ import pytest
 from git_helpers import shell_interface
 from git_helpers.summary import git_scan
 from vtests.helpers import git, make_commit
-from vtests.summary.conftest import add_submodule, make_bare_remote, make_repo_at, set_submodule_ignore_all
+from vtests.summary.conftest import (
+    add_submodule,
+    enable_submodule_scanning,
+    make_bare_remote,
+    make_repo_at,
+    set_submodule_ignore_all,
+)
 
 ##
 ## === HELPERS
@@ -142,6 +148,7 @@ class TestFindRepos_SubmoduleRecursion:
         parent = make_repo_at(scan_root / "parent")
         sub_source = make_repo_at(tmp_path / "sub_source")
         add_submodule(parent, sub_source, "sub")
+        enable_submodule_scanning(parent)
         repos = git_scan._find_repos(root=scan_root, max_depth=1)
         assert scan_root / "parent" / "sub" in repos
 
@@ -153,6 +160,7 @@ class TestFindRepos_SubmoduleRecursion:
         parent = make_repo_at(scan_root / "parent")
         sub_source = make_repo_at(tmp_path / "sub_source")
         add_submodule(parent, sub_source, "active")
+        enable_submodule_scanning(parent)
         repos = git_scan._find_repos(root=scan_root, max_depth=1)
         assert scan_root / "parent" in repos
         assert scan_root / "parent" / "active" in repos
@@ -166,6 +174,7 @@ class TestFindRepos_SubmoduleRecursion:
         sub_source = make_repo_at(tmp_path / "sub_source")
         add_submodule(parent, sub_source, "passive")
         set_submodule_ignore_all(parent, "passive")
+        enable_submodule_scanning(parent)
         repos = git_scan._find_repos(root=scan_root, max_depth=1)
         assert scan_root / "parent" / "passive" not in repos
 
