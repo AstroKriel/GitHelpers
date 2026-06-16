@@ -159,7 +159,7 @@ def test_is_detached_exits_0_when_detached(
 
 
 ##
-## === show-diff
+## === show-diff-uncommitted
 ##
 
 
@@ -337,7 +337,7 @@ def test_show_commits_on_branch_kills_when_base_not_remote_qualified(
 
 
 ##
-## === show-diff-last
+## === show-diff-n-commits
 ##
 
 

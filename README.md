@@ -70,8 +70,8 @@ git_helpers show-commits-on-branch [--base branch] [--show-files-changed] [--no-
 **Inspecting changes**
 ```bash
 git_helpers show-commit <commit>                                                          # show the message and diff introduced by a specific commit
-git_helpers show-diff [--path path]                                                       # show all local changes vs HEAD (staged and unstaged)
-git_helpers show-diff-last --num-commits N [--include-uncommitted] [--path path]          # show changes over the last N commits; add --include-uncommitted to include local changes
+git_helpers show-diff-uncommitted [--path path]                                                  # show all uncommitted local changes vs HEAD (staged and unstaged)
+git_helpers show-diff-n-commits --num-commits N [--include-uncommitted] [--path path]           # show changes over the last N commits; add --include-uncommitted to include local changes
 git_helpers show-diff-committed [--base branch] [--name-only] [--no-fetch] [--path path]  # show committed changes on the current branch vs a base; fetches first (--base must be remote-qualified, e.g. origin/main; default: remote default)
 ```
 

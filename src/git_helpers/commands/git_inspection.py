@@ -351,7 +351,7 @@ def show_diff_committed(
     if branch == base_branch:
         shell_interface.kill(
             f"already on '{base_branch}'; show-diff-committed compares a feature branch to its base"
-            "; use show-diff-last N for commit-range diffs"
+            "; use show-diff-n-commits N for commit-range diffs"
         )
     shell_interface.log_step(f"showing committed changes vs '{remote_base}'")
     cmd = ["git", "diff", f"{remote_base}...HEAD"]

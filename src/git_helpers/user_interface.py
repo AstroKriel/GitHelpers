@@ -284,7 +284,7 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_args=[("commit", {})],
         ),
         cli_command(
-            cmd_name="show-diff",
+            cmd_name="show-diff-uncommitted",
             cmd_fn=git_inspection.show_diff,
             cmd_help="show all local changes vs HEAD; optionally scope to a filepath",
             cmd_args=[(
@@ -296,7 +296,7 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             )],
         ),
         cli_command(
-            cmd_name="show-diff-last",
+            cmd_name="show-diff-n-commits",
             cmd_fn=git_inspection.show_diff_last,
             cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",
             cmd_args=[
