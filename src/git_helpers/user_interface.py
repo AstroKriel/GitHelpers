@@ -717,7 +717,6 @@ def main() -> None:
             should_inject = (
                 arg_name.startswith("--")
                 and "help" not in arg_kwargs
-                and arg_kwargs.get("action") != "store_true"
                 and not arg_kwargs.get("required", False)
             )
             kwargs = {**arg_kwargs, "help": "(default: %(default)s)"} if should_inject else arg_kwargs
