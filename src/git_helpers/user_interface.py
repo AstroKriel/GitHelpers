@@ -242,6 +242,35 @@ _TRACKING_COMMANDS: list[_CommandEntry] = _make_command_group(
                 ),
             ],
         ),
+        cli_command(
+            cmd_name="show-commits-on-branch",
+            cmd_fn=git_inspection.show_commits_on_branch,
+            cmd_help="show commits on the current branch that are not on the base; fetches first",
+            cmd_args=[
+                (
+                    "--base",
+                    {
+                        "default": None,
+                        "metavar": "branch",
+                        "help": "remote-qualified, e.g. origin/main (default: remote default)",
+                    },
+                ),
+                (
+                    "--show-files-changed",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                    },
+                ),
+                (
+                    "--no-fetch",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                    },
+                ),
+            ],
+        ),
     ],
 )
 

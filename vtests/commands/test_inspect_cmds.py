@@ -268,6 +268,75 @@ def test_show_diff_committed_kills_when_on_base_branch(
 
 
 ##
+## === show-commits-on-branch
+##
+
+
+def test_show_commits_on_branch_uses_two_dot_range(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, num_commits=2)
+    git_inspection.show_commits_on_branch(Config(dry_run=True), base="origin/main", no_fetch=True)
+    out = capsys.readouterr().err
+    assert "origin/main..HEAD" in out
+
+
+def test_show_commits_on_branch_infers_default_branch(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
+    git_inspection.show_commits_on_branch(Config(dry_run=True), no_fetch=True)
+    out = capsys.readouterr().err
+    assert "origin/main..HEAD" in out
+
+
+def test_show_commits_on_branch_show_files_changed_includes_stat(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
+    git_inspection.show_commits_on_branch(Config(dry_run=True), base="origin/main", show_files_changed=True, no_fetch=True)
+    out = capsys.readouterr().err
+    assert "--stat" in out
+
+
+def test_show_commits_on_branch_fetches_by_default(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
+    git_inspection.show_commits_on_branch(Config(dry_run=True), base="origin/main")
+    out = capsys.readouterr().err
+    assert "git fetch" in out
+
+
+def test_show_commits_on_branch_kills_when_on_base_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    with pytest.raises(SystemExit):
+        git_inspection.show_commits_on_branch(Config(), base="origin/main", no_fetch=True)
+
+
+def test_show_commits_on_branch_kills_when_base_not_remote_qualified(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=make_repo_with_remote[0])
+    with pytest.raises(SystemExit):
+        git_inspection.show_commits_on_branch(Config(), base="main", no_fetch=True)
+
+
+##
 ## === show-diff-last
 ##
 

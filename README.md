@@ -58,19 +58,20 @@ In the listings below, `<arg>` means a required positional argument, `[arg]` mea
 
 **Inspecting tracking state**
 ```bash
-git_helpers show-local-remotes                                            # list all configured remotes and their URLs
-git_helpers show-upstream-state                                           # show which remote branch the current branch is tracking and its latest commit
-git_helpers show-branches-status                                          # see all local branches and whether they're ahead or behind their remote (fetches first)
-git_helpers count-ahead-behind                                            # show how many commits the current branch is ahead of and behind its upstream
-git_helpers show-unpulled-commits                                         # list commits on the remote that haven't been pulled yet
-git_helpers show-recent-commits [--max-entries N] [--show-files-changed]  # show the last N commits on the current branch (default: 20); add --show-files-changed to list files changed per commit
+git_helpers show-local-remotes                                                          # list all configured remotes and their URLs
+git_helpers show-upstream-state                                                         # show which remote branch the current branch is tracking and its latest commit
+git_helpers show-branches-status                                                        # see all local branches and whether they're ahead or behind their remote (fetches first)
+git_helpers count-ahead-behind                                                          # show how many commits the current branch is ahead of and behind its upstream
+git_helpers show-unpulled-commits                                                       # list commits on the remote that haven't been pulled yet
+git_helpers show-recent-commits [--max-entries N] [--show-files-changed]                # show the last N commits on the current branch (default: 20); add --show-files-changed to list files changed per commit
+git_helpers show-commits-on-branch [--base branch] [--show-files-changed] [--no-fetch]  # show commits on the current branch not in the base; fetches first (--base must be remote-qualified, e.g. origin/main; default: remote default)
 ```
 
 **Inspecting changes**
 ```bash
-git_helpers show-commit <commit>                                                         # show the message and diff introduced by a specific commit
-git_helpers show-diff [--path path]                                                      # show all local changes vs HEAD (staged and unstaged)
-git_helpers show-diff-last --num-commits N [--include-uncommitted] [--path path]         # show changes over the last N commits; add --include-uncommitted to include local changes
+git_helpers show-commit <commit>                                                          # show the message and diff introduced by a specific commit
+git_helpers show-diff [--path path]                                                       # show all local changes vs HEAD (staged and unstaged)
+git_helpers show-diff-last --num-commits N [--include-uncommitted] [--path path]          # show changes over the last N commits; add --include-uncommitted to include local changes
 git_helpers show-diff-committed [--base branch] [--name-only] [--no-fetch] [--path path]  # show committed changes on the current branch vs a base; fetches first (--base must be remote-qualified, e.g. origin/main; default: remote default)
 ```
 

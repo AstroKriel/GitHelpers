@@ -239,6 +239,43 @@ def show_local_remotes(
         shell_interface.log_result(line)
 
 
+def show_commits_on_branch(
+    config: shell_interface.Config,
+    base: str | None = None,
+    show_files_changed: bool = False,
+    no_fetch: bool = False,
+) -> None:
+    """Show commits on the current branch that are not on the base branch; fetches first by default."""
+    repo_state.require_repo()
+    remote = repo_state.get_default_remote_name()
+    if not no_fetch:
+        shell_interface.log_step(f"fetching from {remote}")
+        shell_interface.run_cmd(
+            config=config,
+            cmd=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
+        )
+    if base:
+        if "/" not in base:
+            shell_interface.kill("base must be remote-qualified, e.g. origin/main")
+        remote_base = base
+    else:
+        inferred = repo_state.get_default_branch_name()
+        if not inferred:
+            shell_interface.kill("could not infer default branch; pass base explicitly, e.g. origin/main")
+        remote_base = f"{remote}/{inferred}"
+    branch = repo_state.current_branch()
+    base_branch = remote_base.split("/", 1)[-1]
+    if branch == base_branch:
+        shell_interface.kill(
+            f"already on '{base_branch}'; show-commits-on-branch compares a feature branch to its base"
+        )
+    shell_interface.log_step(f"showing commits on '{branch}' not in '{remote_base}'")
+    cmd = ["git", "log", f"{remote_base}..HEAD", "--oneline", "--decorate"]
+    if show_files_changed:
+        cmd.append("--stat")
+    shell_interface.run_cmd(config=config, cmd=cmd)
+
+
 def show_recent_commits(
     config: shell_interface.Config,
     max_entries: int = 20,
