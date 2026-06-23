@@ -55,8 +55,7 @@ def show_upstream_state(
         cmd_show_upstream_commit = [
             "git",
             "log",
-            "--oneline",
-            "--decorate",
+            "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
             "-1",
             upstream_name,
         ]
@@ -210,7 +209,7 @@ def show_unpulled_commits(
     cmd_show_unpulled = [
         "git",
         "log",
-        "--oneline",
+        "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
         f"HEAD..{upstream_name}",
     ]
     shell_interface.run_cmd(
@@ -270,7 +269,7 @@ def show_commits_on_branch(
             f"already on '{base_branch}'; show-commits-on-branch compares a feature branch to its base"
         )
     shell_interface.log_step(f"showing commits on '{branch}' not in '{remote_base}'")
-    cmd = ["git", "log", f"{remote_base}..HEAD", "--oneline", "--decorate"]
+    cmd = ["git", "log", f"{remote_base}..HEAD", "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d"]
     if show_files_changed:
         cmd.append("--stat")
     shell_interface.run_cmd(config=config, cmd=cmd)
@@ -288,15 +287,13 @@ def show_recent_commits(
         var_value=str(max_entries),
     )
     shell_interface.log_step("showing recent commits on current branch")
-    ## `--oneline` = one commit per line (short SHA + subject).
-    ## `--decorate` = show branch/tag pointers next to commits.
+    ## `--format` = custom one-line format: short SHA, date, relative age, subject, decorations.
     ## `--stat` = list files changed and insertion/deletion counts per commit.
     ## `-n` = limit to the most recent N entries.
     cmd_show_recent_commits = [
         "git",
         "log",
-        "--oneline",
-        "--decorate",
+        "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
         "-n",
         str(max_entries),
     ]
