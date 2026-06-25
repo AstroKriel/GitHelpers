@@ -24,6 +24,7 @@ from git_helpers.commands import (
     git_branches,
     git_submodules,
     git_sync,
+    git_worktrees,
 )
 from git_helpers.summary import git_scan
 
@@ -39,6 +40,7 @@ class _SectionTitle(str, Enum):
     EDITING = "Editing the last commit"
     SYNCING = "Syncing with the remote"
     BRANCHES = "Managing branches"
+    WORKTREES = "Managing worktrees"
     SUBMODULES = "Submodules"
     SUMMARY = "Summary"
     CONFIG = "Global git configuration"
@@ -545,6 +547,23 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
     ],
 )
 
+_WORKTREES_COMMANDS: list[_CommandEntry] = _make_command_group(
+    section_title=_SectionTitle.WORKTREES,
+    commands=[
+        cli_command(
+            cmd_name="remove-worktree",
+            cmd_fn=git_worktrees.cmd_remove_worktree,
+            cmd_help="remove a worktree and delete its local branch in one step",
+            cmd_args=[("branch_name", {"type": str})],
+        ),
+        cli_command(
+            cmd_name="prune-worktrees",
+            cmd_fn=git_worktrees.cmd_prune_worktrees,
+            cmd_help="remove all worktrees whose upstream branch has been deleted and delete their local branches",
+        ),
+    ],
+)
+
 _SUBMODULES_COMMANDS: list[_CommandEntry] = _make_command_group(
     section_title=_SectionTitle.SUBMODULES,
     commands=[
@@ -674,6 +693,7 @@ _ALL_COMMANDS: dict[str, _CommandDetails] = dict([
     *_EDITING_COMMANDS,
     *_SYNCING_COMMANDS,
     *_BRANCHES_COMMANDS,
+    *_WORKTREES_COMMANDS,
     *_SUBMODULES_COMMANDS,
     *_SUMMARY_COMMANDS,
     *_CONFIG_COMMANDS,

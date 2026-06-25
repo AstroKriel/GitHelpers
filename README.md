@@ -105,6 +105,12 @@ git_helpers prune-merged-locals [remote/branch]               # delete local bra
 git_helpers cleanup-local-branches [remote/branch]            # delete all gone and merged local branches in one step
 ```
 
+**Managing worktrees**
+```bash
+git_helpers remove-worktree <branch>  # remove a worktree and delete its local branch in one step
+git_helpers prune-worktrees           # remove all worktrees whose upstream branch has been deleted and delete their local branches
+```
+
 **Submodules**
 ```bash
 git_helpers show-submodules-status               # show the current state of each submodule (commit SHA and init status)
