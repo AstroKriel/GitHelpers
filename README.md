@@ -107,8 +107,9 @@ git_helpers cleanup-local-branches [remote/branch]            # delete all gone 
 
 **Managing worktrees**
 ```bash
-git_helpers remove-worktree <branch>  # remove a worktree and delete its local branch in one step
-git_helpers prune-worktrees           # remove all worktrees whose upstream branch has been deleted and delete their local branches
+git_helpers create-worktree <branch> [path]  # create a worktree for a branch and initialise submodules; path defaults to ../<repo>-<branch-slug>
+git_helpers remove-worktree <branch>         # remove a worktree and delete its local branch in one step
+git_helpers prune-worktrees                  # remove all worktrees whose upstream branch has been deleted and delete their local branches
 ```
 
 **Submodules**

@@ -4,6 +4,9 @@
 ## === DEPENDENCIES
 ##
 
+## stdlib
+import pathlib
+
 ## local
 from git_helpers import shell_interface, repo_state
 
@@ -48,6 +51,70 @@ def _parse_worktree_list() -> list[dict[str, str]]:
 ##
 ## === WORKTREE COMMANDS
 ##
+
+
+def cmd_create_worktree(
+    config: shell_interface.Config,
+    branch_name: str,
+    worktree_path: str | None = None,
+) -> None:
+    """Create a worktree for a branch, initialising submodules automatically.
+
+    Defaults the path to ../<repo-name>-<branch-slug> (sibling of the main checkout).
+    """
+    repo_state.require_repo()
+    shell_interface.bind_var(
+        var_name="branch_name",
+        var_value=branch_name,
+    )
+    if worktree_path is None:
+        shell_interface.log_step("deriving default worktree path from repo name and branch")
+        cmd_get_repo_root = [
+            "git",
+            "rev-parse",
+            "--show-toplevel",
+        ]
+        repo_root = shell_interface.query_cmd(
+            cmd=cmd_get_repo_root,
+            error_on_failure=True,
+        )
+        repo_name = pathlib.Path(repo_root).name
+        branch_slug = branch_name.replace("/", "-")
+        worktree_path = str(pathlib.Path(repo_root).parent / f"{repo_name}-{branch_slug}")
+    shell_interface.bind_var(
+        var_name="worktree_path",
+        var_value=worktree_path,
+    )
+    shell_interface.log_step("creating worktree")
+    cmd_worktree_add = [
+        "git",
+        "worktree",
+        "add",
+        worktree_path,
+        branch_name,
+    ]
+    shell_interface.run_cmd(
+        config=config,
+        cmd=cmd_worktree_add,
+    )
+    shell_interface.log_step("initialising submodules")
+    ## `git -C` runs the submodule command from inside the new worktree without
+    ## changing the shell's working directory.
+    cmd_submodule_init = [
+        "git",
+        "-C",
+        worktree_path,
+        "submodule",
+        "update",
+        "--init",
+    ]
+    shell_interface.run_cmd(
+        config=config,
+        cmd=cmd_submodule_init,
+    )
+    shell_interface.log_outcome(
+        f"created worktree for '{branch_name}' at '{worktree_path}'",
+    )
 
 
 def cmd_remove_worktree(

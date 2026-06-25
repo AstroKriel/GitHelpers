@@ -551,6 +551,21 @@ _WORKTREES_COMMANDS: list[_CommandEntry] = _make_command_group(
     section_title=_SectionTitle.WORKTREES,
     commands=[
         cli_command(
+            cmd_name="create-worktree",
+            cmd_fn=git_worktrees.cmd_create_worktree,
+            cmd_help="create a worktree for a branch and initialise submodules (path defaults to ../<repo>-<branch-slug>)",
+            cmd_args=[
+                ("branch_name", {"type": str}),
+                (
+                    "worktree_path",
+                    {
+                        "type": str,
+                        "nargs": "?",
+                    },
+                ),
+            ],
+        ),
+        cli_command(
             cmd_name="remove-worktree",
             cmd_fn=git_worktrees.cmd_remove_worktree,
             cmd_help="remove a worktree and delete its local branch in one step",
