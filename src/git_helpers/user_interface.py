@@ -514,6 +514,11 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_help="delete local branches whose remote counterpart has been deleted",
         ),
         cli_command(
+            cmd_name="force-delete-gone",
+            cmd_fn=git_branches.cmd_force_delete_gone,
+            cmd_help="force-delete [gone] local branches regardless of merge status (use for squash-merged branches)",
+        ),
+        cli_command(
             cmd_name="prune-merged-locals",
             cmd_fn=git_branches.cmd_prune_merged_locals,
             cmd_help="delete local branches whose commits are already in the base branch",

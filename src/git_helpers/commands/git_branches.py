@@ -83,6 +83,7 @@ def cmd_prune_gone_locals(
         var_value=" ".join(gone_branches),
     )
     shell_interface.log_step("deleting [gone] local branches (-d)")
+    skipped_branches: list[str] = []
     for branch_name in gone_branches:
         cmd_delete_gone_branch = [
             "git",
@@ -91,11 +92,79 @@ def cmd_prune_gone_locals(
             "--",
             branch_name,
         ]
-        shell_interface.run_cmd(
+        success = shell_interface.try_run_cmd(
             config=config,
             cmd=cmd_delete_gone_branch,
         )
-    shell_interface.log_outcome("deleted [gone] local branches")
+        if not success:
+            skipped_branches.append(branch_name)
+            shell_interface.log_msg(
+                f"  skipped '{branch_name}' (unmerged commits; squash-merged? use force-delete-gone to override)",
+            )
+    deleted_count = len(gone_branches) - len(skipped_branches)
+    if skipped_branches:
+        shell_interface.log_outcome(
+            f"deleted {deleted_count} [gone] branch(es); skipped {len(skipped_branches)}: {', '.join(skipped_branches)}",
+        )
+    else:
+        shell_interface.log_outcome("deleted [gone] local branches")
+
+
+def cmd_force_delete_gone(
+    config: shell_interface.Config,
+) -> None:
+    """Force-delete (-D) all local branches whose remote has been deleted, including those with unmerged commits."""
+    repo_state.require_repo()
+    repo_state.require_attached()
+    shell_interface.log_step("refreshing remote-tracking refs (fetch --prune)")
+    cmd_fetch_prune = [
+        "git",
+        "fetch",
+        "--prune",
+        "--quiet",
+    ]
+    shell_interface.run_cmd(
+        config=config,
+        cmd=cmd_fetch_prune,
+    )
+    shell_interface.log_step("finding local branches with [gone] upstream")
+    cmd_list_branch_tracking = [
+        "git",
+        "for-each-ref",
+        "--format=%(refname:short) %(upstream:track)",
+        "refs/heads/",
+    ]
+    all_branches_output = shell_interface.query_cmd(
+        cmd=cmd_list_branch_tracking,
+        error_on_failure=True,
+    )
+    gone_branches = [line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line]
+    if not gone_branches:
+        shell_interface.log_outcome("no [gone] local branches")
+        return
+    shell_interface.bind_var(
+        var_name="branches_to_delete",
+        var_value=" ".join(gone_branches),
+    )
+    ## `-D` skips the merge check: use only when certain all [gone] branches have
+    ## been merged (e.g. via squash merge) or intentionally closed without merging.
+    shell_interface.log_msg(
+        "[bold]Warning:[/bold] force-deleting regardless of merge status; only run this if all [gone] branches have been merged or intentionally closed.",
+    )
+    shell_interface.log_step("force-deleting [gone] local branches (-D)")
+    for branch_name in gone_branches:
+        cmd_force_delete_branch = [
+            "git",
+            "branch",
+            "-D",
+            "--",
+            branch_name,
+        ]
+        shell_interface.run_cmd(
+            config=config,
+            cmd=cmd_force_delete_branch,
+        )
+    shell_interface.log_outcome("force-deleted [gone] local branches")
 
 
 def cmd_prune_merged_locals(

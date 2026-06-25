@@ -194,6 +194,27 @@ def run_cmd(
     )
 
 
+def try_run_cmd(
+    config: Config,
+    cmd: list[str],
+) -> bool:
+    """Run a mutating git command; returns True on success, False on failure. Skipped in dry-run."""
+    if config.dry_run:
+        _print_cmd(
+            theme=_Themes.SKIPPED,
+            cmd=cmd,
+            cmd_prefix=" (dryrun) skipped: ",
+        )
+        return True
+    _print_cmd(
+        theme=_Themes.ACTION,
+        cmd=cmd,
+        cmd_prefix=" ",
+    )
+    result = subprocess.run(cmd)
+    return result.returncode == 0
+
+
 def run_cmd_and_capture_output(
     config: Config,
     cmd: list[str],
