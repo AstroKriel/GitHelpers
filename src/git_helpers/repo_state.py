@@ -181,6 +181,21 @@ def ensure_clean_worktree(
     shell_interface.log_outcome("worktree is clean")
 
 
+def remote_branch_exists(remote_name: str, branch_name: str) -> bool:
+    """Return True if branch_name exists on remote_name."""
+    ## `ls-remote --exit-code --heads` exits non-zero when the ref is absent,
+    ## so we can use probe_cmd directly without parsing output.
+    cmd_check_remote_branch = [
+        "git",
+        "ls-remote",
+        "--exit-code",
+        "--heads",
+        remote_name,
+        branch_name,
+    ]
+    return shell_interface.probe_cmd(cmd_check_remote_branch) == 0
+
+
 def is_detached() -> bool:
     """Return True if HEAD is not pointing at a branch (detached HEAD state)."""
     require_repo()

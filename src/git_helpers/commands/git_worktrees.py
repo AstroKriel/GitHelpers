@@ -168,9 +168,26 @@ def cmd_remove_worktree(
         cmd=cmd_delete_branch,
     )
     if not success:
-        shell_interface.log_msg(
-            f"  could not delete '{branch_name}' (unmerged commits; squash-merged? use force-delete-gone to override)",
-        )
+        remote_name = repo_state.get_default_remote_name()
+        if not repo_state.remote_branch_exists(remote_name, branch_name):
+            shell_interface.log_step(
+                f"remote branch gone; force-deleting '{branch_name}' (-D)",
+            )
+            cmd_force_delete_branch = [
+                "git",
+                "branch",
+                "-D",
+                "--",
+                branch_name,
+            ]
+            shell_interface.run_cmd(
+                config=config,
+                cmd=cmd_force_delete_branch,
+            )
+        else:
+            shell_interface.log_msg(
+                f"  could not delete '{branch_name}' (remote branch still exists; merge or close it first)",
+            )
     shell_interface.log_outcome(f"removed worktree for '{branch_name}'")
 
 
