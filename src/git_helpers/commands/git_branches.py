@@ -99,7 +99,8 @@ def cmd_prune_gone_locals(
         if not success:
             skipped_branches.append(branch_name)
             shell_interface.log_msg(
-                f"  skipped '{branch_name}' (unmerged commits; squash-merged? use force-delete-gone to override)",
+                f"  skipped '{branch_name}' (unmerged commits; likely squash-merged: "
+                f"run 'git_helpers force-delete-gone' to force-delete all [gone] branches with -D)",
             )
     deleted_count = len(gone_branches) - len(skipped_branches)
     if skipped_branches:

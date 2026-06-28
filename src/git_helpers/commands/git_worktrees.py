@@ -292,7 +292,8 @@ def cmd_prune_worktrees(
         if not success:
             skipped_branches.append(branch)
             shell_interface.log_msg(
-                f"  skipped '{branch}' (unmerged commits; squash-merged? use force-delete-gone to override)",
+                f"  skipped '{branch}' (unmerged commits; likely squash-merged: "
+                f"run 'git_helpers force-delete-gone' to force-delete all [gone] branches with -D)",
             )
     removed_count = len(prunable) - len(skipped_branches)
     if skipped_branches:

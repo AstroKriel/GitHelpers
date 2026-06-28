@@ -99,16 +99,16 @@ git_helpers create-branch-from-default <name>                 # create and push 
 git_helpers create-branch-from-remote <name> <remote/branch>  # create and push a new branch from a specific remote branch
 git_helpers track-remote-branch <remote/branch> [name]        # create a local tracking branch for an existing remote branch and check it out
 git_helpers delete-local-branch <name>                        # delete a local branch safely (refuses if it has unmerged commits)
-git_helpers prune-gone-locals                                 # delete local branches whose remote counterpart has been deleted; skips branches with unmerged commits and reports them
-git_helpers force-delete-gone                                 # force-delete [gone] local branches regardless of merge status (use for squash-merged branches)
+git_helpers prune-gone-locals                                 # delete local branches whose remote counterpart has been deleted; skips branches with unmerged commits (e.g. squash-merged) and reports them
+git_helpers force-delete-gone                                 # force-delete (-D) all [gone] local branches regardless of merge status; use after prune-gone-locals skips squash-merged branches
 git_helpers prune-merged-locals [remote/branch]               # delete local branches whose commits are already in the base branch
 git_helpers cleanup-local-branches [remote/branch]            # delete all gone and merged local branches in one step
 ```
 
 **Managing worktrees**
 ```bash
-git_helpers create-worktree <branch> [path]  # create a worktree for a branch and initialise submodules; path defaults to ../<repo>-<branch-slug>
-git_helpers remove-worktree <branch>         # remove a worktree and delete its local branch in one step
+git_helpers create-worktree <branch> [path]  # create a worktree for a branch; initialise submodules; set upstream tracking if the remote branch exists, otherwise prompt to push
+git_helpers remove-worktree <branch>         # remove a worktree and delete its local branch; force-deletes the branch if the remote branch is already gone
 git_helpers prune-worktrees                  # remove all worktrees whose upstream branch has been deleted and delete their local branches
 ```
 
