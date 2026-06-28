@@ -84,4 +84,19 @@ def head_sha(
     return git(["rev-parse", "--short", "HEAD"], cwd=repo_dir).stdout.strip()
 
 
+def upstream_of(
+    repo_dir: Path,
+    branch_name: str,
+) -> str:
+    """Return the upstream tracking ref for branch_name (e.g. 'origin/main'), or '' if none."""
+    try:
+        result = git(
+            ["rev-parse", "--abbrev-ref", "--symbolic-full-name", f"{branch_name}@{{u}}"],
+            cwd=repo_dir,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return ""
+
+
 ## } SCRIPT
