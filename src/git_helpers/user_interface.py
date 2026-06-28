@@ -663,6 +663,22 @@ _SUMMARY_COMMANDS: list[_CommandEntry] = _make_command_group(
                         "default": False,
                     },
                 ),
+                (
+                    "--pull",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                        "help": "fast-forward pull the checked-out branch in each repo where it is behind and clean",
+                    },
+                ),
+                (
+                    "--push",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                        "help": "push each branch that is ahead of its established upstream (skips diverged branches)",
+                    },
+                ),
             ],
         ),
     ],

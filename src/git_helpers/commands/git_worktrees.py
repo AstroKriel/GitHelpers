@@ -112,6 +112,32 @@ def cmd_create_worktree(
         config=config,
         cmd=cmd_submodule_init,
     )
+    shell_interface.log_step("configuring upstream tracking")
+    if repo_state.has_remote():
+        remote_name = repo_state.get_default_remote_name()
+        if repo_state.remote_branch_exists(remote_name, branch_name):
+            ## branch already exists on the remote; wire up tracking so push/pull
+            ## work without arguments and [gone] detection works on cleanup.
+            cmd_set_upstream = [
+                "git",
+                "-C",
+                worktree_path,
+                "branch",
+                "--set-upstream-to",
+                f"{remote_name}/{branch_name}",
+                branch_name,
+            ]
+            shell_interface.run_cmd(
+                config=config,
+                cmd=cmd_set_upstream,
+            )
+        else:
+            shell_interface.log_msg(
+                f"  '{remote_name}/{branch_name}' not on remote yet; "
+                f"run 'git_helpers push' from inside the worktree to publish and set tracking",
+            )
+    else:
+        shell_interface.log_msg("  no remote configured; skipping upstream setup")
     shell_interface.log_outcome(
         f"created worktree for '{branch_name}' at '{worktree_path}'",
     )
@@ -171,7 +197,7 @@ def cmd_remove_worktree(
         remote_name = repo_state.get_default_remote_name()
         if not repo_state.remote_branch_exists(remote_name, branch_name):
             shell_interface.log_step(
-                f"remote branch gone; force-deleting '{branch_name}' (-D)",
+                f"'{remote_name}/{branch_name}' no longer exists on remote; force-deleting local branch (-D)",
             )
             cmd_force_delete_branch = [
                 "git",

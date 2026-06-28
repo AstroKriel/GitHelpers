@@ -7,6 +7,7 @@
 ## stdlib
 import subprocess
 import sys
+from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
 from typing import NoReturn, final
@@ -173,6 +174,7 @@ def kill(
 def run_cmd(
     config: Config,
     cmd: list[str],
+    cwd: Path | None = None,
 ) -> None:
     """Run a mutating git command; skipped entirely in dry-run mode."""
     if config.dry_run:
@@ -191,12 +193,14 @@ def run_cmd(
     subprocess.run(
         cmd,
         check=True,
+        cwd=cwd,
     )
 
 
 def try_run_cmd(
     config: Config,
     cmd: list[str],
+    cwd: Path | None = None,
 ) -> bool:
     """Run a mutating git command; returns True on success, False on failure. Skipped in dry-run."""
     if config.dry_run:
@@ -211,7 +215,7 @@ def try_run_cmd(
         cmd=cmd,
         cmd_prefix=" ",
     )
-    result = subprocess.run(cmd)
+    result = subprocess.run(cmd, cwd=cwd)
     return result.returncode == 0
 
 

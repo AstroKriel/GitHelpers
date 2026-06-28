@@ -25,20 +25,23 @@ def require_repo() -> None:
         shell_interface.kill("not inside a git repo")
 
 
-def require_remote() -> None:
-    """Exit with an error if no remotes are configured."""
+def has_remote() -> bool:
+    """Return True if at least one remote is configured."""
     require_repo()
-    ## `git remote` with no args prints one remote name per line; empty output
-    ## means no remotes have been added yet.
     cmd_list_remotes = [
         "git",
         "remote",
     ]
     remotes = shell_interface.query_cmd(
         cmd=cmd_list_remotes,
-        error_on_failure=True,
+        error_on_failure=False,
     )
-    if not remotes:
+    return bool(remotes.strip())
+
+
+def require_remote() -> None:
+    """Exit with an error if no remotes are configured."""
+    if not has_remote():
         shell_interface.kill("no remotes configured (try: git remote add origin <url>)")
 
 

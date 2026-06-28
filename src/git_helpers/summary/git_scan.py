@@ -23,6 +23,7 @@ from git_helpers import shell_interface
 @dataclass(frozen=True)
 class _BranchStatus:
     name: str
+    upstream_remote: str = ""
     commits_ahead: int = 0
     commits_behind: int = 0
 
@@ -138,14 +139,22 @@ def _get_repo_status(
     dirty_files = len([line for line in dirty_output.splitlines() if line.strip()])
 
     ref_output = _query(
-        ["git", "for-each-ref", "--format=%(refname:short) %(upstream:track)", "refs/heads/"],
+        ["git", "for-each-ref", "--format=%(refname:short) %(upstream:track) %(upstream:remotename)", "refs/heads/"],
         path,
     )
     diverged: list[_BranchStatus] = []
     for line in ref_output.splitlines():
-        parts = line.split(" ", 1)
-        branch_name = parts[0]
-        track = parts[1] if len(parts) > 1 else ""
+        ## split on whitespace; for-each-ref uses this format:
+        ##   "branchname [ahead N] remotename"   (branch with upstream)
+        ##   "branchname"                         (branch without upstream)
+        ## %(upstream:remotename) is always a single token (e.g. "origin") with no spaces.
+        ## %(upstream:track) may contain spaces (e.g. "[ahead 1, behind 2]").
+        tokens = line.split()
+        if not tokens:
+            continue
+        branch_name = tokens[0]
+        remote_name = tokens[-1] if len(tokens) > 1 else ""
+        track = " ".join(tokens[1:-1]) if len(tokens) > 2 else (tokens[1] if len(tokens) == 2 else "")
         ahead_match = re.search(r"ahead (\d+)", track)
         behind_match = re.search(r"behind (\d+)", track)
         commits_ahead = int(ahead_match.group(1)) if ahead_match else 0
@@ -153,6 +162,7 @@ def _get_repo_status(
         if commits_ahead or commits_behind:
             diverged.append(_BranchStatus(
                 name=branch_name,
+                upstream_remote=remote_name,
                 commits_ahead=commits_ahead,
                 commits_behind=commits_behind,
             ))
@@ -210,6 +220,76 @@ def _print_repo_status(
 
 
 ##
+## === ACTIONS
+##
+
+
+def _get_current_branch(
+    path: Path,
+) -> str:
+    name = _query(["git", "rev-parse", "--abbrev-ref", "HEAD"], path)
+    return "" if name == "HEAD" else name
+
+
+def _do_pull(
+    *,
+    config: shell_interface.Config,
+    path: Path,
+    status: _RepoStatus,
+    current_branch: str,
+) -> bool:
+    if not current_branch:
+        return False
+    for branch in status.diverged:
+        if branch.name != current_branch:
+            continue
+        if branch.commits_behind == 0 or branch.commits_ahead > 0:
+            return False
+        if status.dirty_files > 0:
+            shell_interface.bind_var(
+                var_name="pull skipped",
+                var_value=f"{branch.name} (dirty worktree)",
+            )
+            return False
+        success = shell_interface.try_run_cmd(
+            config=config,
+            cmd=["git", "pull", "--ff-only"],
+            cwd=path,
+        )
+        if not success:
+            shell_interface.bind_var(
+                var_name="pull failed",
+                var_value=f"{branch.name} (cannot fast-forward; manual intervention needed)",
+            )
+        return success
+    return False
+
+
+def _do_push(
+    *,
+    config: shell_interface.Config,
+    path: Path,
+    status: _RepoStatus,
+) -> int:
+    pushed = 0
+    for branch in status.diverged:
+        if branch.commits_ahead > 0 and branch.commits_behind == 0 and branch.upstream_remote:
+            success = shell_interface.try_run_cmd(
+                config=config,
+                cmd=["git", "push", branch.upstream_remote, branch.name],
+                cwd=path,
+            )
+            if success:
+                pushed += 1
+            else:
+                shell_interface.bind_var(
+                    var_name="push failed",
+                    var_value=branch.name,
+                )
+    return pushed
+
+
+##
 ## === COMMAND
 ##
 
@@ -219,8 +299,12 @@ def scan_repos(
     depth: int,
     since: int | None = None,
     is_fetch_skipped: bool = False,
+    is_pulling: bool = False,
+    is_pushing: bool = False,
 ) -> None:
     """Scan for git repos from CWD and report dirty, unpushed, and recently active ones; count commits per repo when --since is given."""
+    if is_fetch_skipped and (is_pulling or is_pushing):
+        shell_interface.kill("--pull and --push require a fetch; remove --no-fetch")
     root = Path.cwd()
     shell_interface.log_step(f"scanning from {root} (depth {depth})")
     repos = _find_repos(root=root, max_depth=depth)
@@ -251,6 +335,11 @@ def scan_repos(
         if should_show:
             _print_repo_status(status=status)
             anything_shown = True
+            if is_pulling:
+                current_branch = _get_current_branch(repo)
+                _do_pull(config=config, path=repo, status=status, current_branch=current_branch)
+            if is_pushing:
+                _do_push(config=config, path=repo, status=status)
     if not anything_shown:
         shell_interface.log_outcome("all repos are clean and synced")
         return
