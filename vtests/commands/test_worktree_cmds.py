@@ -84,10 +84,10 @@ def test_remove_worktree_removes_directory(
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     git_worktrees.cmd_create_worktree(Config(), "feature")
-    wt_path = worktree_path_for(repo_dir, "feature")
-    assert wt_path.is_dir()
+    worktree_path = worktree_path_for(repo_dir, "feature")
+    assert worktree_path.is_dir()
     git_worktrees.cmd_remove_worktree(Config(), "feature")
-    assert not wt_path.exists()
+    assert not worktree_path.exists()
 
 
 def test_remove_worktree_deletes_branch_when_merged(
@@ -133,8 +133,8 @@ def test_remove_worktree_keeps_branch_when_remote_still_exists(
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     git_worktrees.cmd_create_worktree(Config(), "feature")
     git_worktrees.cmd_remove_worktree(Config(), "feature")
-    wt_path = worktree_path_for(repo_dir, "feature")
-    assert not wt_path.exists()
+    worktree_path = worktree_path_for(repo_dir, "feature")
+    assert not worktree_path.exists()
     assert "feature" in vtest_helpers.local_branches(repo_dir)
 
 
@@ -143,6 +143,72 @@ def test_remove_worktree_fails_when_no_worktree_found(
 ) -> None:
     with pytest.raises(SystemExit):
         git_worktrees.cmd_remove_worktree(Config(), "nonexistent-branch")
+
+
+##
+## === rename-branch
+##
+
+
+def test_rename_branch_renames_branch(
+    make_repo_: Path,
+) -> None:
+    vtest_helpers.git(["checkout", "-b", "old-name"], cwd=make_repo_)
+    git_worktrees.cmd_rename_branch(Config(), "new-name")
+    assert "new-name" in vtest_helpers.local_branches(make_repo_)
+    assert "old-name" not in vtest_helpers.local_branches(make_repo_)
+
+
+def test_rename_branch_moves_worktree_directory(
+    make_repo_: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vtest_helpers.git(["checkout", "-b", "old/name"], cwd=make_repo_)
+    vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
+    git_worktrees.cmd_create_worktree(Config(), "old/name")
+    old_worktree_path = worktree_path_for(make_repo_, "old/name")
+    assert old_worktree_path.is_dir()
+    ## rename-branch operates on the current branch; switch cwd into the linked
+    ## worktree (old/name is already checked out there, so checkout from main fails)
+    monkeypatch.chdir(old_worktree_path)
+    git_worktrees.cmd_rename_branch(Config(), "new/name")
+    new_worktree_path = worktree_path_for(make_repo_, "new/name")
+    assert not old_worktree_path.exists()
+    assert new_worktree_path.is_dir()
+
+
+def test_rename_branch_relinks_worktree(
+    make_repo_: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vtest_helpers.git(["checkout", "-b", "old/name"], cwd=make_repo_)
+    vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
+    git_worktrees.cmd_create_worktree(Config(), "old/name")
+    old_worktree_path = worktree_path_for(make_repo_, "old/name")
+    monkeypatch.chdir(old_worktree_path)
+    git_worktrees.cmd_rename_branch(Config(), "new/name")
+    new_worktree_path = worktree_path_for(make_repo_, "new/name")
+    ## verify git sees the worktree correctly after repair
+    result = vtest_helpers.git(["worktree", "list", "--porcelain"], cwd=make_repo_)
+    assert str(new_worktree_path) in result.stdout
+
+
+def test_rename_branch_aborts_when_target_path_exists(
+    make_repo_: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    vtest_helpers.git(["checkout", "-b", "old/name"], cwd=make_repo_)
+    vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
+    git_worktrees.cmd_create_worktree(Config(), "old/name")
+    old_worktree_path = worktree_path_for(make_repo_, "old/name")
+    ## pre-create the target path to trigger the pre-flight check
+    target = worktree_path_for(make_repo_, "new/name")
+    target.mkdir(parents=True)
+    monkeypatch.chdir(old_worktree_path)
+    with pytest.raises(SystemExit):
+        git_worktrees.cmd_rename_branch(Config(), "new/name")
+    ## branch must be unchanged
+    assert "old/name" in vtest_helpers.local_branches(make_repo_)
 
 
 ## } SCRIPT
