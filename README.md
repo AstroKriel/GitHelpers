@@ -89,7 +89,7 @@ git_helpers rename-last-commit <msg>  # update the message of the last commit wi
 
 **Syncing with the remote**
 ```bash
-git_helpers push                         # push the current branch; sets the upstream automatically if it's a new branch
+git_helpers push                         # push the current branch; sets the upstream automatically if not yet configured, or if it points to a different branch name
 git_helpers sync-branch [remote/branch]  # bring the current branch up to date with its upstream (or an explicit remote branch)
 ```
 
@@ -107,6 +107,7 @@ git_helpers cleanup-local-branches [remote/branch]            # delete all gone 
 
 **Managing worktrees**
 ```bash
+git_helpers rename-branch <new-name>         # rename the current branch; moves and relinks its worktree directory automatically if one exists
 git_helpers create-worktree <branch> [path]  # create a worktree for a branch; initialise submodules; set upstream tracking if the remote branch exists, otherwise prompt to push
 git_helpers remove-worktree <branch>         # remove a worktree and delete its local branch; force-deletes the branch if the remote branch is already gone
 git_helpers prune-worktrees                  # remove all worktrees whose upstream branch has been deleted and delete their local branches
@@ -204,6 +205,7 @@ GitHelpers/
 │       │   ├── git_config.py      # global git config commands
 │       │   ├── git_inspection.py  # read-only inspection commands
 │       │   ├── git_branches.py    # branch management commands
+│       │   ├── git_worktrees.py   # worktree management commands
 │       │   ├── git_submodules.py  # submodule commands
 │       │   └── git_sync.py        # push, sync, stash, and history commands
 │       └── summary/
