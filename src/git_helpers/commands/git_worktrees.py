@@ -49,6 +49,16 @@ def _parse_worktree_list() -> list[dict[str, str]]:
 
 
 ##
+## === HELPERS
+##
+
+
+def _get_main_worktree_path() -> pathlib.Path:
+    """Return the path of the main (non-linked) worktree; always index 0 in the worktree list."""
+    return pathlib.Path(_parse_worktree_list()[0]["path"])
+
+
+##
 ## === WORKTREE COMMANDS
 ##
 
@@ -69,18 +79,12 @@ def cmd_create_worktree(
     )
     if worktree_path is None:
         shell_interface.log_step("deriving default worktree path from repo name and branch")
-        cmd_get_repo_root = [
-            "git",
-            "rev-parse",
-            "--show-toplevel",
-        ]
-        repo_root = shell_interface.query_cmd(
-            cmd=cmd_get_repo_root,
-            error_on_failure=True,
-        )
-        repo_name = pathlib.Path(repo_root).name
+        ## use the main worktree (index 0) rather than --show-toplevel so the path
+        ## is correct when this command is called from inside a linked worktree.
+        main_worktree = _get_main_worktree_path()
+        repo_name = main_worktree.name
         branch_slug = branch_name.replace("/", "-")
-        worktree_path = str(pathlib.Path(repo_root).parent / f"{repo_name}-{branch_slug}")
+        worktree_path = str(main_worktree.parent / f"{repo_name}-{branch_slug}")
     shell_interface.bind_var(
         var_name="worktree_path",
         var_value=worktree_path,
@@ -157,7 +161,7 @@ def cmd_remove_worktree(
     worktrees = _parse_worktree_list()
     ## index 0 is the main checkout; never remove it
     match = next(
-        (wt for wt in worktrees[1:] if wt.get("branch") == branch_name),
+        (worktree for worktree in worktrees[1:] if worktree.get("branch") == branch_name),
         None,
     )
     if not match:
@@ -251,20 +255,20 @@ def cmd_prune_worktrees(
     worktrees = _parse_worktree_list()
     ## index 0 is the main checkout; never prune it
     prunable = [
-        wt for wt in worktrees[1:]
-        if wt.get("branch") in gone_branches
+        worktree for worktree in worktrees[1:]
+        if worktree.get("branch") in gone_branches
     ]
     if not prunable:
         shell_interface.log_outcome("no prunable worktrees")
         return
     shell_interface.bind_var(
         var_name="worktrees_to_remove",
-        var_value=" ".join(wt["path"] for wt in prunable),
+        var_value=" ".join(worktree["path"] for worktree in prunable),
     )
     skipped_branches: list[str] = []
-    for wt in prunable:
-        path = wt["path"]
-        branch = wt["branch"]
+    for worktree in prunable:
+        path = worktree["path"]
+        branch = worktree["branch"]
         shell_interface.log_step(f"removing worktree '{path}'")
         cmd_remove = [
             "git",
@@ -304,6 +308,61 @@ def cmd_prune_worktrees(
         shell_interface.log_outcome(
             f"removed {len(prunable)} worktree(s) and deleted their branches",
         )
+
+
+def cmd_rename_branch(
+    config: shell_interface.Config,
+    new_name: str,
+) -> None:
+    """Rename the current branch; move and relink its worktree if one exists.
+
+    The worktree path is derived by the same convention as create-worktree:
+    ../<repo-name>-<new-branch-slug>. Aborts before touching anything if that
+    path already exists on disk.
+    """
+    repo_state.require_repo()
+    repo_state.require_attached()
+    old_name = repo_state.current_branch()
+    shell_interface.bind_var(var_name="old_name", var_value=old_name)
+    shell_interface.bind_var(var_name="new_name", var_value=new_name)
+    shell_interface.log_step("checking for a linked worktree on this branch")
+    worktrees = _parse_worktree_list()
+    worktree_match = next(
+        (worktree for worktree in worktrees[1:] if worktree.get("branch") == old_name),
+        None,
+    )
+    old_worktree_path: pathlib.Path | None = None
+    new_worktree_path: pathlib.Path | None = None
+    main_worktree: pathlib.Path | None = None
+    if worktree_match:
+        old_worktree_path = pathlib.Path(worktree_match["path"])
+        main_worktree = _get_main_worktree_path()
+        new_branch_slug = new_name.replace("/", "-")
+        new_worktree_path = main_worktree.parent / f"{main_worktree.name}-{new_branch_slug}"
+        shell_interface.bind_var(var_name="old_worktree_path", var_value=str(old_worktree_path))
+        shell_interface.bind_var(var_name="new_worktree_path", var_value=str(new_worktree_path))
+        if new_worktree_path.exists():
+            shell_interface.kill(f"target worktree path '{new_worktree_path}' already exists")
+    shell_interface.log_step("renaming branch")
+    cmd_branch_rename = ["git", "branch", "-m", old_name, new_name]
+    shell_interface.run_cmd(config=config, cmd=cmd_branch_rename)
+    shell_interface.log_outcome(f"renamed branch '{old_name}' to '{new_name}'")
+    if old_worktree_path is not None and new_worktree_path is not None and main_worktree is not None:
+        shell_interface.log_step("moving worktree directory")
+        old_worktree_path.rename(new_worktree_path)
+        shell_interface.log_step("relinking worktree")
+        ## run repair via the main worktree so the cwd is always valid, even when
+        ## called from inside the worktree that was just moved.
+        cmd_repair = [
+            "git",
+            "-C",
+            str(main_worktree),
+            "worktree",
+            "repair",
+            str(new_worktree_path),
+        ]
+        shell_interface.run_cmd(config=config, cmd=cmd_repair)
+        shell_interface.log_outcome(f"moved worktree to '{new_worktree_path}'")
 
 
 ## } MODULE

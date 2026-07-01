@@ -551,6 +551,12 @@ _WORKTREES_COMMANDS: list[_CommandEntry] = _make_command_group(
     section_title=_SectionTitle.WORKTREES,
     commands=[
         cli_command(
+            cmd_name="rename-branch",
+            cmd_fn=git_worktrees.cmd_rename_branch,
+            cmd_help="rename the current branch; moves and relinks its worktree automatically if one exists",
+            cmd_args=[("new_name", {"type": str})],
+        ),
+        cli_command(
             cmd_name="create-worktree",
             cmd_fn=git_worktrees.cmd_create_worktree,
             cmd_help="create a worktree for a branch and initialise submodules (path defaults to ../<repo>-<branch-slug>)",
