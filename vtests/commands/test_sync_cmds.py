@@ -187,4 +187,22 @@ def test_push_with_existing_upstream_pushes_commit(
     assert local_sha == remote_sha
 
 
+def test_push_with_mismatched_upstream_creates_new_remote_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    ## Simulate a branch created locally that still tracks the parent branch on the
+    ## remote (e.g. a worktree created from origin/development). Local branch is
+    ## 'feature/thing'; upstream is 'origin/main'. cmd_push must push to a new
+    ## remote branch 'feature/thing' and update the upstream, not push to 'main'.
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature/thing"], cwd=repo_dir)
+    ## upstream still points at origin/main; local branch name is 'feature/thing'
+    vtest_helpers.git(["branch", "--set-upstream-to=origin/main", "feature/thing"], cwd=repo_dir)
+    vtest_helpers.make_commit(repo_dir, msg="feature commit")
+    git_sync.cmd_push(Config(), [])
+    ## upstream must now be the same-named remote branch
+    new_upstream = vtest_helpers.upstream_of(repo_dir, "feature/thing")
+    assert new_upstream == "origin/feature/thing"
+
+
 ## } SCRIPT
