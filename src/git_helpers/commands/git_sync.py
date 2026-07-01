@@ -67,17 +67,40 @@ def cmd_push(
     )
     shell_interface.log_step("detecting whether upstream is already set")
     if repo_state.has_upstream():
-        ## upstream already configured; plain push uses it automatically.
-        shell_interface.log_step("upstream already set; using plain push")
-        cmd_push_existing = [
-            "git",
-            "push",
-        ] + extra_args
-        shell_interface.run_cmd(
-            config=config,
-            cmd=cmd_push_existing,
-        )
-        shell_interface.log_outcome("pushed current branch")
+        upstream_branch = repo_state.get_upstream_branch_name()
+        local_branch = repo_state.current_branch()
+        if upstream_branch == local_branch:
+            ## upstream points at the same-named remote branch; plain push is correct.
+            shell_interface.log_step("upstream branch name matches local; using plain push")
+            cmd_push_existing = [
+                "git",
+                "push",
+            ] + extra_args
+            shell_interface.run_cmd(
+                config=config,
+                cmd=cmd_push_existing,
+            )
+            shell_interface.log_outcome("pushed current branch")
+        else:
+            ## upstream name differs from local name (e.g. branch created from another branch
+            ## and tracking ref was never updated). push to a new same-named remote branch
+            ## and update the upstream so subsequent pushes work without arguments.
+            shell_interface.log_step(
+                f"upstream branch '{upstream_branch}' differs from local '{local_branch}'; "
+                f"pushing with -u to {default_remote_name}/{local_branch}",
+            )
+            cmd_push_set_upstream = [
+                "git",
+                "push",
+                "-u",
+                default_remote_name,
+                "HEAD",
+            ] + extra_args
+            shell_interface.run_cmd(
+                config=config,
+                cmd=cmd_push_set_upstream,
+            )
+            shell_interface.log_outcome(f"pushed and set upstream to {default_remote_name}/{local_branch}")
     else:
         ## no upstream yet: push and set it in one step with `-u`.
         ## `HEAD` means "push the current branch, whatever it's named".

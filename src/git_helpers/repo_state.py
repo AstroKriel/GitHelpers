@@ -118,6 +118,29 @@ def has_upstream() -> bool:
     return shell_interface.probe_cmd(cmd_check_upstream) == 0
 
 
+def get_upstream_branch_name() -> str:
+    """Return the branch portion of the upstream ref (e.g. 'main' from 'origin/main')."""
+    require_repo()
+    shell_interface.log_step("reading upstream branch name")
+    ## `@{u}` resolves to the full upstream ref, e.g. 'origin/development'.
+    ## split on the first '/' and take the remainder to get just the branch name;
+    ## this handles branch names that themselves contain slashes (e.g. 'fix/my-bug').
+    cmd_get_upstream = [
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "--symbolic-full-name",
+        "@{u}",
+    ]
+    upstream_ref = shell_interface.query_cmd(
+        cmd=cmd_get_upstream,
+        error_on_failure=True,
+    )
+    branch_name = upstream_ref.split("/", 1)[1]
+    shell_interface.log_outcome(f"upstream branch is '{branch_name}'")
+    return branch_name
+
+
 def current_branch() -> str:
     """Return the current branch name, or 'DETACHED@<sha>' in detached HEAD state."""
     require_repo()
