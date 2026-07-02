@@ -312,7 +312,7 @@ def show_diff(
     """Show all local changes vs HEAD (staged, unstaged, and uncommitted)."""
     repo_state.require_repo()
     shell_interface.log_step("showing local changes vs HEAD")
-    cmd = ["git", "diff", "HEAD"]
+    cmd = ["git", "diff", "--color=always", "HEAD"]
     if path:
         cmd += ["--", path]
     shell_interface.run_cmd(config=config, cmd=cmd)
@@ -351,7 +351,7 @@ def show_diff_committed(
             "; use show-diff-n-commits N for commit-range diffs"
         )
     shell_interface.log_step(f"showing committed changes vs '{remote_base}'")
-    cmd = ["git", "diff", f"{remote_base}...HEAD"]
+    cmd = ["git", "diff", "--color=always", f"{remote_base}...HEAD"]
     if name_only:
         cmd.append("--name-only")
     if path:
@@ -366,7 +366,7 @@ def show_commit(
     """Show the message and diff introduced by a specific commit."""
     repo_state.require_repo()
     shell_interface.log_step(f"showing changes introduced by {commit}")
-    shell_interface.run_cmd(config=config, cmd=["git", "show", commit])
+    shell_interface.run_cmd(config=config, cmd=["git", "show", "--color=always", commit])
 
 
 def show_diff_last(
@@ -385,10 +385,10 @@ def show_diff_last(
     )
     if include_uncommitted:
         shell_interface.log_step(f"showing changes over last {num_commits} commits including local changes")
-        cmd = ["git", "diff", f"HEAD~{num_commits}"]
+        cmd = ["git", "diff", "--color=always", f"HEAD~{num_commits}"]
     else:
         shell_interface.log_step(f"showing committed changes over last {num_commits} commits")
-        cmd = ["git", "diff", f"HEAD~{num_commits}", "HEAD"]
+        cmd = ["git", "diff", "--color=always", f"HEAD~{num_commits}", "HEAD"]
     if path:
         cmd += ["--", path]
     shell_interface.run_cmd(config=config, cmd=cmd)
