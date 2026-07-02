@@ -448,5 +448,21 @@ class TestScanRepos_Output:
         captured = capsys.readouterr()
         assert str(repo) in captured.err
 
+    def test_pull_with_no_fetch_kills(
+        self,
+        scan_root: Path,
+    ) -> None:
+        make_repo_at(scan_root / "proj")
+        with pytest.raises(SystemExit):
+            git_scan.scan_repos(_CONFIG, depth=1, is_fetch_skipped=True, is_pulling=True)
+
+    def test_push_with_no_fetch_kills(
+        self,
+        scan_root: Path,
+    ) -> None:
+        make_repo_at(scan_root / "proj")
+        with pytest.raises(SystemExit):
+            git_scan.scan_repos(_CONFIG, depth=1, is_fetch_skipped=True, is_pushing=True)
+
 
 ## } V-TEST

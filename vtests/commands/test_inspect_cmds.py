@@ -171,7 +171,7 @@ def test_show_diff_runs_without_error(
     vtest_helpers.git(["add", "dirty.txt"], cwd=make_repo_)
     git_inspection.show_diff(Config(dry_run=True))
     out = capsys.readouterr().err
-    assert "git diff HEAD" in out
+    assert "git diff --color=always HEAD" in out
 
 
 def test_show_diff_with_path_scopes_command(
