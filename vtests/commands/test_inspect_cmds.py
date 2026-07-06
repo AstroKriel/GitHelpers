@@ -186,6 +186,30 @@ def test_show_diff_with_path_scopes_command(
 
 
 ##
+## === show-diff-untracked
+##
+
+
+def test_show_diff_untracked_runs_without_error(
+    make_repo_: Path,
+) -> None:
+    (make_repo_ / "new_file.txt").write_text("new content\n")
+    ## real run: git diff --no-index exits 1 when a difference is found (the
+    ## normal case here), so this must not raise despite the non-zero exit code
+    git_inspection.show_diff_untracked(Config(), path="new_file.txt")
+
+
+def test_show_diff_untracked_diffs_against_dev_null(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (make_repo_ / "new_file.txt").write_text("new content\n")
+    git_inspection.show_diff_untracked(Config(dry_run=True), path="new_file.txt")
+    out = capsys.readouterr().err
+    assert "git diff --color=always --no-index /dev/null new_file.txt" in out
+
+
+##
 ## === show-diff-committed
 ##
 

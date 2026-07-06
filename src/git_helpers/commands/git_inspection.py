@@ -318,6 +318,22 @@ def show_diff(
     shell_interface.run_cmd(config=config, cmd=cmd)
 
 
+def show_diff_untracked(
+    config: shell_interface.Config,
+    path: str,
+) -> None:
+    """Show the diff for an untracked file, as if it were newly added (untracked files have no history to diff)."""
+    repo_state.require_repo()
+    shell_interface.log_step(f"showing diff for untracked file '{path}'")
+    ## `--no-index` diffs two paths directly, bypassing git's index, so it works
+    ## on files with no history; diffing against /dev/null shows the whole file
+    ## as an addition. It exits 1 when a difference is found (the expected
+    ## outcome here), so use try_run_cmd rather than run_cmd to avoid treating
+    ## that as a command failure.
+    cmd = ["git", "diff", "--color=always", "--no-index", "/dev/null", path]
+    shell_interface.try_run_cmd(config=config, cmd=cmd)
+
+
 def show_diff_committed(
     config: shell_interface.Config,
     base: str | None = None,

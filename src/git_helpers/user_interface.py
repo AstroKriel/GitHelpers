@@ -299,6 +299,12 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             )],
         ),
         cli_command(
+            cmd_name="show-diff-untracked",
+            cmd_fn=git_inspection.show_diff_untracked,
+            cmd_help="show the diff for an untracked file, as if it were newly added",
+            cmd_args=[("path", {"type": str})],
+        ),
+        cli_command(
             cmd_name="show-diff-n-commits",
             cmd_fn=git_inspection.show_diff_last,
             cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",
