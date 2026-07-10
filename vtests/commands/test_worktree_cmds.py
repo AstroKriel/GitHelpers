@@ -23,7 +23,7 @@ from vtests import helpers as vtest_helpers
 def worktree_path_for(repo_dir: Path, branch_name: str) -> Path:
     """Return the expected default worktree path for a branch (sibling of repo_dir)."""
     branch_slug = branch_name.replace("/", "-")
-    return repo_dir.parent / f"{repo_dir.name}-{branch_slug}"
+    return repo_dir.parent / f"{repo_dir.name}-worktrees" / branch_slug
 
 
 ##

@@ -70,7 +70,7 @@ def cmd_create_worktree(
 ) -> None:
     """Create a worktree for a branch, initialising submodules automatically.
 
-    Defaults the path to ../<repo-name>-<branch-slug> (sibling of the main checkout).
+    Defaults the path to ../<repo-name>-worktrees/<branch-slug> (sibling of the main checkout).
     """
     repo_state.require_repo()
     shell_interface.bind_var(
@@ -84,7 +84,7 @@ def cmd_create_worktree(
         main_worktree = _get_main_worktree_path()
         repo_name = main_worktree.name
         branch_slug = branch_name.replace("/", "-")
-        worktree_path = str(main_worktree.parent / f"{repo_name}-{branch_slug}")
+        worktree_path = str(main_worktree.parent / f"{repo_name}-worktrees" / branch_slug)
     shell_interface.bind_var(
         var_name="worktree_path",
         var_value=worktree_path,
@@ -317,8 +317,8 @@ def cmd_rename_branch(
     """Rename the current branch; move and relink its worktree if one exists.
 
     The worktree path is derived by the same convention as create-worktree:
-    ../<repo-name>-<new-branch-slug>. Aborts before touching anything if that
-    path already exists on disk.
+    ../<repo-name>-worktrees/<new-branch-slug>. Aborts before touching anything
+    if that path already exists on disk.
     """
     repo_state.require_repo()
     repo_state.require_attached()
@@ -338,7 +338,7 @@ def cmd_rename_branch(
         old_worktree_path = pathlib.Path(worktree_match["path"])
         main_worktree = _get_main_worktree_path()
         new_branch_slug = new_name.replace("/", "-")
-        new_worktree_path = main_worktree.parent / f"{main_worktree.name}-{new_branch_slug}"
+        new_worktree_path = main_worktree.parent / f"{main_worktree.name}-worktrees" / new_branch_slug
         shell_interface.bind_var(var_name="old_worktree_path", var_value=str(old_worktree_path))
         shell_interface.bind_var(var_name="new_worktree_path", var_value=str(new_worktree_path))
         if new_worktree_path.exists():
