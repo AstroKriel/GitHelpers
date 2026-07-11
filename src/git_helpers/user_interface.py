@@ -47,9 +47,48 @@ class _SectionTitle(str, Enum):
 
 
 @dataclass(frozen=True)
+class _CommandArg:
+    """One argparse argument for a subcommand: a bare positional, or a `--flag`."""
+    arg_name: str
+    value_type: type = str
+    default: Any = None
+    metavar: str | None = None
+    help: str | None = None
+    store_true: bool = False
+    required: bool = False
+    nargs: str | None = None
+
+    @property
+    def dest(self) -> str:
+        """The `argparse.Namespace` attribute this arg lands on, e.g. `--word-diff` -> `word_diff`."""
+        return self.arg_name.lstrip("-").replace("-", "_")
+
+    @property
+    def argparse_kwargs(self) -> dict[str, Any]:
+        """Build the kwargs for `add_argument`; flags with no explicit help get a default-value hint."""
+        if self.store_true:
+            kwargs: dict[str, Any] = {"action": "store_true", "default": False}
+        else:
+            kwargs = {"type": self.value_type}
+            if self.nargs is not None:
+                kwargs["nargs"] = self.nargs
+            if self.metavar is not None:
+                kwargs["metavar"] = self.metavar
+            if self.required:
+                kwargs["required"] = True
+            else:
+                kwargs["default"] = self.default
+        if self.help is not None:
+            kwargs["help"] = self.help
+        elif self.arg_name.startswith("--") and not self.required:
+            kwargs["help"] = "(default: %(default)s)"
+        return kwargs
+
+
+@dataclass(frozen=True)
 class _CommandDetails:
     help: str
-    cmd_args: list[tuple[str, dict[str, Any]]]
+    cmd_args: list[_CommandArg]
     handler: Callable[[argparse.Namespace], None]
     section_title: _SectionTitle | None
     is_hidden: bool
@@ -83,7 +122,7 @@ def cli_command(
     cmd_name: str,
     cmd_fn: Callable[..., None],
     cmd_help: str = "",
-    cmd_args: list[tuple[str, dict[str, Any]]] | None = None,
+    cmd_args: list[_CommandArg] | None = None,
     is_hidden: bool = False,
 ) -> _CommandEntry:
     """Build a (name, details) entry for the command table; handler is auto-generated from cmd_args.
@@ -102,7 +141,7 @@ def cli_command(
         )
         return cmd_fn(
             config,
-            *[getattr(args, arg_name.lstrip("-").replace("-", "_")) for arg_name, _ in cmd_args],
+            *[getattr(args, cmd_arg.dest) for cmd_arg in cmd_args],
         )
 
     return (
@@ -226,20 +265,15 @@ _TRACKING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_inspection.show_recent_commits,
             cmd_help="show the last N commits on the current branch (default: 20)",
             cmd_args=[
-                (
-                    "--max-entries",
-                    {
-                        "type": int,
-                        "default": 20,
-                        "metavar": "N",
-                    },
+                _CommandArg(
+                    arg_name="--max-entries",
+                    value_type=int,
+                    default=20,
+                    metavar="N",
                 ),
-                (
-                    "--show-files-changed",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                    },
+                _CommandArg(
+                    arg_name="--show-files-changed",
+                    store_true=True,
                 ),
             ],
         ),
@@ -248,28 +282,18 @@ _TRACKING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_inspection.show_commits_on_branch,
             cmd_help="show commits on the current branch that are not on the base; fetches first",
             cmd_args=[
-                (
-                    "--base",
-                    {
-                        "type": str,
-                        "default": None,
-                        "metavar": "branch",
-                        "help": "remote-qualified, e.g. origin/main (default: remote default)",
-                    },
+                _CommandArg(
+                    arg_name="--base",
+                    metavar="branch",
+                    help="remote-qualified, e.g. origin/main (default: remote default)",
                 ),
-                (
-                    "--show-files-changed",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                    },
+                _CommandArg(
+                    arg_name="--show-files-changed",
+                    store_true=True,
                 ),
-                (
-                    "--no-fetch",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                    },
+                _CommandArg(
+                    arg_name="--no-fetch",
+                    store_true=True,
                 ),
             ],
         ),
@@ -284,14 +308,11 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_inspection.show_commit,
             cmd_help="show the message and diff introduced by a specific commit",
             cmd_args=[
-                ("commit", {"type": str}),
-                (
-                    "--word-diff",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
-                    },
+                _CommandArg(arg_name="commit"),
+                _CommandArg(
+                    arg_name="--word-diff",
+                    store_true=True,
+                    help="highlight only the changed words inline, instead of whole re-flowed lines",
                 ),
             ],
         ),
@@ -300,21 +321,14 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_inspection.show_diff,
             cmd_help="show all local changes vs HEAD; optionally scope to a filepath",
             cmd_args=[
-                (
-                    "--path",
-                    {
-                        "type": str,
-                        "default": None,
-                        "metavar": "path",
-                    },
+                _CommandArg(
+                    arg_name="--path",
+                    metavar="path",
                 ),
-                (
-                    "--word-diff",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
-                    },
+                _CommandArg(
+                    arg_name="--word-diff",
+                    store_true=True,
+                    help="highlight only the changed words inline, instead of whole re-flowed lines",
                 ),
             ],
         ),
@@ -323,14 +337,11 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_inspection.show_diff_untracked,
             cmd_help="show the diff for an untracked file, as if it were newly added",
             cmd_args=[
-                ("path", {"type": str}),
-                (
-                    "--word-diff",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
-                    },
+                _CommandArg(arg_name="path"),
+                _CommandArg(
+                    arg_name="--word-diff",
+                    store_true=True,
+                    help="highlight only the changed words inline, instead of whole re-flowed lines",
                 ),
             ],
         ),
@@ -339,36 +350,24 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_inspection.show_diff_last,
             cmd_help="show changes over the last N commits; add --include-uncommitted to include local changes",
             cmd_args=[
-                (
-                    "--num-commits",
-                    {
-                        "type": int,
-                        "required": True,
-                        "metavar": "N",
-                    },
+                _CommandArg(
+                    arg_name="--num-commits",
+                    value_type=int,
+                    required=True,
+                    metavar="N",
                 ),
-                (
-                    "--include-uncommitted",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                    },
+                _CommandArg(
+                    arg_name="--include-uncommitted",
+                    store_true=True,
                 ),
-                (
-                    "--path",
-                    {
-                        "type": str,
-                        "default": None,
-                        "metavar": "path",
-                    },
+                _CommandArg(
+                    arg_name="--path",
+                    metavar="path",
                 ),
-                (
-                    "--word-diff",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
-                    },
+                _CommandArg(
+                    arg_name="--word-diff",
+                    store_true=True,
+                    help="highlight only the changed words inline, instead of whole re-flowed lines",
                 ),
             ],
         ),
@@ -377,44 +376,27 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_inspection.show_diff_committed,
             cmd_help="show committed changes on the current branch vs a base; fetches first",
             cmd_args=[
-                (
-                    "--base",
-                    {
-                        "type": str,
-                        "default": None,
-                        "metavar": "branch",
-                        "help": "remote-qualified, e.g. origin/main (default: remote default)",
-                    },
+                _CommandArg(
+                    arg_name="--base",
+                    metavar="branch",
+                    help="remote-qualified, e.g. origin/main (default: remote default)",
                 ),
-                (
-                    "--name-only",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                    },
+                _CommandArg(
+                    arg_name="--name-only",
+                    store_true=True,
                 ),
-                (
-                    "--no-fetch",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                    },
+                _CommandArg(
+                    arg_name="--no-fetch",
+                    store_true=True,
                 ),
-                (
-                    "--path",
-                    {
-                        "type": str,
-                        "default": None,
-                        "metavar": "path",
-                    },
+                _CommandArg(
+                    arg_name="--path",
+                    metavar="path",
                 ),
-                (
-                    "--word-diff",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
-                    },
+                _CommandArg(
+                    arg_name="--word-diff",
+                    store_true=True,
+                    help="highlight only the changed words inline, instead of whole re-flowed lines",
                 ),
             ],
         ),
@@ -428,25 +410,23 @@ _STASHING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="stash-work",
             cmd_fn=git_sync.cmd_stash_work,
             cmd_help="temporarily save uncommitted work so you can switch context; optionally label it",
-            cmd_args=[(
-                "name",
-                {
-                    "type": str,
-                    "nargs": "?",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="name",
+                    nargs="?",
+                ),
+            ],
         ),
         cli_command(
             cmd_name="unstash-work",
             cmd_fn=git_sync.cmd_unstash_work,
             cmd_help="restore the most recently stashed work, or a specific stash by name",
-            cmd_args=[(
-                "name",
-                {
-                    "type": str,
-                    "nargs": "?",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="name",
+                    nargs="?",
+                ),
+            ],
         ),
     ],
 )
@@ -458,25 +438,23 @@ _EDITING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="amend-last-commit",
             cmd_fn=git_sync.cmd_amend_last_commit,
             cmd_help="fold staged changes into the last commit; optionally update the message too",
-            cmd_args=[(
-                "msg",
-                {
-                    "type": str,
-                    "nargs": "*",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="msg",
+                    nargs="*",
+                ),
+            ],
         ),
         cli_command(
             cmd_name="rename-last-commit",
             cmd_fn=git_sync.cmd_rename_last_commit,
             cmd_help="update the message of the last commit without changing its content (rewrites history)",
-            cmd_args=[(
-                "msg",
-                {
-                    "type": str,
-                    "nargs": "+",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="msg",
+                    nargs="+",
+                ),
+            ],
         ),
     ],
 )
@@ -488,25 +466,23 @@ _SYNCING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="push",
             cmd_fn=git_sync.cmd_push,
             cmd_help="push the current branch; sets the upstream automatically if it's a new branch",
-            cmd_args=[(
-                "extra_args",
-                {
-                    "type": str,
-                    "nargs": "*",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="extra_args",
+                    nargs="*",
+                ),
+            ],
         ),
         cli_command(
             cmd_name="sync-branch",
             cmd_fn=git_sync.cmd_sync_branch,
             cmd_help="bring the current branch up to date with its upstream (or an explicit remote branch)",
-            cmd_args=[(
-                "base_name",
-                {
-                    "type": str,
-                    "nargs": "?",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="base_name",
+                    nargs="?",
+                ),
+            ],
         ),
     ],
 )
@@ -518,24 +494,17 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="create-branch-from-default",
             cmd_fn=git_branches.cmd_create_branch_from_default,
             cmd_help="create and push a new branch from the remote default (e.g. origin/main)",
-            cmd_args=[(
-                "new_branch_name",
-                {"type": str},
-            )],
+            cmd_args=[
+                _CommandArg(arg_name="new_branch_name"),
+            ],
         ),
         cli_command(
             cmd_name="create-branch-from-remote",
             cmd_fn=git_branches.cmd_create_branch_from_remote,
             cmd_help="create and push a new branch from a specific remote branch",
             cmd_args=[
-                (
-                    "new_branch_name",
-                    {"type": str},
-                ),
-                (
-                    "start_ref",
-                    {"type": str},
-                ),
+                _CommandArg(arg_name="new_branch_name"),
+                _CommandArg(arg_name="start_ref"),
             ],
         ),
         cli_command(
@@ -543,16 +512,10 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_branches.cmd_track_remote_branch,
             cmd_help="create a local tracking branch for an existing remote branch and check it out",
             cmd_args=[
-                (
-                    "remote_branch",
-                    {"type": str},
-                ),
-                (
-                    "local_branch",
-                    {
-                        "type": str,
-                        "nargs": "?",
-                    },
+                _CommandArg(arg_name="remote_branch"),
+                _CommandArg(
+                    arg_name="local_branch",
+                    nargs="?",
                 ),
             ],
         ),
@@ -560,7 +523,9 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="delete-local-branch",
             cmd_fn=git_branches.cmd_delete_local_branch,
             cmd_help="delete a local branch safely (refuses if it has unmerged commits)",
-            cmd_args=[("branch_name", {"type": str})],
+            cmd_args=[
+                _CommandArg(arg_name="branch_name"),
+            ],
         ),
         cli_command(
             cmd_name="prune-gone-locals",
@@ -576,31 +541,31 @@ _BRANCHES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="prune-merged-locals",
             cmd_fn=git_branches.cmd_prune_merged_locals,
             cmd_help="delete local branches whose commits are already in the base branch",
-            cmd_args=[(
-                "base_name",
-                {
-                    "type": str,
-                    "nargs": "?",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="base_name",
+                    nargs="?",
+                ),
+            ],
         ),
         cli_command(
             cmd_name="cleanup-local-branches",
             cmd_fn=git_branches.cmd_cleanup_local_branches,
             cmd_help="delete all gone and merged local branches in one step",
-            cmd_args=[(
-                "base_name",
-                {
-                    "type": str,
-                    "nargs": "?",
-                },
-            )],
+            cmd_args=[
+                _CommandArg(
+                    arg_name="base_name",
+                    nargs="?",
+                ),
+            ],
         ),
         cli_command(
             cmd_name="rename-branch",
             cmd_fn=git_worktrees.cmd_rename_branch,
             cmd_help="rename the current branch; moves and relinks its worktree automatically if one exists",
-            cmd_args=[("new_name", {"type": str})],
+            cmd_args=[
+                _CommandArg(arg_name="new_name"),
+            ],
         ),
     ],
 )
@@ -613,13 +578,10 @@ _WORKTREES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_worktrees.cmd_create_worktree,
             cmd_help="create a worktree for a branch and initialise submodules (path defaults to ../<repo>-worktrees/<branch-slug>)",
             cmd_args=[
-                ("branch_name", {"type": str}),
-                (
-                    "worktree_path",
-                    {
-                        "type": str,
-                        "nargs": "?",
-                    },
+                _CommandArg(arg_name="branch_name"),
+                _CommandArg(
+                    arg_name="worktree_path",
+                    nargs="?",
                 ),
             ],
         ),
@@ -627,7 +589,9 @@ _WORKTREES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="remove-worktree",
             cmd_fn=git_worktrees.cmd_remove_worktree,
             cmd_help="remove a worktree and delete its local branch in one step",
-            cmd_args=[("branch_name", {"type": str})],
+            cmd_args=[
+                _CommandArg(arg_name="branch_name"),
+            ],
         ),
         cli_command(
             cmd_name="prune-worktrees",
@@ -656,15 +620,11 @@ _SUBMODULES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_help=
             "repair a submodule in detached HEAD state (auto-detects branch, pulls, updates parent pointer)",
             cmd_args=[
-                ("submodule_path", {"type": str}),
-                (
-                    "branch",
-                    {
-                        "type": str,
-                        "nargs": "?",
-                        "default": None,
-                        "metavar": "branch",
-                    },
+                _CommandArg(arg_name="submodule_path"),
+                _CommandArg(
+                    arg_name="branch",
+                    nargs="?",
+                    metavar="branch",
                 ),
             ],
         ),
@@ -673,16 +633,12 @@ _SUBMODULES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_submodules.cmd_add_submodule,
             cmd_help="add a new submodule tracking its default branch and commit the result",
             cmd_args=[
-                ("url", {"type": str}),
-                ("local_name", {"type": str}),
-                (
-                    "branch",
-                    {
-                        "type": str,
-                        "nargs": "?",
-                        "default": None,
-                        "metavar": "branch",
-                    },
+                _CommandArg(arg_name="url"),
+                _CommandArg(arg_name="local_name"),
+                _CommandArg(
+                    arg_name="branch",
+                    nargs="?",
+                    metavar="branch",
                 ),
             ],
         ),
@@ -697,45 +653,31 @@ _SUMMARY_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_fn=git_scan.scan_repos,
             cmd_help="scan below CWD for dirty, unpushed, and recently active git repos",
             cmd_args=[
-                (
-                    "--depth",
-                    {
-                        "type": int,
-                        "default": 3,
-                        "metavar": "N",
-                    },
+                _CommandArg(
+                    arg_name="--depth",
+                    value_type=int,
+                    default=3,
+                    metavar="N",
                 ),
-                (
-                    "--since",
-                    {
-                        "type": int,
-                        "default": None,
-                        "metavar": "DAYS",
-                        "help": "only repos active in the last N days; counts commits per repo",
-                    },
+                _CommandArg(
+                    arg_name="--since",
+                    value_type=int,
+                    metavar="DAYS",
+                    help="only repos active in the last N days; counts commits per repo",
                 ),
-                (
-                    "--no-fetch",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                    },
+                _CommandArg(
+                    arg_name="--no-fetch",
+                    store_true=True,
                 ),
-                (
-                    "--pull",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                        "help": "fast-forward pull the checked-out branch in each repo where it is behind and clean",
-                    },
+                _CommandArg(
+                    arg_name="--pull",
+                    store_true=True,
+                    help="fast-forward pull the checked-out branch in each repo where it is behind and clean",
                 ),
-                (
-                    "--push",
-                    {
-                        "action": "store_true",
-                        "default": False,
-                        "help": "push each branch that is ahead of its established upstream (skips diverged branches)",
-                    },
+                _CommandArg(
+                    arg_name="--push",
+                    store_true=True,
+                    help="push each branch that is ahead of its established upstream (skips diverged branches)",
                 ),
             ],
         ),
@@ -827,14 +769,8 @@ def main() -> None:
     ## register every subcommand and its positional args in one pass over _ALL_COMMANDS
     for cmd_name, cmd_details in _ALL_COMMANDS.items():
         subparser = sub_parsers.add_parser(cmd_name, help=cmd_details.help)
-        for arg_name, arg_kwargs in cmd_details.cmd_args:
-            should_inject = (
-                arg_name.startswith("--")
-                and "help" not in arg_kwargs
-                and not arg_kwargs.get("required", False)
-            )
-            kwargs = {**arg_kwargs, "help": "(default: %(default)s)"} if should_inject else arg_kwargs
-            subparser.add_argument(arg_name, **kwargs)
+        for cmd_arg in cmd_details.cmd_args:
+            subparser.add_argument(cmd_arg.arg_name, **cmd_arg.argparse_kwargs)
     args = arg_parser.parse_args()
     try:
         _ALL_COMMANDS[args.cmd].handler(args)

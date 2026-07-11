@@ -32,7 +32,7 @@ class TestCliCommand_ArgMapping:
         _, cmd_details = user_interface.cli_command(
             cmd_name="test-cmd",
             cmd_fn=fn,
-            cmd_args=[("branch_name", {})],
+            cmd_args=[user_interface._CommandArg(arg_name="branch_name")],
         )
         ns = argparse.Namespace(dry_run=False, allow_dirty=False, branch_name="feature")
         cmd_details.handler(ns)
@@ -53,7 +53,7 @@ class TestCliCommand_ArgMapping:
         _, cmd_details = user_interface.cli_command(
             cmd_name="test-cmd",
             cmd_fn=fn,
-            cmd_args=[("--base", {"default": None})],
+            cmd_args=[user_interface._CommandArg(arg_name="--base")],
         )
         ns = argparse.Namespace(dry_run=False, allow_dirty=False, base="development")
         cmd_details.handler(ns)
@@ -73,7 +73,7 @@ class TestCliCommand_ArgMapping:
         _, cmd_details = user_interface.cli_command(
             cmd_name="test-cmd",
             cmd_fn=fn,
-            cmd_args=[("--base", {"default": None})],
+            cmd_args=[user_interface._CommandArg(arg_name="--base")],
         )
         ns = argparse.Namespace(dry_run=False, allow_dirty=False, base=None)
         cmd_details.handler(ns)
@@ -95,8 +95,11 @@ class TestCliCommand_ArgMapping:
             cmd_name="test-cmd",
             cmd_fn=fn,
             cmd_args=[
-                ("--base", {"default": None}),
-                ("path", {"nargs": "?", "default": None}),
+                user_interface._CommandArg(arg_name="--base"),
+                user_interface._CommandArg(
+                    arg_name="path",
+                    nargs="?",
+                ),
             ],
         )
         ns = argparse.Namespace(dry_run=False, allow_dirty=False, base="main", path="src/foo.py")
