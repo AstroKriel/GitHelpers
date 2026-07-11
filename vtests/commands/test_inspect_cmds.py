@@ -185,6 +185,24 @@ def test_show_diff_with_path_scopes_command(
     assert "dirty.txt" in out
 
 
+def test_show_diff_word_diff_includes_flag(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    git_inspection.show_diff(Config(dry_run=True), word_diff=True)
+    out = capsys.readouterr().err
+    assert "--color-words" in out
+
+
+def test_show_diff_omits_word_diff_flag_by_default(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    git_inspection.show_diff(Config(dry_run=True))
+    out = capsys.readouterr().err
+    assert "--color-words" not in out
+
+
 ##
 ## === show-diff-untracked
 ##
@@ -207,6 +225,16 @@ def test_show_diff_untracked_diffs_against_dev_null(
     git_inspection.show_diff_untracked(Config(dry_run=True), path="new_file.txt")
     out = capsys.readouterr().err
     assert "git diff --color=always --no-index /dev/null new_file.txt" in out
+
+
+def test_show_diff_untracked_word_diff_includes_flag(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (make_repo_ / "new_file.txt").write_text("new content\n")
+    git_inspection.show_diff_untracked(Config(dry_run=True), path="new_file.txt", word_diff=True)
+    out = capsys.readouterr().err
+    assert "--color-words" in out
 
 
 ##
@@ -289,6 +317,18 @@ def test_show_diff_committed_kills_when_on_base_branch(
 ) -> None:
     with pytest.raises(SystemExit):
         git_inspection.show_diff_committed(Config(), base="origin/main", no_fetch=True)
+
+
+def test_show_diff_committed_word_diff_includes_flag(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
+    vtest_helpers.make_commits(repo_dir, num_commits=1)
+    git_inspection.show_diff_committed(Config(dry_run=True), base="origin/main", no_fetch=True, word_diff=True)
+    out = capsys.readouterr().err
+    assert "--color-words" in out
 
 
 ##
@@ -402,6 +442,43 @@ def test_show_diff_last_kills_on_zero_commits(
 ) -> None:
     with pytest.raises(SystemExit):
         git_inspection.show_diff_last(Config(), num_commits=0)
+
+
+def test_show_diff_last_word_diff_includes_flag(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    vtest_helpers.make_commits(make_repo_, num_commits=2)
+    git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, word_diff=True)
+    out = capsys.readouterr().err
+    assert "--color-words" in out
+
+
+##
+## === show-commit
+##
+
+
+def test_show_commit_word_diff_includes_flag(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    vtest_helpers.make_commits(make_repo_, num_commits=1)
+    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    git_inspection.show_commit(Config(dry_run=True), commit=sha, word_diff=True)
+    out = capsys.readouterr().err
+    assert "--color-words" in out
+
+
+def test_show_commit_omits_word_diff_flag_by_default(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    vtest_helpers.make_commits(make_repo_, num_commits=1)
+    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    git_inspection.show_commit(Config(dry_run=True), commit=sha)
+    out = capsys.readouterr().err
+    assert "--color-words" not in out
 
 
 ## } SCRIPT

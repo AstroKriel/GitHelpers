@@ -283,26 +283,56 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_name="show-commit",
             cmd_fn=git_inspection.show_commit,
             cmd_help="show the message and diff introduced by a specific commit",
-            cmd_args=[("commit", {"type": str})],
+            cmd_args=[
+                ("commit", {"type": str}),
+                (
+                    "--word-diff",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
+                    },
+                ),
+            ],
         ),
         cli_command(
             cmd_name="show-diff-uncommitted",
             cmd_fn=git_inspection.show_diff,
             cmd_help="show all local changes vs HEAD; optionally scope to a filepath",
-            cmd_args=[(
-                "--path",
-                {
-                    "type": str,
-                    "default": None,
-                    "metavar": "path",
-                },
-            )],
+            cmd_args=[
+                (
+                    "--path",
+                    {
+                        "type": str,
+                        "default": None,
+                        "metavar": "path",
+                    },
+                ),
+                (
+                    "--word-diff",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
+                    },
+                ),
+            ],
         ),
         cli_command(
             cmd_name="show-diff-untracked",
             cmd_fn=git_inspection.show_diff_untracked,
             cmd_help="show the diff for an untracked file, as if it were newly added",
-            cmd_args=[("path", {"type": str})],
+            cmd_args=[
+                ("path", {"type": str}),
+                (
+                    "--word-diff",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
+                    },
+                ),
+            ],
         ),
         cli_command(
             cmd_name="show-diff-n-commits",
@@ -330,6 +360,14 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
                         "type": str,
                         "default": None,
                         "metavar": "path",
+                    },
+                ),
+                (
+                    "--word-diff",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
                     },
                 ),
             ],
@@ -368,6 +406,14 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
                         "type": str,
                         "default": None,
                         "metavar": "path",
+                    },
+                ),
+                (
+                    "--word-diff",
+                    {
+                        "action": "store_true",
+                        "default": False,
+                        "help": "highlight only the changed words inline, instead of whole re-flowed lines",
                     },
                 ),
             ],

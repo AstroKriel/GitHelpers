@@ -11,6 +11,24 @@ import sys
 from git_helpers import shell_interface, repo_state
 
 ##
+## === HELPERS
+##
+
+
+def _diff_color_args(word_diff: bool) -> list[str]:
+    """Return the color-related flags shared by all `git diff` commands.
+
+    `--color-words` highlights only the changed tokens inline rather than
+    re-flowing the whole line as removed+added; useful for paragraph-per-line
+    prose (e.g. LaTeX) where line-based diffs bury the actual edit in noise.
+    """
+    args = ["--color=always"]
+    if word_diff:
+        args.append("--color-words")
+    return args
+
+
+##
 ## === PROBING COMMANDS
 ##
 
@@ -308,11 +326,12 @@ def show_recent_commits(
 def show_diff(
     config: shell_interface.Config,
     path: str | None = None,
+    word_diff: bool = False,
 ) -> None:
     """Show all local changes vs HEAD (staged, unstaged, and uncommitted)."""
     repo_state.require_repo()
     shell_interface.log_step("showing local changes vs HEAD")
-    cmd = ["git", "diff", "--color=always", "HEAD"]
+    cmd = ["git", "diff", *_diff_color_args(word_diff), "HEAD"]
     if path:
         cmd += ["--", path]
     shell_interface.run_cmd(config=config, cmd=cmd)
@@ -321,6 +340,7 @@ def show_diff(
 def show_diff_untracked(
     config: shell_interface.Config,
     path: str,
+    word_diff: bool = False,
 ) -> None:
     """Show the diff for an untracked file, as if it were newly added (untracked files have no history to diff)."""
     repo_state.require_repo()
@@ -330,7 +350,7 @@ def show_diff_untracked(
     ## as an addition. It exits 1 when a difference is found (the expected
     ## outcome here), so use try_run_cmd rather than run_cmd to avoid treating
     ## that as a command failure.
-    cmd = ["git", "diff", "--color=always", "--no-index", "/dev/null", path]
+    cmd = ["git", "diff", *_diff_color_args(word_diff), "--no-index", "/dev/null", path]
     shell_interface.try_run_cmd(config=config, cmd=cmd)
 
 
@@ -340,6 +360,7 @@ def show_diff_committed(
     name_only: bool = False,
     no_fetch: bool = False,
     path: str | None = None,
+    word_diff: bool = False,
 ) -> None:
     """Show all committed changes on the current branch vs a base branch; fetches first by default."""
     repo_state.require_repo()
@@ -367,7 +388,7 @@ def show_diff_committed(
             "; use show-diff-n-commits N for commit-range diffs"
         )
     shell_interface.log_step(f"showing committed changes vs '{remote_base}'")
-    cmd = ["git", "diff", "--color=always", f"{remote_base}...HEAD"]
+    cmd = ["git", "diff", *_diff_color_args(word_diff), f"{remote_base}...HEAD"]
     if name_only:
         cmd.append("--name-only")
     if path:
@@ -378,11 +399,13 @@ def show_diff_committed(
 def show_commit(
     config: shell_interface.Config,
     commit: str,
+    word_diff: bool = False,
 ) -> None:
     """Show the message and diff introduced by a specific commit."""
     repo_state.require_repo()
     shell_interface.log_step(f"showing changes introduced by {commit}")
-    shell_interface.run_cmd(config=config, cmd=["git", "show", "--color=always", commit])
+    cmd = ["git", "show", *_diff_color_args(word_diff), commit]
+    shell_interface.run_cmd(config=config, cmd=cmd)
 
 
 def show_diff_last(
@@ -390,6 +413,7 @@ def show_diff_last(
     num_commits: int,
     include_uncommitted: bool = False,
     path: str | None = None,
+    word_diff: bool = False,
 ) -> None:
     """Show changes over the last N commits, optionally including uncommitted local changes."""
     repo_state.require_repo()
@@ -401,10 +425,10 @@ def show_diff_last(
     )
     if include_uncommitted:
         shell_interface.log_step(f"showing changes over last {num_commits} commits including local changes")
-        cmd = ["git", "diff", "--color=always", f"HEAD~{num_commits}"]
+        cmd = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}"]
     else:
         shell_interface.log_step(f"showing committed changes over last {num_commits} commits")
-        cmd = ["git", "diff", "--color=always", f"HEAD~{num_commits}", "HEAD"]
+        cmd = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}", "HEAD"]
     if path:
         cmd += ["--", path]
     shell_interface.run_cmd(config=config, cmd=cmd)
