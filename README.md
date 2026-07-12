@@ -52,7 +52,7 @@ uv tool uninstall git_helpers
 
 ## Available commands
 
-Run any command from inside a git repo. Use `git_helpers --help` to see all available commands, or `git_helpers <command> --help` for details on a specific one.
+Run any command from inside a git repo. Use `git_helpers --help` to see all available commands, or `git_helpers <command> --help` for details on a specific command.
 
 In the listings below, `<arg>` means a required positional argument, `[arg]` means optional, and `[--flag]` means an optional flag.
 
@@ -200,24 +200,24 @@ uv run pytest vtests/
 GitHelpers/
 ├── src/
 │   └── git_helpers/
-│       ├── user_interface.py      # [entrypoint] argparse wiring and main()
-│       ├── repo_state.py          # [internal] repo state queries and guards
-│       ├── shell_interface.py     # [internal] config, logging, subprocess wrappers
+│       ├── user_interface.py  # [entrypoint] argparse wiring and main()
+│       ├── repo_state.py  # [internal] repo state queries and guards
+│       ├── shell_interface.py  # [internal] config, logging, subprocess wrappers
 │       ├── commands/
-│       │   ├── git_config.py      # global git config commands
+│       │   ├── git_config.py  # global git config commands
 │       │   ├── git_inspection.py  # read-only inspection commands
-│       │   ├── git_branches.py    # branch management commands
-│       │   ├── git_worktrees.py   # worktree management commands
+│       │   ├── git_branches.py  # branch management commands
+│       │   ├── git_worktrees.py  # worktree management commands
 │       │   ├── git_submodules.py  # submodule commands
-│       │   └── git_sync.py        # push, sync, stash, and history commands
+│       │   └── git_sync.py  # push, sync, stash, and history commands
 │       └── summary/
-│           └── git_scan.py        # cross-repo scan command
-├── utests/                        # unit tests (no real git repos)
+│           └── git_scan.py  # cross-repo scan command
+├── utests/  # unit tests (no real git repos)
 ├── vtests/
-│   ├── commands/                  # validation tests for commands/
-│   └── summary/                   # validation tests for summary/
-├── pyproject.toml                 # package metadata; registers the git_helpers command
-├── uv.lock                        # pinned dependency versions
+│   ├── commands/  # validation tests for commands/
+│   └── summary/  # validation tests for summary/
+├── pyproject.toml  # package metadata; registers the git_helpers command
+├── uv.lock  # pinned dependency versions
 ├── .gitignore
 └── README.md
 ```
@@ -226,4 +226,4 @@ GitHelpers/
 
 ## License
 
-See [LICENSE](./LICENSE).
+This project is licensed under the MIT License; see the [LICENSE](./LICENSE) file for details.
