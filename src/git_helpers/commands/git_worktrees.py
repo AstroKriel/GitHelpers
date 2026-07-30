@@ -67,10 +67,13 @@ def cmd_create_worktree(
     config: shell_interface.Config,
     branch_name: str,
     worktree_path: str | None = None,
+    base_ref: str | None = None,
 ) -> None:
     """Create a worktree for a branch, initialising submodules automatically.
 
     Defaults the path to ../<repo-name>-worktrees/<branch-slug> (sibling of the main checkout).
+    When base_ref is given, branch_name is created fresh from it (git refuses if branch_name
+    already exists); otherwise an existing branch_name is worktree'd as-is.
     """
     repo_state.require_repo()
     shell_interface.bind_var(
@@ -90,13 +93,34 @@ def cmd_create_worktree(
         var_value=worktree_path,
     )
     shell_interface.log_step("creating worktree")
-    cmd_worktree_add = [
-        "git",
-        "worktree",
-        "add",
-        worktree_path,
-        branch_name,
-    ]
+    if base_ref is None:
+        cmd_worktree_add = [
+            "git",
+            "worktree",
+            "add",
+            worktree_path,
+            branch_name,
+        ]
+    else:
+        shell_interface.bind_var(
+            var_name="base_ref",
+            var_value=base_ref,
+        )
+        ## `-b` creates branch_name fresh from base_ref in the same step; the
+        ## repo this command is run from is never switched or checked out into.
+        ## `--no-track`: git auto-tracks a remote-tracking base_ref (e.g. upstream/development)
+        ## otherwise, which is wrong: branch_name should track its own remote counterpart once
+        ## pushed, not the ref it was branched from (same reasoning as create-branch-from-remote).
+        cmd_worktree_add = [
+            "git",
+            "worktree",
+            "add",
+            worktree_path,
+            "-b",
+            branch_name,
+            "--no-track",
+            base_ref,
+        ]
     shell_interface.run_cmd(
         config=config,
         cmd=cmd_worktree_add,

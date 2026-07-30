@@ -5,12 +5,14 @@
 ##
 
 ## stdlib
+import subprocess
 from pathlib import Path
 
 ## third-party
 import pytest
 
 ## local
+from git_helpers.commands import git_sync
 from git_helpers.commands import git_worktrees
 from git_helpers.shell_interface import Config
 from vtests import helpers as vtest_helpers
@@ -70,6 +72,57 @@ def test_create_worktree_no_upstream_when_no_remote(
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
     git_worktrees.cmd_create_worktree(Config(), "feature")
     assert vtest_helpers.upstream_of(make_repo_, "feature") == ""
+
+
+def test_create_worktree_with_base_creates_new_branch(
+    make_repo_: Path,
+) -> None:
+    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="main")
+    assert worktree_path_for(make_repo_, "feature").is_dir()
+    assert "feature" in vtest_helpers.local_branches(make_repo_)
+
+
+def test_create_worktree_with_base_does_not_switch_current_checkout(
+    make_repo_: Path,
+) -> None:
+    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="main")
+    ## the base clone this command was run from must stay on its original branch
+    result = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=make_repo_)
+    assert result.stdout.strip() == "main"
+
+
+def test_create_worktree_with_base_does_not_track_remote_base_ref(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    ## base_ref is remote-qualified; without --no-track, git would auto-track it,
+    ## which is wrong: the new branch should track its own remote counterpart
+    ## once pushed, not the ref it was branched from
+    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="origin/main")
+    assert vtest_helpers.upstream_of(repo_dir, "feature") == ""
+
+
+def test_create_worktree_with_base_then_push_sets_correct_upstream(
+    make_repo_with_remote: tuple[Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    ## a --base-created branch starts untracked (see test above); pushing from
+    ## inside its worktree must still land it on origin/<branch_name>, not the
+    ## base_ref it was forked from
+    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="origin/main")
+    worktree_path = worktree_path_for(repo_dir, "feature")
+    monkeypatch.chdir(worktree_path)
+    git_sync.cmd_push(Config(), [])
+    assert vtest_helpers.upstream_of(worktree_path, "feature") == "origin/feature"
+
+
+def test_create_worktree_with_base_fails_when_branch_already_exists(
+    make_repo_: Path,
+) -> None:
+    vtest_helpers.git(["branch", "feature"], cwd=make_repo_)
+    with pytest.raises(subprocess.CalledProcessError):
+        git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="main")
 
 
 ##

@@ -583,6 +583,11 @@ _WORKTREES_COMMANDS: list[_CommandEntry] = _make_command_group(
                     arg_name="worktree_path",
                     nargs="?",
                 ),
+                _CommandArg(
+                    arg_name="--base",
+                    metavar="ref",
+                    help="create branch_name fresh from this ref instead of worktree-ing an existing branch, e.g. upstream/development",
+                ),
             ],
         ),
         cli_command(

@@ -10,6 +10,7 @@ from pathlib import Path
 ## local
 from git_helpers.commands import git_branches
 from git_helpers.commands import git_sync
+from git_helpers.commands import git_worktrees
 from git_helpers.shell_interface import Config
 from vtests import helpers as vtest_helpers
 
@@ -114,6 +115,21 @@ def test_dry_run_create_branch_from_default_creates_no_branch(
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
     git_branches.cmd_create_branch_from_default(Config(dry_run=True), "new-feature")
     assert "new-feature" not in vtest_helpers.local_branches(repo_dir)
+
+
+##
+## === create-worktree
+##
+
+
+def test_dry_run_create_worktree_with_base_creates_no_worktree(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    git_worktrees.cmd_create_worktree(Config(dry_run=True), "feature", base_ref="origin/main")
+    worktree_path = repo_dir.parent / f"{repo_dir.name}-worktrees" / "feature"
+    assert not worktree_path.exists()
+    assert "feature" not in vtest_helpers.local_branches(repo_dir)
 
 
 ## } SCRIPT

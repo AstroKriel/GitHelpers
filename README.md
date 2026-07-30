@@ -110,9 +110,10 @@ git_helpers rename-branch <new-name>                          # rename the curre
 
 **Managing worktrees**
 ```bash
-git_helpers create-worktree <branch> [path]  # create a worktree for a branch; initialise submodules; set upstream tracking if the remote branch exists, otherwise prompt to push
-git_helpers remove-worktree <branch>         # remove a worktree and delete its local branch; force-deletes the branch if the remote branch is already gone
-git_helpers prune-worktrees                  # remove all worktrees whose upstream branch has been deleted and delete their local branches
+git_helpers create-worktree <branch> [path] [--base ref]  # create a worktree for a branch; initialise submodules; set upstream tracking if the remote branch exists, otherwise prompt to push
+                                                          # with --base, creates <branch> fresh from ref (e.g. upstream/development) instead of worktree-ing an existing branch
+git_helpers remove-worktree <branch>                      # remove a worktree and delete its local branch; force-deletes the branch if the remote branch is already gone
+git_helpers prune-worktrees                               # remove all worktrees whose upstream branch has been deleted and delete their local branches
 ```
 
 **Submodules**
