@@ -15,47 +15,9 @@ from git_helpers import shell_interface, repo_state
 ##
 
 
-def _parse_worktree_list() -> list[dict[str, str]]:
-    """Parse `git worktree list --porcelain` into a list of dicts with path, head, and branch keys.
-
-    Detached and bare worktrees omit the branch key.
-    """
-    cmd_list_worktrees = [
-        "git",
-        "worktree",
-        "list",
-        "--porcelain",
-    ]
-    output = shell_interface.query_cmd(
-        cmd=cmd_list_worktrees,
-        error_on_failure=True,
-    )
-    worktrees: list[dict[str, str]] = []
-    current: dict[str, str] = {}
-    for line in output.splitlines():
-        if line.startswith("worktree "):
-            current = {"path": line[len("worktree "):]}
-        elif line.startswith("HEAD "):
-            current["head"] = line[len("HEAD "):]
-        elif line.startswith("branch "):
-            branch_ref = line[len("branch "):]
-            current["branch"] = branch_ref.removeprefix("refs/heads/")
-        elif line == "" and current:
-            worktrees.append(current)
-            current = {}
-    if current:
-        worktrees.append(current)
-    return worktrees
-
-
-##
-## === HELPERS
-##
-
-
 def _get_main_worktree_path() -> pathlib.Path:
     """Return the path of the main (non-linked) worktree; always index 0 in the worktree list."""
-    return pathlib.Path(_parse_worktree_list()[0]["path"])
+    return pathlib.Path(repo_state.list_worktrees()[0]["path"])
 
 
 ##
@@ -182,7 +144,7 @@ def cmd_remove_worktree(
         var_value=branch_name,
     )
     shell_interface.log_step("finding worktree for branch")
-    worktrees = _parse_worktree_list()
+    worktrees = repo_state.list_worktrees()
     ## index 0 is the main checkout; never remove it
     match = next(
         (worktree for worktree in worktrees[1:] if worktree.get("branch") == branch_name),
@@ -261,7 +223,7 @@ def cmd_prune_worktrees(
         config=config,
         cmd=cmd_fetch_prune,
     )
-    shell_interface.log_step("finding local branches with [gone] upstream")
+    shell_interface.log_step(r"finding local branches with \[gone] upstream")
     cmd_list_branch_tracking = [
         "git",
         "for-each-ref",
@@ -275,8 +237,8 @@ def cmd_prune_worktrees(
     gone_branches = {
         line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line
     }
-    shell_interface.log_step("finding worktrees checked out on [gone] branches")
-    worktrees = _parse_worktree_list()
+    shell_interface.log_step(r"finding worktrees checked out on \[gone] branches")
+    worktrees = repo_state.list_worktrees()
     ## index 0 is the main checkout; never prune it
     prunable = [
         worktree for worktree in worktrees[1:]
@@ -320,8 +282,8 @@ def cmd_prune_worktrees(
         if not success:
             skipped_branches.append(branch)
             shell_interface.log_msg(
-                f"  skipped '{branch}' (unmerged commits; likely squash-merged: "
-                f"run 'git_helpers force-delete-gone' to force-delete all [gone] branches with -D)",
+                rf"  skipped '{branch}' (unmerged commits; likely squash-merged: "
+                r"run 'git_helpers force-delete-gone' to force-delete all \[gone] branches with -D)",
             )
     removed_count = len(prunable) - len(skipped_branches)
     if skipped_branches:
@@ -350,7 +312,7 @@ def cmd_rename_branch(
     shell_interface.bind_var(var_name="old_name", var_value=old_name)
     shell_interface.bind_var(var_name="new_name", var_value=new_name)
     shell_interface.log_step("checking for a linked worktree on this branch")
-    worktrees = _parse_worktree_list()
+    worktrees = repo_state.list_worktrees()
     worktree_match = next(
         (worktree for worktree in worktrees[1:] if worktree.get("branch") == old_name),
         None,

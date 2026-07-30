@@ -55,4 +55,44 @@ def test_get_upstream_branch_name_handles_slash_in_branch_name(
     assert repo_state.get_upstream_branch_name() == "fix/my-feature"
 
 
+##
+## === list_worktrees / branches_with_worktrees
+##
+
+
+def test_list_worktrees_includes_main_at_index_zero(
+    make_repo_: Path,
+) -> None:
+    worktrees = repo_state.list_worktrees()
+    assert len(worktrees) == 1
+    assert worktrees[0]["branch"] == "main"
+
+
+def test_list_worktrees_includes_linked_worktree(
+    make_repo_: Path,
+) -> None:
+    vtest_helpers.git(["branch", "feature"], cwd=make_repo_)
+    worktree_dir = make_repo_.parent / "feature-worktree"
+    vtest_helpers.git(["worktree", "add", str(worktree_dir), "feature"], cwd=make_repo_)
+    worktrees = repo_state.list_worktrees()
+    branches = [worktree["branch"] for worktree in worktrees]
+    assert branches == ["main", "feature"]
+
+
+def test_branches_with_worktrees_includes_main_and_linked(
+    make_repo_: Path,
+) -> None:
+    vtest_helpers.git(["branch", "feature"], cwd=make_repo_)
+    worktree_dir = make_repo_.parent / "feature-worktree"
+    vtest_helpers.git(["worktree", "add", str(worktree_dir), "feature"], cwd=make_repo_)
+    assert repo_state.branches_with_worktrees() == {"main", "feature"}
+
+
+def test_branches_with_worktrees_excludes_plain_local_branch(
+    make_repo_: Path,
+) -> None:
+    vtest_helpers.git(["branch", "no-worktree"], cwd=make_repo_)
+    assert "no-worktree" not in repo_state.branches_with_worktrees()
+
+
 ## } SCRIPT

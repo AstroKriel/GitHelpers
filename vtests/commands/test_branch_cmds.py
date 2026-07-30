@@ -122,6 +122,40 @@ def test_prune_merged_locals_never_deletes_current_branch(
     assert "current" in vtest_helpers.local_branches(repo_dir)
 
 
+def test_prune_merged_locals_skips_branch_with_worktree(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    ## a branch with zero commits ahead of base looks "merged" to `git branch
+    ## --merged` even though its worktree may hold real, uncommitted work; it
+    ## must be excluded regardless of ancestry
+    vtest_helpers.git(["branch", "in-progress"], cwd=repo_dir)
+    worktree_dir = repo_dir.parent / "in-progress-worktree"
+    vtest_helpers.git(["worktree", "add", str(worktree_dir), "in-progress"], cwd=repo_dir)
+    git_branches.cmd_prune_merged_locals(Config(), "origin/main")
+    assert "in-progress" in vtest_helpers.local_branches(repo_dir)
+
+
+def test_prune_merged_locals_does_not_abort_on_worktree_branch(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, _ = make_repo_with_remote
+    ## regression: previously this raised an uncaught CalledProcessError (git
+    ## refuses -d on a branch checked out in a worktree) and aborted before
+    ## any other merged branch got processed
+    vtest_helpers.git(["branch", "in-progress"], cwd=repo_dir)
+    worktree_dir = repo_dir.parent / "in-progress-worktree"
+    vtest_helpers.git(["worktree", "add", str(worktree_dir), "in-progress"], cwd=repo_dir)
+    vtest_helpers.git(["checkout", "-b", "merged-feature"], cwd=repo_dir)
+    vtest_helpers.make_commit(repo_dir, msg="feature commit")
+    vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
+    vtest_helpers.git(["merge", "merged-feature", "--no-ff", "-m", "merge feature"], cwd=repo_dir)
+    vtest_helpers.git(["push"], cwd=repo_dir)
+    git_branches.cmd_prune_merged_locals(Config(), "origin/main")
+    assert "in-progress" in vtest_helpers.local_branches(repo_dir)
+    assert "merged-feature" not in vtest_helpers.local_branches(repo_dir)
+
+
 ##
 ## === track-remote-branch
 ##

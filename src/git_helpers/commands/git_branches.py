@@ -59,7 +59,7 @@ def cmd_prune_gone_locals(
         config=config,
         cmd=cmd_fetch_prune,
     )
-    shell_interface.log_step("finding local branches with [gone] upstream")
+    shell_interface.log_step(r"finding local branches with \[gone] upstream")
     ## `for-each-ref` iterates over all refs matching a pattern. The format
     ## string requests the short branch name and its upstream tracking status.
     ## when the remote branch has been deleted, git marks the tracking status
@@ -76,13 +76,13 @@ def cmd_prune_gone_locals(
     )
     gone_branches = [line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line]
     if not gone_branches:
-        shell_interface.log_outcome("no [gone] local branches")
+        shell_interface.log_outcome(r"no \[gone] local branches")
         return
     shell_interface.bind_var(
         var_name="branches_to_delete",
         var_value=" ".join(gone_branches),
     )
-    shell_interface.log_step("deleting [gone] local branches (-d)")
+    shell_interface.log_step(r"deleting \[gone] local branches (-d)")
     skipped_branches: list[str] = []
     for branch_name in gone_branches:
         cmd_delete_gone_branch = [
@@ -99,16 +99,16 @@ def cmd_prune_gone_locals(
         if not success:
             skipped_branches.append(branch_name)
             shell_interface.log_msg(
-                f"  skipped '{branch_name}' (unmerged commits; likely squash-merged: "
-                f"run 'git_helpers force-delete-gone' to force-delete all [gone] branches with -D)",
+                rf"  skipped '{branch_name}' (unmerged commits; likely squash-merged: "
+                r"run 'git_helpers force-delete-gone' to force-delete all \[gone] branches with -D)",
             )
     deleted_count = len(gone_branches) - len(skipped_branches)
     if skipped_branches:
         shell_interface.log_outcome(
-            f"deleted {deleted_count} [gone] branch(es); skipped {len(skipped_branches)}: {', '.join(skipped_branches)}",
+            rf"deleted {deleted_count} \[gone] branch(es); skipped {len(skipped_branches)}: {', '.join(skipped_branches)}",
         )
     else:
-        shell_interface.log_outcome("deleted [gone] local branches")
+        shell_interface.log_outcome(r"deleted \[gone] local branches")
 
 
 def cmd_force_delete_gone(
@@ -128,7 +128,7 @@ def cmd_force_delete_gone(
         config=config,
         cmd=cmd_fetch_prune,
     )
-    shell_interface.log_step("finding local branches with [gone] upstream")
+    shell_interface.log_step(r"finding local branches with \[gone] upstream")
     cmd_list_branch_tracking = [
         "git",
         "for-each-ref",
@@ -141,7 +141,7 @@ def cmd_force_delete_gone(
     )
     gone_branches = [line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line]
     if not gone_branches:
-        shell_interface.log_outcome("no [gone] local branches")
+        shell_interface.log_outcome(r"no \[gone] local branches")
         return
     shell_interface.bind_var(
         var_name="branches_to_delete",
@@ -150,9 +150,9 @@ def cmd_force_delete_gone(
     ## `-D` skips the merge check: use only when certain all [gone] branches have
     ## been merged (e.g. via squash merge) or intentionally closed without merging.
     shell_interface.log_msg(
-        "[bold]Warning:[/bold] force-deleting regardless of merge status; only run this if all [gone] branches have been merged or intentionally closed.",
+        r"[bold]Warning:[/bold] force-deleting regardless of merge status; only run this if all \[gone] branches have been merged or intentionally closed.",
     )
-    shell_interface.log_step("force-deleting [gone] local branches (-D)")
+    shell_interface.log_step(r"force-deleting \[gone] local branches (-D)")
     for branch_name in gone_branches:
         cmd_force_delete_branch = [
             "git",
@@ -165,14 +165,19 @@ def cmd_force_delete_gone(
             config=config,
             cmd=cmd_force_delete_branch,
         )
-    shell_interface.log_outcome("force-deleted [gone] local branches")
+    shell_interface.log_outcome(r"force-deleted \[gone] local branches")
 
 
 def cmd_prune_merged_locals(
     config: shell_interface.Config,
     base_name: str | None = None,
 ) -> None:
-    """Delete local branches whose commits are fully contained in base_name's history."""
+    """Delete local branches whose commits are fully contained in base_name's history.
+
+    Excludes any branch with an attached worktree, even if its commits are trivially "merged"
+    (e.g. it has no commits ahead of base_name yet): a worktree can hold real, uncommitted or
+    untracked work that no commit-ancestry check can see.
+    """
     repo_state.require_repo()
     repo_state.require_attached()
     if not base_name:
@@ -198,13 +203,17 @@ def cmd_prune_merged_locals(
         error_on_failure=True,
     )
     shell_interface.log_step(
-        f"finding local branches merged into '{base_name}' (excluding current and main/master)",
+        f"finding local branches merged into '{base_name}' (excluding current, main/master, and worktrees)",
     )
-    ## `--merged <ref>` lists branches whose tip is reachable from <ref>,
-    ## meaning all their commits are already in <ref>'s history; safe to delete.
-    ## never delete the current branch, main, or master even if technically merged:
-    ## main/master are protected by convention; current branch can't be deleted while checked out.
-    excluded_branches = {current_branch_name, "main", "master"}
+    ## `--merged <ref>` lists branches whose tip is reachable from <ref>, meaning all their
+    ## commits are already in <ref>'s history. This is blind to uncommitted or untracked work
+    ## sitting in a branch's worktree, so a freshly branched worktree with zero unique commits
+    ## looks identical to a genuinely merged one; treat "has a worktree" as its own protected
+    ## category, on top of: never delete the current branch, main, or master even if technically
+    ## merged (main/master are protected by convention; current branch can't be deleted while
+    ## checked out).
+    worktree_branches = repo_state.branches_with_worktrees()
+    excluded_branches = {current_branch_name, "main", "master"} | worktree_branches
     cmd_list_merged_branches = [
         "git",
         "branch",
@@ -216,10 +225,14 @@ def cmd_prune_merged_locals(
         cmd=cmd_list_merged_branches,
         error_on_failure=True,
     )
-    branches_to_delete = [
-        branch_name for branch_name in merged_branches_output.splitlines()
-        if branch_name and branch_name not in excluded_branches
-    ]
+    all_merged_branches = [branch_name for branch_name in merged_branches_output.splitlines() if branch_name]
+    skipped_worktree_branches = sorted(worktree_branches & set(all_merged_branches) - {current_branch_name})
+    if skipped_worktree_branches:
+        shell_interface.log_msg(
+            f"  skipping {len(skipped_worktree_branches)} branch(es) with an active worktree: "
+            f"{', '.join(skipped_worktree_branches)}",
+        )
+    branches_to_delete = [branch_name for branch_name in all_merged_branches if branch_name not in excluded_branches]
     if not branches_to_delete:
         shell_interface.log_outcome("no merged local branches to delete")
         return
@@ -228,6 +241,7 @@ def cmd_prune_merged_locals(
         var_value=" ".join(branches_to_delete),
     )
     shell_interface.log_step("deleting merged local branches (-d)")
+    skipped_branches: list[str] = []
     for branch_name in branches_to_delete:
         cmd_delete_merged_branch = [
             "git",
@@ -236,11 +250,20 @@ def cmd_prune_merged_locals(
             "--",
             branch_name,
         ]
-        shell_interface.run_cmd(
+        success = shell_interface.try_run_cmd(
             config=config,
             cmd=cmd_delete_merged_branch,
         )
-    shell_interface.log_outcome("deleted merged local branches")
+        if not success:
+            skipped_branches.append(branch_name)
+            shell_interface.log_msg(f"  skipped '{branch_name}' (could not delete; see git's error above)")
+    deleted_count = len(branches_to_delete) - len(skipped_branches)
+    if skipped_branches:
+        shell_interface.log_outcome(
+            f"deleted {deleted_count} merged local branch(es); skipped {len(skipped_branches)}: {', '.join(skipped_branches)}",
+        )
+    else:
+        shell_interface.log_outcome("deleted merged local branches")
 
 
 def cmd_cleanup_local_branches(

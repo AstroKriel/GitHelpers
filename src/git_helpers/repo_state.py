@@ -12,6 +12,48 @@ from git_helpers import shell_interface
 ##
 
 
+def list_worktrees() -> list[dict[str, str]]:
+    """Parse `git worktree list --porcelain` into a list of dicts with path, head, and branch keys.
+
+    Detached and bare worktrees omit the branch key. Index 0 is always the main (non-linked) worktree.
+    """
+    cmd_list_worktrees = [
+        "git",
+        "worktree",
+        "list",
+        "--porcelain",
+    ]
+    output = shell_interface.query_cmd(
+        cmd=cmd_list_worktrees,
+        error_on_failure=True,
+    )
+    worktrees: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for line in output.splitlines():
+        if line.startswith("worktree "):
+            current = {"path": line[len("worktree "):]}
+        elif line.startswith("HEAD "):
+            current["head"] = line[len("HEAD "):]
+        elif line.startswith("branch "):
+            branch_ref = line[len("branch "):]
+            current["branch"] = branch_ref.removeprefix("refs/heads/")
+        elif line == "" and current:
+            worktrees.append(current)
+            current = {}
+    if current:
+        worktrees.append(current)
+    return worktrees
+
+
+def branches_with_worktrees() -> set[str]:
+    """Return branch names currently checked out in any worktree, including the main one.
+
+    A branch checked out in a worktree may have real, uncommitted or untracked work sitting
+    in that worktree that no commit-ancestry check (e.g. `git branch --merged`) can see.
+    """
+    return {worktree["branch"] for worktree in list_worktrees() if "branch" in worktree}
+
+
 def require_repo() -> None:
     """Exit with an error if the cwd is not inside a git repository."""
     ## `rev-parse --is-inside-work-tree` is the canonical way to test whether
