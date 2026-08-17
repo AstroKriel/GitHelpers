@@ -576,7 +576,7 @@ _WORKTREES_COMMANDS: list[_CommandEntry] = _make_command_group(
         cli_command(
             cmd_name="create-worktree",
             cmd_fn=git_worktrees.cmd_create_worktree,
-            cmd_help="create a worktree for a branch and initialise submodules (path defaults to ../<repo>-worktrees/<branch-slug>)",
+            cmd_help="create a worktree for an existing branch, or a new one from --base, and initialise submodules (path defaults to ../<repo>-worktrees/<branch-slug>)",
             cmd_args=[
                 _CommandArg(arg_name="branch_name"),
                 _CommandArg(
