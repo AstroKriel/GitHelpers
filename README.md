@@ -83,6 +83,12 @@ git_helpers stash-work [name]    # temporarily save uncommitted work so you can 
 git_helpers unstash-work [name]  # restore the most recently stashed work, or a specific stash by name
 ```
 
+**Ignoring local edits**
+```bash
+git_helpers ignore-local-edits <path>...    # hide local edits to tracked files from status/diff/add, without committing them
+git_helpers unignore-local-edits <path>...  # reverse ignore-local-edits; local edits to these files become visible again
+```
+
 **Editing the last commit**
 ```bash
 git_helpers amend-last-commit [msg]   # fold staged changes into the last commit; optionally update the message too

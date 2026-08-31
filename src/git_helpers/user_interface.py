@@ -22,6 +22,7 @@ from git_helpers.commands import (
     git_config,
     git_inspection,
     git_branches,
+    git_local_edits,
     git_submodules,
     git_sync,
     git_worktrees,
@@ -37,6 +38,7 @@ class _SectionTitle(str, Enum):
     TRACKING = "Inspecting tracking state"
     CHANGES = "Inspecting changes"
     STASHING = "Stashing work"
+    LOCAL_EDITS = "Ignoring local edits"
     EDITING = "Editing the last commit"
     SYNCING = "Syncing with the remote"
     BRANCHES = "Managing branches"
@@ -431,6 +433,34 @@ _STASHING_COMMANDS: list[_CommandEntry] = _make_command_group(
     ],
 )
 
+_LOCAL_EDITS_COMMANDS: list[_CommandEntry] = _make_command_group(
+    section_title=_SectionTitle.LOCAL_EDITS,
+    commands=[
+        cli_command(
+            cmd_name="ignore-local-edits",
+            cmd_fn=git_local_edits.cmd_ignore_local_edits,
+            cmd_help="hide local edits to tracked files from status/diff/add, without committing them",
+            cmd_args=[
+                _CommandArg(
+                    arg_name="path",
+                    nargs="+",
+                ),
+            ],
+        ),
+        cli_command(
+            cmd_name="unignore-local-edits",
+            cmd_fn=git_local_edits.cmd_unignore_local_edits,
+            cmd_help="reverse ignore-local-edits; local edits to these files become visible again",
+            cmd_args=[
+                _CommandArg(
+                    arg_name="path",
+                    nargs="+",
+                ),
+            ],
+        ),
+    ],
+)
+
 _EDITING_COMMANDS: list[_CommandEntry] = _make_command_group(
     section_title=_SectionTitle.EDITING,
     commands=[
@@ -726,6 +756,7 @@ _ALL_COMMANDS: dict[str, _CommandDetails] = dict([
     *_TRACKING_COMMANDS,
     *_CHANGES_COMMANDS,
     *_STASHING_COMMANDS,
+    *_LOCAL_EDITS_COMMANDS,
     *_EDITING_COMMANDS,
     *_SYNCING_COMMANDS,
     *_BRANCHES_COMMANDS,
