@@ -181,7 +181,7 @@ def cmd_fix_submodule(
         cmd=cmd_pull_submodule,
     )
     shell_interface.log_step("staging updated submodule pointer in parent repo")
-    ## staging the submodule path tells the parent to record the new HEAD SHA.
+    ## staging the submodule path tells the parent to record the new HEAD commit hash.
     cmd_stage_submodule = [
         "git",
         "add",

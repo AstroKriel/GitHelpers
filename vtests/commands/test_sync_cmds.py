@@ -53,10 +53,10 @@ def test_sync_branch_pulls_remote_commits(
     vtest_helpers.make_commits(second_dir, num_commits=2, prefix="remote commit")
     vtest_helpers.git(["push"], cwd=second_dir)
     ## sync should bring those commits into the local repo
-    before_sha = vtest_helpers.head_sha(repo_dir)
+    commit_hash_before = vtest_helpers.head_commit_hash(repo_dir)
     git_sync.cmd_sync_branch(Config())
-    after_sha = vtest_helpers.head_sha(repo_dir)
-    assert before_sha != after_sha
+    commit_hash_after = vtest_helpers.head_commit_hash(repo_dir)
+    assert commit_hash_before != commit_hash_after
 
 
 def test_sync_branch_with_explicit_base(
@@ -100,14 +100,14 @@ def test_rename_last_commit_joins_words(
     assert vtest_helpers.current_commit_msg(make_repo_) == "fix typo in readme"
 
 
-def test_rename_last_commit_preserves_sha_prefix(
+def test_rename_last_commit_preserves_hash_prefix(
     make_repo_: Path,
 ) -> None:
-    ## amend changes the SHA — verify it actually changed
-    before_sha = vtest_helpers.head_sha(make_repo_)
+    ## amend changes the commit hash; verify it actually changed
+    commit_hash_before = vtest_helpers.head_commit_hash(make_repo_)
     git_sync.cmd_rename_last_commit(Config(), ["amended"])
-    after_sha = vtest_helpers.head_sha(make_repo_)
-    assert before_sha != after_sha
+    commit_hash_after = vtest_helpers.head_commit_hash(make_repo_)
+    assert commit_hash_before != commit_hash_after
 
 
 ##
@@ -147,14 +147,14 @@ def test_amend_last_without_msg_keeps_msg(
     assert vtest_helpers.current_commit_msg(make_repo_) == original_msg
 
 
-def test_amend_last_changes_sha(
+def test_amend_last_changes_hash(
     make_repo_: Path,
 ) -> None:
     (make_repo_ / "staged.txt").write_text("content")
     vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
-    before_sha = vtest_helpers.head_sha(make_repo_)
+    commit_hash_before = vtest_helpers.head_commit_hash(make_repo_)
     git_sync.cmd_amend_last_commit(Config(), [])
-    assert vtest_helpers.head_sha(make_repo_) != before_sha
+    assert vtest_helpers.head_commit_hash(make_repo_) != commit_hash_before
 
 
 ##
@@ -181,10 +181,10 @@ def test_push_with_existing_upstream_pushes_commit(
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
     vtest_helpers.make_commit(repo_dir, msg="new commit")
-    local_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=repo_dir).stdout.strip()
+    local_commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=repo_dir).stdout.strip()
     git_sync.cmd_push(Config(), [])
-    remote_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
-    assert local_sha == remote_sha
+    remote_commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
+    assert local_commit_hash == remote_commit_hash
 
 
 def test_push_with_mismatched_upstream_creates_new_remote_branch(

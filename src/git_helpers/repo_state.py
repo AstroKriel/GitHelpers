@@ -184,7 +184,7 @@ def get_upstream_branch_name() -> str:
 
 
 def current_branch() -> str:
-    """Return the current branch name, or 'DETACHED@<sha>' in detached HEAD state."""
+    """Return the current branch name, or 'DETACHED@<hash>' in detached HEAD state."""
     require_repo()
     ## `rev-parse --abbrev-ref HEAD` prints the branch name, or the literal
     ## string "HEAD" when in detached HEAD state (i.e. checked out to a commit
@@ -200,21 +200,21 @@ def current_branch() -> str:
         error_on_failure=True,
     )
     if current_branch_name == "HEAD":
-        ## detached HEAD: no branch name is available, so use the short SHA instead.
-        ## a SHA (Secure Hash Algorithm) is the unique 40-hex-character fingerprint
-        ## git assigns to every commit; `--short` trims it to 7 chars for readability.
-        cmd_get_short_sha = [
+        ## detached HEAD: no branch name is available, so use the commit hash prefix instead.
+        ## a commit hash is the unique 40-character hex fingerprint git assigns to every
+        ## commit; `--short` trims it to a 7-character prefix for readability.
+        cmd_get_commit_hash_prefix = [
             "git",
             "rev-parse",
             "--short",
             "HEAD",
         ]
-        short_sha = shell_interface.query_cmd(
-            cmd=cmd_get_short_sha,
+        commit_hash_prefix = shell_interface.query_cmd(
+            cmd=cmd_get_commit_hash_prefix,
             error_on_failure=True,
         )
-        shell_interface.log_outcome(f"detached HEAD at {short_sha}")
-        return f"DETACHED@{short_sha}"
+        shell_interface.log_outcome(f"detached HEAD at {commit_hash_prefix}")
+        return f"DETACHED@{commit_hash_prefix}"
     shell_interface.log_outcome(f"on branch '{current_branch_name}'")
     return current_branch_name
 

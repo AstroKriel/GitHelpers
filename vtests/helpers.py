@@ -43,7 +43,7 @@ def make_commit(
     msg: str = "test commit",
     filename: str = ".commit_counter",
 ) -> str:
-    """Make a real (non-empty) commit by incrementing a counter file; returns short SHA."""
+    """Make a real (non-empty) commit by incrementing a counter file; returns a short commit hash."""
     counter = repo_dir / filename
     count = int(counter.read_text()) + 1 if counter.exists() else 1
     counter.write_text(str(count))
@@ -58,7 +58,7 @@ def make_commits(
     num_commits: int,
     prefix: str = "commit",
 ) -> list[str]:
-    """Make num_commits commits and return their short SHAs."""
+    """Make num_commits commits and return their short commit hashes."""
     return [make_commit(repo_dir, msg=f"{prefix} {commit_index + 1}") for commit_index in range(num_commits)]
 
 
@@ -77,10 +77,10 @@ def current_commit_msg(
     return git(["log", "-1", "--format=%s"], cwd=repo_dir).stdout.strip()
 
 
-def head_sha(
+def head_commit_hash(
     repo_dir: Path,
 ) -> str:
-    """Return the short SHA of HEAD."""
+    """Return the short commit hash of HEAD."""
     return git(["rev-parse", "--short", "HEAD"], cwd=repo_dir).stdout.strip()
 
 

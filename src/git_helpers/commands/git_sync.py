@@ -36,7 +36,7 @@ def cmd_rename_last_commit(
     shell_interface.log_step("renaming last commit")
     shell_interface.log_msg("note: this rewrites commit history; avoid if already pushed")
     ## `--amend` replaces the most recent commit with a new one that has the
-    ## same tree/parent but a different message. The SHA changes, so force-push
+    ## same tree/parent but a different message. The commit hash changes, so force-push
     ## would be needed if this commit is already on a shared remote.
     cmd_amend_msg = [
         "git",

@@ -655,7 +655,7 @@ _SUBMODULES_COMMANDS: list[_CommandEntry] = _make_command_group(
         cli_command(
             cmd_name="show-submodules-status",
             cmd_fn=git_inspection.show_submodules_status,
-            cmd_help="show the current state of each submodule (commit SHA and init status)",
+            cmd_help="show the current state of each submodule (commit hash and init status)",
         ),
         cli_command(
             cmd_name="update-submodules",

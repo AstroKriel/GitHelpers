@@ -38,12 +38,12 @@ def test_dry_run_rename_last_commit_leaves_msg_unchanged(
     assert vtest_helpers.current_commit_msg(make_repo_) == original_msg
 
 
-def test_dry_run_rename_last_commit_leaves_sha_unchanged(
+def test_dry_run_rename_last_commit_leaves_hash_unchanged(
     make_repo_: Path,
 ) -> None:
-    before_sha = vtest_helpers.head_sha(make_repo_)
+    commit_hash_before = vtest_helpers.head_commit_hash(make_repo_)
     git_sync.cmd_rename_last_commit(Config(dry_run=True), ["new", "message"])
-    assert vtest_helpers.head_sha(make_repo_) == before_sha
+    assert vtest_helpers.head_commit_hash(make_repo_) == commit_hash_before
 
 
 def test_dry_run_sync_branch_leaves_head_unchanged(
@@ -59,9 +59,9 @@ def test_dry_run_sync_branch_leaves_head_unchanged(
     vtest_helpers.make_commit(second_dir, msg="remote commit")
     vtest_helpers.git(["push"], cwd=second_dir)
     ## dry-run sync should leave HEAD where it is
-    before_sha = vtest_helpers.head_sha(repo_dir)
+    commit_hash_before = vtest_helpers.head_commit_hash(repo_dir)
     git_sync.cmd_sync_branch(Config(dry_run=True))
-    assert vtest_helpers.head_sha(repo_dir) == before_sha
+    assert vtest_helpers.head_commit_hash(repo_dir) == commit_hash_before
 
 
 ##
@@ -73,11 +73,11 @@ def test_dry_run_push_does_not_push(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
-    remote_sha_before = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
+    remote_commit_hash_before = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
     vtest_helpers.make_commit(repo_dir, msg="local only")
     git_sync.cmd_push(Config(dry_run=True), [])
-    remote_sha_after = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
-    assert remote_sha_before == remote_sha_after
+    remote_commit_hash_after = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
+    assert remote_commit_hash_before == remote_commit_hash_after
 
 
 ##

@@ -150,9 +150,9 @@ def test_is_detached_exits_1_on_branch(
 def test_is_detached_exits_0_when_detached(
     make_repo_: Path,
 ) -> None:
-    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
     ## detach HEAD by checking out a commit directly
-    subprocess.run(["git", "checkout", sha], cwd=make_repo_, capture_output=True, check=True)
+    subprocess.run(["git", "checkout", commit_hash], cwd=make_repo_, capture_output=True, check=True)
     with pytest.raises(SystemExit) as exc:
         git_inspection.check_is_detached(Config())
     assert exc.value.code == 0
@@ -464,8 +464,8 @@ def test_show_commit_word_diff_includes_flag(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=1)
-    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    git_inspection.show_commit(Config(dry_run=True), commit=sha, word_diff=True)
+    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    git_inspection.show_commit(Config(dry_run=True), commit=commit_hash, word_diff=True)
     out = capsys.readouterr().err
     assert "--color-words" in out
 
@@ -475,8 +475,8 @@ def test_show_commit_omits_word_diff_flag_by_default(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=1)
-    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    git_inspection.show_commit(Config(dry_run=True), commit=sha)
+    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    git_inspection.show_commit(Config(dry_run=True), commit=commit_hash)
     out = capsys.readouterr().err
     assert "--color-words" not in out
 
@@ -486,14 +486,14 @@ def test_show_commit_omits_word_diff_flag_by_default(
 ##
 
 
-def test_show_current_commit_hash_prints_head_sha(
+def test_show_current_commit_hash_prints_correct_hash(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
     git_inspection.show_current_commit_hash(Config())
     out = capsys.readouterr().out
-    assert sha in out
+    assert commit_hash in out
 
 
 ##
@@ -505,11 +505,11 @@ def test_show_commit_info_omits_fetch_when_already_local(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    git_inspection.show_commit_info(Config(dry_run=True), commit=sha)
+    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    git_inspection.show_commit_info(Config(dry_run=True), commit=commit_hash)
     out = capsys.readouterr().err
     assert "git fetch" not in out
-    assert sha in out
+    assert commit_hash in out
 
 
 def test_show_commit_info_fetches_when_not_local(
@@ -524,8 +524,8 @@ def test_show_commit_info_fetches_when_not_local(
         vtest_helpers.git(["config", key, val], cwd=second_dir)
     vtest_helpers.make_commits(second_dir, num_commits=1, prefix="remote-only")
     vtest_helpers.git(["push"], cwd=second_dir)
-    full_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
-    git_inspection.show_commit_info(Config(dry_run=True), commit=full_sha)
+    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
+    git_inspection.show_commit_info(Config(dry_run=True), commit=commit_hash)
     out = capsys.readouterr().err
     assert "git fetch" in out
 
@@ -541,11 +541,11 @@ def test_show_commit_info_real_fetch_makes_commit_available_locally(
         vtest_helpers.git(["config", key, val], cwd=second_dir)
     vtest_helpers.make_commits(second_dir, num_commits=1, prefix="remote-only")
     vtest_helpers.git(["push"], cwd=second_dir)
-    full_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
+    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
     ## real (non-dry) run: must actually fetch the commit into repo_dir
-    git_inspection.show_commit_info(Config(), commit=full_sha)
+    git_inspection.show_commit_info(Config(), commit=commit_hash)
     result = subprocess.run(
-        ["git", "cat-file", "-e", f"{full_sha}^{{commit}}"],
+        ["git", "cat-file", "-e", f"{commit_hash}^{{commit}}"],
         cwd=repo_dir,
         capture_output=True,
     )

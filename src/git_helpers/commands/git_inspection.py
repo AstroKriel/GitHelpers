@@ -86,7 +86,7 @@ def show_upstream_state(
         shell_interface.log_result(f"upstream:     {upstream_name}")
         shell_interface.log_step("showing the latest commit on the upstream")
         ## `-1` limits to one commit; `--oneline` keeps output compact;
-        ## `--decorate` shows branch/tag labels alongside the SHA.
+        ## `--decorate` shows branch/tag labels alongside the commit hash.
         cmd_show_upstream_commit = [
             "git",
             "log",
@@ -322,7 +322,7 @@ def show_recent_commits(
         var_value=str(max_entries),
     )
     shell_interface.log_step("showing recent commits on current branch")
-    ## `--format` = custom one-line format: short SHA, date, relative age, subject, decorations.
+    ## `--format` = custom one-line format: short commit hash, date, relative age, subject, decorations.
     ## `--stat` = list files changed and insertion/deletion counts per commit.
     ## `-n` = limit to the most recent N entries.
     cmd_show_recent_commits = [
@@ -477,11 +477,11 @@ def show_diff_last(
 def show_submodules_status(
     _config: shell_interface.Config,
 ) -> None:
-    """Print the SHA and initialisation status of each submodule, if any."""
+    """Print the commit hash and initialisation status of each submodule, if any."""
     repo_state.require_repo()
     ## `submodule status` prints one line per submodule:
-    ##   <SHA> <path> (<describe>)
-    ## A leading `-` means not initialized; `+` means the checked-out SHA
+    ##   <hash> <path> (<describe>)
+    ## A leading `-` means not initialized; `+` means the checked-out commit hash
     ## differs from what the parent repo recorded; ` ` means up to date.
     cmd_submodule_status = [
         "git",

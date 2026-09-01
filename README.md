@@ -126,7 +126,7 @@ git_helpers prune-worktrees                               # remove all worktrees
 
 **Submodules**
 ```bash
-git_helpers show-submodules-status               # show the current state of each submodule (commit SHA and init status)
+git_helpers show-submodules-status               # show the current state of each submodule (commit hash and init status)
 git_helpers update-submodules                    # update all submodules to their latest commit on the tracked branch
 git_helpers fix-submodule <path> [branch]        # repair a submodule in detached HEAD state (auto-detects branch, pulls, updates parent pointer)
 git_helpers add-submodule <url> <name> [branch]  # add a new submodule tracking its default branch and commit the result
