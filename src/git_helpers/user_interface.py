@@ -243,6 +243,11 @@ _TRACKING_COMMANDS: list[_CommandEntry] = _make_command_group(
             cmd_help="list all configured remotes and their URLs",
         ),
         cli_command(
+            cmd_name="show-current-commit-hash",
+            cmd_fn=git_inspection.show_current_commit_hash,
+            cmd_help="print the full commit hash that HEAD currently points to",
+        ),
+        cli_command(
             cmd_name="show-upstream-state",
             cmd_fn=git_inspection.show_upstream_state,
             cmd_help="show which remote branch the current branch is tracking and its latest commit",
@@ -316,6 +321,14 @@ _CHANGES_COMMANDS: list[_CommandEntry] = _make_command_group(
                     store_true=True,
                     help="highlight only the changed words inline, instead of whole re-flowed lines",
                 ),
+            ],
+        ),
+        cli_command(
+            cmd_name="show-commit-info",
+            cmd_fn=git_inspection.show_commit_info,
+            cmd_help="show the full hash, author date, and subject for a commit; fetches it first if not local",
+            cmd_args=[
+                _CommandArg(arg_name="commit"),
             ],
         ),
         cli_command(

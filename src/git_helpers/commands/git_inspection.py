@@ -42,6 +42,23 @@ def check_is_detached(
     sys.exit(0 if repo_state.is_detached() else 1)
 
 
+def show_current_commit_hash(
+    _config: shell_interface.Config,
+) -> None:
+    """Print the full commit hash that HEAD currently points to."""
+    repo_state.require_repo()
+    cmd_show_current_commit_hash = [
+        "git",
+        "rev-parse",
+        "HEAD",
+    ]
+    current_commit_hash = shell_interface.query_cmd(
+        cmd=cmd_show_current_commit_hash,
+        error_on_failure=True,
+    )
+    shell_interface.log_result(current_commit_hash)
+
+
 def show_upstream_state(
     config: shell_interface.Config,
 ) -> None:
@@ -406,6 +423,29 @@ def show_commit(
     shell_interface.log_step(f"showing changes introduced by {commit}")
     cmd = ["git", "show", *_diff_color_args(word_diff), commit]
     shell_interface.run_cmd(config=config, cmd=cmd)
+
+
+def show_commit_info(
+    config: shell_interface.Config,
+    commit: str,
+) -> None:
+    """Show the full hash, author date, and subject for a commit; fetches it first if not already local."""
+    repo_state.require_repo()
+    shell_interface.log_step(f"checking whether '{commit}' is available locally")
+    cmd_check_local = ["git", "cat-file", "-e", f"{commit}^{{commit}}"]
+    if shell_interface.probe_cmd(cmd_check_local) != 0:
+        remote = repo_state.get_default_remote_name()
+        shell_interface.log_step(f"not found locally; fetching '{commit}' from {remote}")
+        shell_interface.run_cmd(config=config, cmd=["git", "fetch", remote, commit])
+    shell_interface.log_step(f"showing info for '{commit}'")
+    cmd_show_commit_info = [
+        "git",
+        "log",
+        "-1",
+        "--format=%C(auto)%H %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
+        commit,
+    ]
+    shell_interface.run_cmd(config=config, cmd=cmd_show_commit_info)
 
 
 def show_diff_last(

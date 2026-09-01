@@ -481,4 +481,75 @@ def test_show_commit_omits_word_diff_flag_by_default(
     assert "--color-words" not in out
 
 
+##
+## === show-current-commit-hash
+##
+
+
+def test_show_current_commit_hash_prints_head_sha(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    git_inspection.show_current_commit_hash(Config())
+    out = capsys.readouterr().out
+    assert sha in out
+
+
+##
+## === show-commit-info
+##
+
+
+def test_show_commit_info_omits_fetch_when_already_local(
+    make_repo_: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
+    git_inspection.show_commit_info(Config(dry_run=True), commit=sha)
+    out = capsys.readouterr().err
+    assert "git fetch" not in out
+    assert sha in out
+
+
+def test_show_commit_info_fetches_when_not_local(
+    make_repo_with_remote: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    repo_dir, remote_dir = make_repo_with_remote
+    second_dir = repo_dir.parent / "second"
+    second_dir.mkdir()
+    vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
+    for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
+        vtest_helpers.git(["config", key, val], cwd=second_dir)
+    vtest_helpers.make_commits(second_dir, num_commits=1, prefix="remote-only")
+    vtest_helpers.git(["push"], cwd=second_dir)
+    full_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
+    git_inspection.show_commit_info(Config(dry_run=True), commit=full_sha)
+    out = capsys.readouterr().err
+    assert "git fetch" in out
+
+
+def test_show_commit_info_real_fetch_makes_commit_available_locally(
+    make_repo_with_remote: tuple[Path, Path],
+) -> None:
+    repo_dir, remote_dir = make_repo_with_remote
+    second_dir = repo_dir.parent / "second"
+    second_dir.mkdir()
+    vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
+    for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
+        vtest_helpers.git(["config", key, val], cwd=second_dir)
+    vtest_helpers.make_commits(second_dir, num_commits=1, prefix="remote-only")
+    vtest_helpers.git(["push"], cwd=second_dir)
+    full_sha = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
+    ## real (non-dry) run: must actually fetch the commit into repo_dir
+    git_inspection.show_commit_info(Config(), commit=full_sha)
+    result = subprocess.run(
+        ["git", "cat-file", "-e", f"{full_sha}^{{commit}}"],
+        cwd=repo_dir,
+        capture_output=True,
+    )
+    assert result.returncode == 0
+
+
 ## } SCRIPT
