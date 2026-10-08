@@ -151,7 +151,7 @@ Within an opted-in repo, individual submodules can still be excluded by adding `
 
 **Global git configuration**
 ```bash
-git_helpers set-global-config   # set pull.rebase=true, FF-first merge defaults, and rerere in ~/.gitconfig
+git_helpers set-global-config   # set pull.rebase=true, FF-first merge defaults, rerere, and init.defaultBranch=main in ~/.gitconfig
 git_helpers show-global-config  # show the current values of the git settings this tool manages
 ```
 

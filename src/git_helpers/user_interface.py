@@ -738,7 +738,7 @@ _CONFIG_COMMANDS: list[_CommandEntry] = _make_command_group(
         cli_command(
             cmd_name="set-global-config",
             cmd_fn=git_config.cmd_set_global_config,
-            cmd_help="set sensible merge rules in ~/.gitconfig (fast-forward preferred, rerere enabled)",
+            cmd_help="set sensible defaults in ~/.gitconfig (fast-forward preferred, rerere enabled, default branch main)",
         ),
         cli_command(
             cmd_name="show-global-config",

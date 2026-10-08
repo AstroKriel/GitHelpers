@@ -15,7 +15,7 @@ from git_helpers import shell_interface
 def cmd_set_global_config(
     config: shell_interface.Config,
 ) -> None:
-    """Write pull-rebase and FF-first merge defaults, and enable rerere, in ~/.gitconfig."""
+    """Write pull-rebase and FF-first merge defaults, enable rerere, and set the default branch to main, in ~/.gitconfig."""
     ## pull.rebase=true: when pulling, replay local commits on top of the
     ## remote instead of creating a merge commit. Keeps history linear and
     ## is the right default for multi-device workflows.
@@ -67,7 +67,20 @@ def cmd_set_global_config(
         config=config,
         cmd=cmd_set_rerere,
     )
-    shell_interface.log_outcome("installed pull-rebase and FF-first merge defaults globally in ~/.gitconfig")
+    ## init.defaultBranch=main: `git init` and clones of empty remotes start
+    ## on `main` instead of the built-in `master`.
+    cmd_set_default_branch = [
+        "git",
+        "config",
+        "--global",
+        "init.defaultBranch",
+        "main",
+    ]
+    shell_interface.run_cmd(
+        config=config,
+        cmd=cmd_set_default_branch,
+    )
+    shell_interface.log_outcome("installed pull-rebase, FF-first merge, and default-branch defaults globally in ~/.gitconfig")
 
 
 def show_global_config(
@@ -99,9 +112,10 @@ def show_global_config(
             "pull.ff",
             "merge.ff",
             "rerere.enabled",
+            "init.defaultBranch",
     ]:
-        ## `{key:<15}` left-aligns the key in a 15-char field so values line up.
-        shell_interface.log_result(f"\t{key:<15} = {read_config_value(key)}")
+        ## `{key:<18}` left-aligns the key in an 18-char field so values line up.
+        shell_interface.log_result(f"\t{key:<18} = {read_config_value(key)}")
     shell_interface.bind_var(
         var_name="tip",
         var_value="edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'",
