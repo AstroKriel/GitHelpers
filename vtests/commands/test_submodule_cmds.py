@@ -175,7 +175,7 @@ def test_fix_submodule_falls_back_to_origin_head_when_gitmodules_has_no_branch(
     assert branch == "main"
 
 
-def test_fix_submodule_kills_when_branch_not_detectable(
+def test_fix_submodule_exits_when_branch_not_detectable(
     make_repo_with_submodule: tuple[Path, Path],
 ) -> None:
     ## .gitmodules has no branch entry by default; removing origin/HEAD leaves nothing to detect
@@ -260,7 +260,7 @@ def test_add_submodule_auto_detects_branch_from_remote(
     assert "branch = main" in gitmodules
 
 
-def test_add_submodule_kills_before_cloning_when_branch_not_detectable(
+def test_add_submodule_exits_before_cloning_when_branch_not_detectable(
     make_repo_: Path,
     tmp_path: Path,
 ) -> None:
@@ -270,7 +270,7 @@ def test_add_submodule_kills_before_cloning_when_branch_not_detectable(
             local_name="sub",
             branch=None,
         )
-    ## submodule directory must not have been created — kill happened before any git mutations
+    ## the submodule directory must not exist: the command exited before changing anything
     assert not (make_repo_ / "sub").exists()
 
 

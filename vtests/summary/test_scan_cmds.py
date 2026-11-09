@@ -524,7 +524,7 @@ class TestScanRepos_Output:
         captured = capsys.readouterr()
         assert str(repo) in captured.err
 
-    def test_pull_with_no_fetch_kills(
+    def test_pull_with_no_fetch_exits(
         self,
         scan_root: Path,
     ) -> None:
@@ -536,7 +536,7 @@ class TestScanRepos_Output:
                 pull=True,
             )
 
-    def test_push_with_no_fetch_kills(
+    def test_push_with_no_fetch_exits(
         self,
         scan_root: Path,
     ) -> None:

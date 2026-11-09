@@ -65,7 +65,7 @@ def test_unstash_by_name_pops_correct_entry(
     assert not (make_repo_ / "file-b.txt").exists()
 
 
-def test_unstash_unknown_name_kills(
+def test_unstash_unknown_name_exits(
     make_repo_: Path,
 ) -> None:
     with pytest.raises(SystemExit):

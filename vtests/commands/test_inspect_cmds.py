@@ -289,7 +289,7 @@ def test_show_diff_committed_fetches_by_default(
     assert "git fetch" in out
 
 
-def test_show_diff_committed_kills_when_base_not_remote_qualified(
+def test_show_diff_committed_exits_when_base_not_remote_qualified(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=make_repo_with_remote[0])
@@ -316,7 +316,7 @@ def test_show_diff_committed_name_only_includes_flag(
     assert "--name-only" in out
 
 
-def test_show_diff_committed_kills_when_on_base_branch(
+def test_show_diff_committed_exits_when_on_base_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     with pytest.raises(SystemExit):
@@ -403,7 +403,7 @@ def test_show_commits_on_branch_fetches_by_default(
     assert "git fetch" in out
 
 
-def test_show_commits_on_branch_kills_when_on_base_branch(
+def test_show_commits_on_branch_exits_when_on_base_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     with pytest.raises(SystemExit):
@@ -413,7 +413,7 @@ def test_show_commits_on_branch_kills_when_on_base_branch(
         )
 
 
-def test_show_commits_on_branch_kills_when_base_not_remote_qualified(
+def test_show_commits_on_branch_exits_when_base_not_remote_qualified(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=make_repo_with_remote[0])
@@ -467,7 +467,7 @@ def test_show_diff_last_with_path_scopes_command(
     assert ".commit_counter" in out
 
 
-def test_show_diff_last_kills_on_zero_commits(
+def test_show_diff_last_exits_on_zero_commits(
     make_repo_: Path,
 ) -> None:
     with pytest.raises(SystemExit):
