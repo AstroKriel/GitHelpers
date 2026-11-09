@@ -7,7 +7,6 @@
 ## stdlib
 import configparser
 import re
-import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -48,26 +47,31 @@ def _find_repos(
     root: Path,
     max_depth: int,
 ) -> list[Path]:
-    results: list[Path] = []
+    repo_paths: list[Path] = []
     _walk(
         path=root,
         max_depth=max_depth,
         depth=0,
-        results=results,
+        repo_paths=repo_paths,
     )
-    return sorted(results)
+    return sorted(repo_paths)
 
 
 def _should_scan_submodules(
     repo_path: Path,
 ) -> bool:
-    result = subprocess.run(
-        ["git", "config", "--local", "git-helpers.scan-submodules"],
-        cwd=repo_path,
-        capture_output=True,
-        text=True,
+    cmd_read_scan_setting = [
+        "git",
+        "config",
+        "--local",
+        "git-helpers.scan-submodules",
+    ]
+    output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_read_scan_setting,
+        working_directory=repo_path,
+        raise_error=False,
     )
-    return result.stdout.strip() == "true"
+    return output == "true"
 
 
 def _active_submodule_paths(
@@ -78,14 +82,14 @@ def _active_submodule_paths(
         return []
     config = configparser.ConfigParser()
     config.read(gitmodules)
-    paths = []
+    submodule_paths: list[Path] = []
     for section in config.sections():
         if config.get(section, "ignore", fallback="") == "all":
             continue
         rel_path = config.get(section, "path", fallback=None)
         if rel_path:
-            paths.append(repo_path / rel_path)
-    return paths
+            submodule_paths.append(repo_path / rel_path)
+    return submodule_paths
 
 
 def _walk(
@@ -93,30 +97,30 @@ def _walk(
     path: Path,
     max_depth: int,
     depth: int,
-    results: list[Path],
+    repo_paths: list[Path],
 ) -> None:
     if (path / ".git").exists():
-        results.append(path)
+        repo_paths.append(path)
         if _should_scan_submodules(path):
-            for sub_path in _active_submodule_paths(path):
-                if sub_path.is_dir():
+            for submodule_path in _active_submodule_paths(path):
+                if submodule_path.is_dir():
                     _walk(
-                        path=sub_path,
+                        path=submodule_path,
                         max_depth=max_depth,
                         depth=depth,
-                        results=results,
+                        repo_paths=repo_paths,
                     )
         return
     if depth >= max_depth:
         return
     try:
-        for child in sorted(path.iterdir()):
-            if child.is_dir() and not child.name.startswith("."):
+        for child_path in sorted(path.iterdir()):
+            if child_path.is_dir() and (not child_path.name.startswith(".")):
                 _walk(
-                    path=child,
+                    path=child_path,
                     max_depth=max_depth,
                     depth=depth + 1,
-                    results=results,
+                    repo_paths=repo_paths,
                 )
     except PermissionError:
         pass
@@ -127,93 +131,114 @@ def _walk(
 ##
 
 
-def _query(
-    cmd: list[str],
-    cwd: Path,
-) -> str:
-    result = subprocess.run(
-        cmd,
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-    )
-    return result.stdout.strip()
-
-
-def _fetch(
-    path: Path,
-) -> None:
-    subprocess.run(
-        ["git", "fetch", "--quiet"],
-        cwd=path,
-        capture_output=True,
-    )
+def _read_track_count(
+    *,
+    track: str,
+    label: str,
+) -> int:
+    """Return N from `<label> N` in an upstream tracking value such as '[ahead 1, behind 2]', or 0 if absent."""
+    count_match = re.search(rf"{label} (\d+)", track)
+    if count_match is None:
+        return 0
+    return int(count_match.group(1))
 
 
 def _get_repo_status(
     *,
-    path: Path,
+    repo_path: Path,
     is_fetching: bool = True,
     since: int | None = None,
 ) -> _RepoStatus:
     if is_fetching:
-        _fetch(path)
-
-    dirty_output = _query(["git", "status", "--porcelain"], path)
-    dirty_files = len([line for line in dirty_output.splitlines() if line.strip()])
-
-    ref_output = _query(
-        [
+        ## a failed fetch (offline, or no remote) still leaves the local state worth reporting.
+        cmd_fetch = [
             "git",
-            "for-each-ref",
-            "--format=%(refname:short) %(upstream:track) %(upstream:remotename)",
-            "refs/heads/",
-        ],
-        path,
+            "fetch",
+            "--quiet",
+        ]
+        manage_shell.run_cmd_and_show_output(
+            cmd_parts=cmd_fetch,
+            working_directory=repo_path,
+            raise_error=False,
+        )
+    cmd_list_changes = [
+        "git",
+        "status",
+        "--porcelain",
+    ]
+    status_output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_changes,
+        working_directory=repo_path,
+        raise_error=False,
+    )
+    dirty_files = len(status_output.splitlines())
+    ## `%00` separates the fields, since the tracking value itself contains spaces (e.g. '[ahead 1, behind 2]').
+    cmd_list_branch_tracking = [
+        "git",
+        "for-each-ref",
+        "--format=%(refname:short)%00%(upstream:track)%00%(upstream:remotename)",
+        "refs/heads/",
+    ]
+    branch_tracking_output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_branch_tracking,
+        working_directory=repo_path,
+        raise_error=False,
     )
     diverged: list[_BranchStatus] = []
-    for line in ref_output.splitlines():
-        ## split on whitespace; for-each-ref uses this format:
-        ##   "branchname [ahead N] remotename"   (branch with upstream)
-        ##   "branchname"                         (branch without upstream)
-        ## %(upstream:remotename) is always a single token (e.g. "origin") with no spaces.
-        ## %(upstream:track) may contain spaces (e.g. "[ahead 1, behind 2]").
-        tokens = line.split()
-        if not tokens:
-            continue
-        branch_name = tokens[0]
-        remote_name = tokens[-1] if len(tokens) > 1 else ""
-        track = " ".join(tokens[1:-1]) if len(tokens) > 2 else (tokens[1] if len(tokens) == 2 else "")
-        ahead_match = re.search(r"ahead (\d+)", track)
-        behind_match = re.search(r"behind (\d+)", track)
-        commits_ahead = int(ahead_match.group(1)) if ahead_match else 0
-        commits_behind = int(behind_match.group(1)) if behind_match else 0
-        if commits_ahead or commits_behind:
-            diverged.append(
-                _BranchStatus(
-                    name=branch_name,
-                    upstream_remote=remote_name,
-                    commits_ahead=commits_ahead,
-                    commits_behind=commits_behind,
-                ),
+    for line in branch_tracking_output.splitlines():
+        branch_name, track, remote_name = line.split("\0")
+        commits_ahead = _read_track_count(
+            track=track,
+            label="ahead",
+        )
+        commits_behind = _read_track_count(
+            track=track,
+            label="behind",
+        )
+        if (commits_ahead > 0) or (commits_behind > 0):
+            branch_status = _BranchStatus(
+                name=branch_name,
+                upstream_remote=remote_name,
+                commits_ahead=commits_ahead,
+                commits_behind=commits_behind,
             )
-
-    log_output = _query(["git", "log", "-1", "--format=%cr\n%ct"], path)
-    lines = log_output.splitlines()
-    if len(lines) >= 2:
-        last_commit_rel = lines[0]
-        last_commit_age_days = (time.time() - float(lines[1])) / 86400
+            diverged.append(branch_status)
+    ## `%cr` is the relative commit date (e.g. '2 days ago'); `%ct` is the same date in seconds.
+    cmd_read_last_commit = [
+        "git",
+        "log",
+        "-1",
+        "--format=%cr%n%ct",
+    ]
+    last_commit_output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_read_last_commit,
+        working_directory=repo_path,
+        raise_error=False,
+    )
+    last_commit_lines = last_commit_output.splitlines()
+    if len(last_commit_lines) >= 2:
+        last_commit_rel = last_commit_lines[0]
+        last_commit_age_days = (time.time() - float(last_commit_lines[1])) / 86400
     else:
         last_commit_rel = "(no commits)"
         last_commit_age_days = float("inf")
-
-    commits_in_window = 0
-    if since is not None:
-        count_output = _query(["git", "log", "--oneline", f"--after={since} days ago"], path)
-        commits_in_window = len(count_output.splitlines()) if count_output else 0
-
+    if since is None:
+        commits_in_window = 0
+    else:
+        cmd_list_window_commits = [
+            "git",
+            "log",
+            "--oneline",
+            f"--after={since} days ago",
+        ]
+        window_commits_output = manage_shell.query_cmd_and_capture_output(
+            cmd_parts=cmd_list_window_commits,
+            working_directory=repo_path,
+            raise_error=False,
+        )
+        commits_in_window = len(window_commits_output.splitlines())
     return _RepoStatus(
-        path=path,
+        path=repo_path,
         dirty_files=dirty_files,
         diverged=diverged,
         last_commit_rel=last_commit_rel,
@@ -227,31 +252,38 @@ def _get_repo_status(
 ##
 
 
-def _print_repo_status(
+def _report_repo_status(
     *,
-    status: _RepoStatus,
+    repo_status: _RepoStatus,
 ) -> None:
-    manage_log.log_task(str(status.path))
-    items: dict[str, str] = {"last commit": status.last_commit_rel}
-    if status.commits_in_window:
-        items["commits"] = str(status.commits_in_window)
-    if status.dirty_files:
-        items["dirty"] = f"{status.dirty_files} file(s)"
+    items: dict[str, str] = {"last commit": repo_status.last_commit_rel}
+    if repo_status.commits_in_window:
+        items["commits"] = str(repo_status.commits_in_window)
+    if repo_status.dirty_files:
+        items["dirty"] = f"{repo_status.dirty_files} file(s)"
     unpushed_branches: list[str] = []
     unpulled_branches: list[str] = []
-    for branch in status.diverged:
-        if branch.commits_ahead:
-            unpushed_branches.append(f"{branch.name} ({branch.commits_ahead} commit(s) ahead)")
-        if branch.commits_behind:
-            unpulled_branches.append(f"{branch.name} ({branch.commits_behind} commit(s) behind)")
+    for branch_status in repo_status.diverged:
+        if branch_status.commits_ahead:
+            unpushed_branches.append(f"{branch_status.name} ({branch_status.commits_ahead} commit(s) ahead)")
+        if branch_status.commits_behind:
+            unpulled_branches.append(f"{branch_status.name} ({branch_status.commits_behind} commit(s) behind)")
     if unpushed_branches:
         items["unpushed"] = ", ".join(unpushed_branches)
     if unpulled_branches:
         items["unpulled"] = ", ".join(unpulled_branches)
-    manage_log.log_note(
-        "repo state",
-        items=items,
-    )
+    if repo_status.dirty_files or repo_status.diverged:
+        manage_log.log_outcome(
+            "needs attention",
+            status=manage_log.OutcomeStatus.WARNING,
+            items=items,
+        )
+    else:
+        manage_log.log_outcome(
+            "recently active; clean and synced",
+            status=manage_log.OutcomeStatus.SUCCESS,
+            items=items,
+        )
 
 
 ##
@@ -259,70 +291,96 @@ def _print_repo_status(
 ##
 
 
-def _get_current_branch(
-    path: Path,
-) -> str:
-    name = _query(["git", "rev-parse", "--abbrev-ref", "HEAD"], path)
-    return "" if name == "HEAD" else name
+def _find_current_branch_name(
+    repo_path: Path,
+) -> str | None:
+    """Return the branch checked out in a repo, or None if its HEAD is detached."""
+    cmd_get_head_ref = [
+        "git",
+        "symbolic-ref",
+        "-q",
+        "--short",
+        "HEAD",
+    ]
+    output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_get_head_ref,
+        working_directory=repo_path,
+        raise_error=False,
+    )
+    if not output:
+        return None
+    return output
 
 
-def _do_pull(
+def _pull_current_branch(
     *,
-    path: Path,
-    status: _RepoStatus,
-    current_branch: str,
+    repo_path: Path,
+    repo_status: _RepoStatus,
 ) -> bool:
-    if not current_branch:
-        return False
-    for branch in status.diverged:
-        if branch.name != current_branch:
+    """Fast-forward the checked-out branch if it is only behind its upstream; return True if it was pulled."""
+    current_branch_name = _find_current_branch_name(repo_path)
+    for branch_status in repo_status.diverged:
+        if branch_status.name != current_branch_name:
             continue
-        if branch.commits_behind == 0 or branch.commits_ahead > 0:
+        if (branch_status.commits_behind == 0) or (branch_status.commits_ahead > 0):
             return False
-        if status.dirty_files > 0:
+        if repo_status.dirty_files > 0:
             manage_log.log_outcome(
                 "did not pull: dirty worktree",
                 status=manage_log.OutcomeStatus.SKIPPED,
-                items={"branch": branch.name},
+                items={"branch": branch_status.name},
             )
             return False
-        success = manage_shell.run_cmd_and_show_output(
-            cmd_parts=["git", "pull", "--ff-only"],
-            working_directory=path,
+        cmd_pull_ff_only = [
+            "git",
+            "pull",
+            "--ff-only",
+        ]
+        branch_was_pulled = manage_shell.run_cmd_and_show_output(
+            cmd_parts=cmd_pull_ff_only,
+            working_directory=repo_path,
             raise_error=False,
         )
-        if not success:
+        if not branch_was_pulled:
             manage_log.log_outcome(
                 "cannot fast-forward pull; manual intervention needed",
                 status=manage_log.OutcomeStatus.FAILURE,
-                items={"branch": branch.name},
+                items={"branch": branch_status.name},
             )
-        return success
+        return branch_was_pulled
     return False
 
 
-def _do_push(
+def _push_ahead_branches(
     *,
-    path: Path,
-    status: _RepoStatus,
+    repo_path: Path,
+    repo_status: _RepoStatus,
 ) -> int:
-    pushed = 0
-    for branch in status.diverged:
-        if branch.commits_ahead > 0 and branch.commits_behind == 0 and branch.upstream_remote:
-            success = manage_shell.run_cmd_and_show_output(
-                cmd_parts=["git", "push", branch.upstream_remote, branch.name],
-                working_directory=path,
+    """Push every branch that is only ahead of its upstream; return how many were pushed."""
+    pushed_branch_count = 0
+    for branch_status in repo_status.diverged:
+        branch_is_only_ahead = (branch_status.commits_ahead > 0) and (branch_status.commits_behind == 0)
+        if branch_is_only_ahead and branch_status.upstream_remote:
+            cmd_push_branch = [
+                "git",
+                "push",
+                branch_status.upstream_remote,
+                branch_status.name,
+            ]
+            branch_was_pushed = manage_shell.run_cmd_and_show_output(
+                cmd_parts=cmd_push_branch,
+                working_directory=repo_path,
                 raise_error=False,
             )
-            if success:
-                pushed += 1
+            if branch_was_pushed:
+                pushed_branch_count += 1
             else:
                 manage_log.log_outcome(
                     "could not push branch",
                     status=manage_log.OutcomeStatus.FAILURE,
-                    items={"branch": branch.name},
+                    items={"branch": branch_status.name},
                 )
-    return pushed
+    return pushed_branch_count
 
 
 ##
@@ -367,38 +425,43 @@ def scan_repos(
     pulled_repo_count = 0
     pushed_branch_count = 0
     anything_shown = False
-    for repo in repos:
-        status = _get_repo_status(
-            path=repo,
+    for repo_path in repos:
+        manage_log.log_task(f"checking {repo_path}")
+        repo_status = _get_repo_status(
+            repo_path=repo_path,
             is_fetching=is_fetching,
             since=since,
         )
-        if status.dirty_files:
+        if repo_status.dirty_files:
             dirty_count += 1
-        if any(b.commits_ahead for b in status.diverged):
+        if any(_branch_status.commits_ahead for _branch_status in repo_status.diverged):
             unpushed_count += 1
-        if any(b.commits_behind for b in status.diverged):
+        if any(_branch_status.commits_behind for _branch_status in repo_status.diverged):
             unpulled_count += 1
-        should_show = (
-            status.last_commit_age_days <= since
-            if since is not None else bool(status.dirty_files or status.diverged)
-        )
-        if should_show:
-            _print_repo_status(status=status)
+        ## with --since, show the recently active repos; otherwise show the ones that need attention.
+        if since is None:
+            repo_is_shown = bool(repo_status.dirty_files or repo_status.diverged)
+        else:
+            repo_is_shown = repo_status.last_commit_age_days <= since
+        if not repo_is_shown:
+            manage_log.log_outcome(
+                "nothing to report",
+                status=manage_log.OutcomeStatus.SUCCESS,
+            )
+        else:
+            _report_repo_status(repo_status=repo_status)
             anything_shown = True
             if pull:
-                current_branch = _get_current_branch(repo)
-                repo_was_pulled = _do_pull(
-                    path=repo,
-                    status=status,
-                    current_branch=current_branch,
+                repo_was_pulled = _pull_current_branch(
+                    repo_path=repo_path,
+                    repo_status=repo_status,
                 )
                 if repo_was_pulled:
                     pulled_repo_count += 1
             if push:
-                pushed_branch_count += _do_push(
-                    path=repo,
-                    status=status,
+                pushed_branch_count += _push_ahead_branches(
+                    repo_path=repo_path,
+                    repo_status=repo_status,
                 )
     if not anything_shown:
         manage_log.log_outcome(

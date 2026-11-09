@@ -205,7 +205,7 @@ class TestGetRepoStatus_DirtyFiles:
     ) -> None:
         repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
         )
         assert status.dirty_files == 0
@@ -217,7 +217,7 @@ class TestGetRepoStatus_DirtyFiles:
         repo = summary_conftest.make_repo_at(scan_root / "proj")
         (repo / "dirty.txt").write_text("changes")
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
         )
         assert status.dirty_files == 1
@@ -231,7 +231,7 @@ class TestGetRepoStatus_Diverged:
     ) -> None:
         repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
         )
         assert status.diverged == []
@@ -247,7 +247,7 @@ class TestGetRepoStatus_Diverged:
         vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         vtest_helpers.make_commit(repo, msg="extra")
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
         )
         assert len(status.diverged) == 1
@@ -273,7 +273,7 @@ class TestGetRepoStatus_Diverged:
         vtest_helpers.git(["push"], cwd=other)
         ## repo fetches and now sees it is behind
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=True,
         )
         assert len(status.diverged) == 1
@@ -291,7 +291,7 @@ class TestGetRepoStatus_Diverged:
         vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
         vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
         )
         assert status.diverged == []
@@ -305,7 +305,7 @@ class TestGetRepoStatus_CommitsInWindow:
     ) -> None:
         repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
         )
         assert status.commits_in_window == 0
@@ -317,7 +317,7 @@ class TestGetRepoStatus_CommitsInWindow:
         repo = summary_conftest.make_repo_at(scan_root / "proj")
         vtest_helpers.make_commit(repo, msg="second")
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
             since=1,
         )
@@ -332,7 +332,7 @@ class TestGetRepoStatus_LastCommit:
     ) -> None:
         repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
-            path=repo,
+            repo_path=repo,
             is_fetching=False,
         )
         assert status.last_commit_age_days < 1
@@ -431,7 +431,7 @@ class TestScanRepos_Output:
             no_fetch=True,
         )
         ## without fetch, behind count is stale: repo must fetch first to see it
-        git_scan._fetch(repo)
+        vtest_helpers.git(["fetch"], cwd=repo)
         capsys.readouterr()
         git_scan.scan_repos(
             depth=1,
