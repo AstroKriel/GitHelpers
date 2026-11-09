@@ -57,9 +57,9 @@ In the listings below, `<arg>` means a required positional argument, `[arg]` mea
 
 **Inspecting tracking state**
 ```bash
+git_helpers show-repo-state                                                             # show every fact git_helpers reads about this repo; start here when debugging
 git_helpers show-local-remotes                                                          # list all configured remotes and their URLs
 git_helpers show-current-commit-hash                                                    # print the full commit hash that HEAD currently points to
-git_helpers show-upstream-state                                                         # show which remote branch the current branch is tracking and its latest commit
 git_helpers show-branches-status                                                        # see all local branches and whether they're ahead or behind their remote (fetches first)
 git_helpers count-ahead-behind                                                          # show how many commits the current branch is ahead of and behind its upstream
 git_helpers show-unpulled-commits                                                       # list commits on the remote that haven't been pulled yet

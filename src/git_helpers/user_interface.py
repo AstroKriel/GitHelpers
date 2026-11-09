@@ -120,12 +120,6 @@ COMMAND_LINE_TOOL = manage_cli.CommandLineTool(
                     fn=git_inspection.show_current_commit_hash,
                 ),
                 manage_cli.Command(
-                    name="show-upstream-state",
-                    description=
-                    "show which remote branch the current branch is tracking and its latest commit",
-                    fn=git_inspection.show_upstream_state,
-                ),
-                manage_cli.Command(
                     name="show-branches-status",
                     description=
                     "see all local branches and whether they're ahead or behind their remote (fetches first)",

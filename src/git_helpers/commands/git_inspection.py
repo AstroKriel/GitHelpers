@@ -95,43 +95,6 @@ def show_current_commit_hash() -> None:
     manage_log.log_return(current_commit_hash)
 
 
-def show_upstream_state() -> None:
-    """Print the current branch name, its upstream ref, and the upstream's latest commit."""
-    repo_state.require_repo()
-    manage_log.log_task("identifying current branch")
-    branch_name = repo_state.find_current_branch_name()
-    if branch_name is None:
-        manage_log.log_outcome(
-            "HEAD is detached, so there is no upstream",
-            status=manage_log.OutcomeStatus.WARNING,
-        )
-        return
-    manage_log.log_outcome(
-        f"on branch '{branch_name}'",
-        status=manage_log.OutcomeStatus.SUCCESS,
-    )
-    manage_log.log_task("resolving upstream (if any)")
-    upstream = repo_state.find_upstream(branch_name=branch_name)
-    if upstream is not None:
-        upstream_name = upstream.ref_name
-        manage_log.log_return(f"upstream:     {upstream_name}")
-        manage_log.log_task("showing the latest commit on the upstream")
-        ## `-1` limits to one commit; `--format` prints it on one line with its branch and tag labels.
-        cmd_show_upstream_commit = [
-            "git",
-            "log",
-            "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
-            "-1",
-            upstream_name,
-        ]
-        manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_upstream_commit)
-    else:
-        manage_log.log_outcome(
-            "no upstream configured for current branch",
-            status=manage_log.OutcomeStatus.WARNING,
-        )
-
-
 def show_branches_status() -> None:
     """Fetch from remote, then list all local branches with their upstream and ahead/behind counts."""
     repo_state.require_repo()
