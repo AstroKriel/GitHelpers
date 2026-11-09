@@ -23,6 +23,27 @@ def _get_main_worktree_path() -> pathlib.Path:
     return pathlib.Path(repo_state.list_worktrees()[0]["path"])
 
 
+def _list_worktree_changes(
+    *,
+    worktree_path: str,
+) -> list[str]:
+    """Return one `git status --porcelain` line per uncommitted or untracked change in a worktree."""
+    ## removal needs --force when a worktree holds submodules, and --force also discards
+    ## uncommitted and untracked work; check for that work first.
+    cmd_list_changes = [
+        "git",
+        "-C",
+        worktree_path,
+        "status",
+        "--porcelain",
+    ]
+    changes_output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_changes,
+        raise_error=True,
+    )
+    return changes_output.splitlines()
+
+
 ##
 ## === WORKTREE COMMANDS
 ##
@@ -92,28 +113,34 @@ def cmd_create_worktree(
     ]
     manage_shell.run_cmd_and_show_output(cmd_parts=cmd_submodule_init)
     manage_log.log_task("configuring upstream tracking")
-    if repo_state.has_remote():
-        remote_name = repo_state.get_default_remote_name()
-        if repo_state.remote_branch_exists(remote_name, branch_name):
-            ## branch already exists on the remote; wire up tracking so push/pull
-            ## work without arguments and [gone] detection works on cleanup.
-            cmd_set_upstream = [
-                "git",
-                "-C",
-                worktree_path,
-                "branch",
-                "--set-upstream-to",
-                f"{remote_name}/{branch_name}",
-                branch_name,
-            ]
-            manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_upstream)
-        else:
-            manage_log.log_note(
-                f"'{remote_name}/{branch_name}' not on remote yet; "
-                f"run 'git_helpers push' from inside the worktree to publish and set tracking",
-            )
+    remote_name = repo_state.find_default_remote_name()
+    if remote_name is None:
+        manage_log.log_outcome(
+            "no remote configured, so there is no upstream to set",
+            status=manage_log.OutcomeStatus.SKIPPED,
+        )
+    elif repo_state.remote_branch_exists(remote_name, branch_name):
+        manage_log.log_outcome(
+            f"'{remote_name}/{branch_name}' exists, so setting it as the upstream; "
+            "push and pull then need no arguments, and cleanup can tell when it is deleted",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
+        cmd_set_upstream = [
+            "git",
+            "-C",
+            worktree_path,
+            "branch",
+            "--set-upstream-to",
+            f"{remote_name}/{branch_name}",
+            branch_name,
+        ]
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_upstream)
     else:
-        manage_log.log_note("no remote configured; skipping upstream setup")
+        manage_log.log_outcome(
+            f"'{remote_name}/{branch_name}' is not on the remote yet; "
+            "run 'git_helpers push' inside the worktree to publish it and set the upstream",
+            status=manage_log.OutcomeStatus.SKIPPED,
+        )
     manage_log.log_outcome(
         f"created worktree for '{branch_name}' at '{worktree_path}'",
         status=manage_log.OutcomeStatus.SUCCESS,
@@ -136,6 +163,18 @@ def cmd_remove_worktree(
     if not match:
         manage_log.exit_with_error(f"no worktree found for branch '{branch_name}'")
     worktree_path = match["path"]
+    manage_log.log_task("checking the worktree has no uncommitted or untracked work")
+    worktree_changes = _list_worktree_changes(worktree_path=worktree_path)
+    if worktree_changes:
+        manage_log.log_note(
+            "uncommitted or untracked work",
+            items={"changes": "; ".join(worktree_changes)},
+        )
+        manage_log.exit_with_error(f"worktree for '{branch_name}' has work that removal would discard; commit or stash it first")
+    manage_log.log_outcome(
+        "worktree is clean",
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
     manage_log.log_task("removing worktree (--force for submodules)")
     ## --force is required when the worktree contains submodules; without it git
     ## refuses because submodule .git dirs look like nested repositories.
@@ -225,50 +264,67 @@ def cmd_prune_worktrees() -> None:
             status=manage_log.OutcomeStatus.SKIPPED,
         )
         return
-    removed_worktree_paths = " ".join(worktree["path"] for worktree in prunable)
-    skipped_branches: list[str] = []
+    removed_worktree_paths: list[str] = []
+    kept_worktree_paths: list[str] = []
+    kept_branches: list[str] = []
     for worktree in prunable:
         path = worktree["path"]
         branch = worktree["branch"]
-        manage_log.log_task(f"removing worktree '{path}'")
-        cmd_remove = [
-            "git",
-            "worktree",
-            "remove",
-            "--force",
-            path,
-        ]
-        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_remove)
-        manage_log.log_task(f"deleting local branch '{branch}' (-d)")
-        cmd_delete_branch = [
-            "git",
-            "branch",
-            "-d",
-            "--",
-            branch,
-        ]
-        success = manage_shell.run_cmd_and_show_output(
-            cmd_parts=cmd_delete_branch,
-            raise_error=False,
-        )
-        if not success:
-            skipped_branches.append(branch)
-            manage_log.log_note(
-                f"kept '{branch}' (unmerged commits; likely squash-merged: "
-                "run 'git_helpers force-delete-gone' to force-delete all [gone] branches with -D)",
+        manage_log.log_task(f"checking '{path}' has no uncommitted or untracked work")
+        worktree_changes = _list_worktree_changes(worktree_path=path)
+        if worktree_changes:
+            kept_worktree_paths.append(path)
+            manage_log.log_outcome(
+                f"kept '{path}': removal would discard its uncommitted or untracked work",
+                status=manage_log.OutcomeStatus.WARNING,
+                items={"changes": "; ".join(worktree_changes)},
             )
-    removed_count = len(prunable) - len(skipped_branches)
-    if skipped_branches:
+        else:
+            manage_log.log_task(f"removing worktree '{path}'")
+            cmd_remove = [
+                "git",
+                "worktree",
+                "remove",
+                "--force",
+                path,
+            ]
+            manage_shell.run_cmd_and_show_output(cmd_parts=cmd_remove)
+            removed_worktree_paths.append(path)
+            manage_log.log_task(f"deleting local branch '{branch}' (-d)")
+            cmd_delete_branch = [
+                "git",
+                "branch",
+                "-d",
+                "--",
+                branch,
+            ]
+            success = manage_shell.run_cmd_and_show_output(
+                cmd_parts=cmd_delete_branch,
+                raise_error=False,
+            )
+            if not success:
+                kept_branches.append(branch)
+                manage_log.log_note(
+                    f"kept '{branch}' (unmerged commits; likely squash-merged: "
+                    "run 'git_helpers force-delete-gone' to force-delete all [gone] branches with -D)",
+                )
+    all_prune_items = {
+        "removed worktrees": " ".join(removed_worktree_paths),
+        "kept worktrees": " ".join(kept_worktree_paths),
+        "kept branches": " ".join(kept_branches),
+    }
+    prune_items = {_label: _value for _label, _value in all_prune_items.items() if _value}
+    if kept_worktree_paths or kept_branches:
         manage_log.log_outcome(
-            f"removed {removed_count} worktree(s); could not delete {len(skipped_branches)} branch(es): {', '.join(skipped_branches)}",
+            f"removed {len(removed_worktree_paths)} of {len(prunable)} worktree(s); kept some work",
             status=manage_log.OutcomeStatus.WARNING,
-            items={"removed worktrees": removed_worktree_paths},
+            items=prune_items,
         )
     else:
         manage_log.log_outcome(
             f"removed {len(prunable)} worktree(s) and deleted their branches",
             status=manage_log.OutcomeStatus.SUCCESS,
-            items={"removed worktrees": removed_worktree_paths},
+            items=prune_items,
         )
 
 
@@ -283,8 +339,7 @@ def cmd_rename_branch(
     if that path already exists on disk.
     """
     repo_state.require_repo()
-    repo_state.require_attached()
-    old_name = repo_state.current_branch()
+    old_name = repo_state.get_attached_branch_name()
     manage_log.log_task("checking for a linked worktree on this branch")
     worktrees = repo_state.list_worktrees()
     worktree_match = next(
@@ -296,7 +351,7 @@ def cmd_rename_branch(
     main_worktree: pathlib.Path | None = None
     if worktree_match:
         old_worktree_path = pathlib.Path(worktree_match["path"])
-        main_worktree = _get_main_worktree_path()
+        main_worktree = pathlib.Path(worktrees[0]["path"])
         new_branch_slug = new_name.replace("/", "-")
         new_worktree_path = main_worktree.parent / f"{main_worktree.name}-worktrees" / new_branch_slug
         if new_worktree_path.exists():

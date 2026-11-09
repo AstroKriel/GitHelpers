@@ -105,6 +105,11 @@ COMMAND_LINE_TOOL = manage_cli.CommandLineTool(
             title="Inspecting tracking state",
             cmds=[
                 manage_cli.Command(
+                    name="show-repo-state",
+                    description="show every fact git_helpers reads about this repo; start here when debugging",
+                    fn=git_inspection.show_repo_state,
+                ),
+                manage_cli.Command(
                     name="show-local-remotes",
                     description="list all configured remotes and their URLs",
                     fn=git_inspection.show_local_remotes,

@@ -33,8 +33,10 @@ def test_delete_local_branch_removes_branch(
 def test_delete_local_branch_refuses_current_branch(
     make_repo_: Path,
 ) -> None:
-    with pytest.raises(SystemExit):
+    ## git refuses to delete the checked-out branch: raises CalledProcessError
+    with pytest.raises(subprocess.CalledProcessError):
         git_branches.cmd_delete_local_branch(branch_name="main")
+    assert "main" in vtest_helpers.local_branches(make_repo_)
 
 
 def test_delete_local_branch_refuses_unmerged_branch(

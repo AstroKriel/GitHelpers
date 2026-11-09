@@ -11,6 +11,24 @@ from huginn import manage_log, manage_shell
 from git_helpers import repo_state
 
 ##
+## === HELPERS
+##
+
+
+def _fetch_prune() -> None:
+    manage_log.log_task("refreshing remote-tracking refs (fetch --prune)")
+    ## `--prune` deletes local tracking refs (e.g. origin/feature-x) for
+    ## branches that have been deleted on the remote since the last fetch.
+    cmd_fetch_prune = [
+        "git",
+        "fetch",
+        "--prune",
+        "--quiet",
+    ]
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_prune)
+
+
+##
 ## === BRANCH COMMANDS
 ##
 
@@ -21,10 +39,6 @@ def cmd_delete_local_branch(
 ) -> None:
     """Safely delete a local branch; refuses if it has unmerged commits."""
     repo_state.require_repo()
-    repo_state.require_attached()
-    manage_log.log_task("verifying not deleting the current branch")
-    if repo_state.current_branch() == branch_name:
-        manage_log.exit_with_error("cannot delete the current branch")
     manage_log.log_task("deleting local branch (-d)")
     ## `-d` is the safe delete: git refuses if the branch has commits that
     ## haven't been merged into its upstream or HEAD. Use `-D` to force.
@@ -46,17 +60,11 @@ def cmd_delete_local_branch(
 def cmd_prune_gone_locals() -> None:
     """Delete local branches whose remote counterpart has been deleted ([gone])."""
     repo_state.require_repo()
-    repo_state.require_attached()
-    manage_log.log_task("refreshing remote-tracking refs (fetch --prune)")
-    ## `--prune` deletes local tracking refs (e.g. origin/feature-x) for
-    ## branches that have been deleted on the remote since the last fetch.
-    cmd_fetch_prune = [
-        "git",
-        "fetch",
-        "--prune",
-        "--quiet",
-    ]
-    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_prune)
+    _fetch_prune()
+    _delete_gone_locals()
+
+
+def _delete_gone_locals() -> None:
     manage_log.log_task("finding local branches with [gone] upstream")
     ## `for-each-ref` iterates over all refs matching a pattern. The format
     ## string requests the short branch name and its upstream tracking status.
@@ -119,15 +127,7 @@ def cmd_prune_gone_locals() -> None:
 def cmd_force_delete_gone() -> None:
     """Force-delete (-D) all local branches whose remote has been deleted, including those with unmerged commits."""
     repo_state.require_repo()
-    repo_state.require_attached()
-    manage_log.log_task("refreshing remote-tracking refs (fetch --prune)")
-    cmd_fetch_prune = [
-        "git",
-        "fetch",
-        "--prune",
-        "--quiet",
-    ]
-    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_prune)
+    _fetch_prune()
     manage_log.log_task("finding local branches with [gone] upstream")
     cmd_list_branch_tracking = [
         "git",
@@ -180,25 +180,42 @@ def cmd_prune_merged_locals(
     untracked work that no commit-ancestry check can see.
     """
     repo_state.require_repo()
-    repo_state.require_attached()
-    if not base_name:
-        ## auto-detect the base: ask the remote what its default branch is.
-        ## fall back to "origin/main" if the remote hasn't advertised one.
+    current_branch_name = repo_state.get_attached_branch_name()
+    _delete_merged_locals(
+        base_name=base_name,
+        current_branch_name=current_branch_name,
+    )
+
+
+def _delete_merged_locals(
+    *,
+    base_name: str | None,
+    current_branch_name: str,
+) -> None:
+    manage_log.log_task("choosing the base branch")
+    if base_name:
+        manage_log.log_outcome(
+            f"using the given base '{base_name}'",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
+    else:
+        ## ask the remote what its default branch is; fall back to main if it has not advertised one.
         default_remote_name = repo_state.get_default_remote_name()
-        default_branch_name = repo_state.get_default_branch_name()
-        base_name = f"{default_remote_name}/{default_branch_name}" if default_branch_name else "origin/main"
+        default_branch_name = repo_state.get_default_branch_name(remote_name=default_remote_name)
+        if default_branch_name is None:
+            base_name = f"{default_remote_name}/main"
+            manage_log.log_outcome(
+                f"no base given and no remote default branch, so falling back to '{base_name}'",
+                status=manage_log.OutcomeStatus.WARNING,
+            )
+        else:
+            base_name = f"{default_remote_name}/{default_branch_name}"
+            manage_log.log_outcome(
+                f"no base given, so using the remote default '{base_name}'",
+                status=manage_log.OutcomeStatus.SUCCESS,
+            )
     if "/" not in base_name:
         manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
-    cmd_get_current_branch = [
-        "git",
-        "rev-parse",
-        "--abbrev-ref",
-        "HEAD",
-    ]
-    current_branch_name = manage_shell.query_cmd_and_capture_output(
-        cmd_parts=cmd_get_current_branch,
-        raise_error=True,
-    )
     manage_log.log_task(
         f"finding local branches merged into '{base_name}' (excluding current, main/master, and worktrees)",
     )
@@ -282,19 +299,15 @@ def cmd_cleanup_local_branches(
 ) -> None:
     """End-to-end local branch cleanup: remove [gone] branches, then remove merged branches."""
     repo_state.require_repo()
-    repo_state.require_attached()
-    manage_log.log_task("refreshing remote-tracking refs (fetch --prune)")
-    cmd_fetch_prune = [
-        "git",
-        "fetch",
-        "--prune",
-        "--quiet",
-    ]
-    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_prune)
+    current_branch_name = repo_state.get_attached_branch_name()
+    _fetch_prune()
     ## two-pass cleanup: first remove branches whose remote was deleted ([gone]),
     ## then remove branches whose commits are already in the base branch.
-    cmd_prune_gone_locals()
-    cmd_prune_merged_locals(base_name=base_name)
+    _delete_gone_locals()
+    _delete_merged_locals(
+        base_name=base_name,
+        current_branch_name=current_branch_name,
+    )
     manage_log.log_outcome(
         "completed local branch cleanup",
         status=manage_log.OutcomeStatus.SUCCESS,
@@ -307,7 +320,7 @@ def cmd_track_remote_branch(
     local_branch: str | None = None,
 ) -> None:
     """Create a local branch that tracks an existing remote branch and check it out."""
-    repo_state.require_remote()
+    repo_state.require_repo()
     if "/" not in remote_branch:
         manage_log.exit_with_error("argument must be remote-qualified, e.g. origin/feature-x")
     ## default the local name to the branch part after the remote prefix
@@ -344,8 +357,8 @@ def cmd_create_branch_from_default(
     new_branch_name: str,
 ) -> None:
     """Create a new branch from the remote's default branch and publish it with upstream set."""
-    repo_state.require_remote()
-    manage_log.log_task("selecting default remote")
+    repo_state.require_repo()
+    manage_log.log_task("choosing the remote")
     default_remote_name = repo_state.get_default_remote_name()
     manage_log.log_task("fetching remote refs")
     cmd_fetch_remote = [
@@ -356,8 +369,8 @@ def cmd_create_branch_from_default(
     ]
     manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_remote)
     manage_log.log_task("discovering remote default branch (<remote>/HEAD)")
-    default_branch_name = repo_state.get_default_branch_name()
-    if not default_branch_name:
+    default_branch_name = repo_state.get_default_branch_name(remote_name=default_remote_name)
+    if default_branch_name is None:
         manage_log.exit_with_error(
             f"no remote default branch set (refs/remotes/{default_remote_name}/HEAD unknown); "
             f"be explicit: git_helpers create-branch-from-remote {new_branch_name} {default_remote_name}/<base>",
@@ -397,10 +410,10 @@ def cmd_create_branch_from_remote(
     start_ref: str,
 ) -> None:
     """Create a new branch from an explicit remote ref and publish it with upstream set."""
-    repo_state.require_remote()
+    repo_state.require_repo()
     if "/" not in start_ref:
         manage_log.exit_with_error("startpoint must be remote-qualified, e.g. origin/development")
-    manage_log.log_task("selecting default remote")
+    manage_log.log_task("choosing the remote")
     default_remote_name = repo_state.get_default_remote_name()
     manage_log.log_task("fetching remote refs")
     cmd_fetch_remote = [

@@ -57,63 +57,56 @@ def cmd_push(
     extra_args: list[str],
 ) -> None:
     """Push the current branch; sets upstream automatically if not already configured."""
-    repo_state.require_remote()
-    repo_state.require_attached()
-    manage_log.log_task("publishing current branch")
-    default_remote_name = repo_state.get_default_remote_name()
-    manage_log.log_task("detecting whether upstream is already set")
-    if repo_state.has_upstream():
-        upstream_branch = repo_state.get_upstream_branch_name()
-        local_branch = repo_state.current_branch()
-        if upstream_branch == local_branch:
-            ## upstream points at the same-named remote branch; plain push is correct.
-            manage_log.log_task("upstream branch name matches local; using plain push")
-            cmd_push_existing = [
-                "git",
-                "push",
-            ] + extra_args
-            manage_shell.run_cmd_and_show_output(cmd_parts=cmd_push_existing)
-            manage_log.log_outcome(
-                "pushed current branch",
-                status=manage_log.OutcomeStatus.SUCCESS,
-                items={"default remote": default_remote_name},
-            )
-        else:
-            ## upstream name differs from local name (e.g. branch created from another branch
-            ## and tracking ref was never updated). push to a new same-named remote branch
-            ## and update the upstream so subsequent pushes work without arguments.
-            manage_log.log_task(
-                f"upstream branch '{upstream_branch}' differs from local '{local_branch}'; "
-                f"pushing with -u to {default_remote_name}/{local_branch}",
-            )
-            cmd_push_set_upstream = [
-                "git",
-                "push",
-                "-u",
-                default_remote_name,
-                "HEAD",
-            ] + extra_args
-            manage_shell.run_cmd_and_show_output(cmd_parts=cmd_push_set_upstream)
-            manage_log.log_outcome(
-                f"pushed and set upstream to {default_remote_name}/{local_branch}",
-                status=manage_log.OutcomeStatus.SUCCESS,
-            )
+    repo_state.require_repo()
+    branch_name = repo_state.get_attached_branch_name()
+    manage_log.log_task("reading the upstream")
+    upstream = repo_state.find_upstream(branch_name=branch_name)
+    if upstream is None:
+        upstream_text = "no upstream yet"
+        matching_upstream_ref = None
+    elif upstream.is_local:
+        upstream_text = f"upstream is the local branch '{upstream.branch_name}', not a remote branch"
+        matching_upstream_ref = None
+    elif upstream.branch_name != branch_name:
+        upstream_text = f"upstream is '{upstream.ref_name}', which is a different branch"
+        matching_upstream_ref = None
     else:
-        ## no upstream yet: push and set it in one step with `-u`.
+        upstream_text = f"upstream is '{upstream.ref_name}', which matches this branch"
+        matching_upstream_ref = upstream.ref_name
+    manage_log.log_outcome(
+        upstream_text,
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
+    if matching_upstream_ref is not None:
+        manage_log.log_task(f"pushing to '{matching_upstream_ref}'")
+        cmd_push_existing = [
+            "git",
+            "push",
+        ] + extra_args
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_push_existing)
+        manage_log.log_outcome(
+            f"pushed to '{matching_upstream_ref}'",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
+    else:
+        ## push to the same-named remote branch and make that the upstream with `-u`.
         ## `HEAD` means "push the current branch, whatever it's named".
+        manage_log.log_task("choosing the remote")
+        remote_name = repo_state.get_default_remote_name()
+        target_ref = f"{remote_name}/{branch_name}"
         manage_log.log_task(
-            f"no upstream set; pushing with -u to {default_remote_name}/<same-name>",
+            f"pushing to '{target_ref}' and setting it as the upstream, so later pushes and pulls need no arguments",
         )
         cmd_push_set_upstream = [
             "git",
             "push",
             "-u",
-            default_remote_name,
+            remote_name,
             "HEAD",
         ] + extra_args
         manage_shell.run_cmd_and_show_output(cmd_parts=cmd_push_set_upstream)
         manage_log.log_outcome(
-            f"pushed and set upstream to {default_remote_name}/<same-name>",
+            f"pushed to '{target_ref}' and set it as the upstream",
             status=manage_log.OutcomeStatus.SUCCESS,
         )
 
@@ -124,11 +117,11 @@ def cmd_sync_branch(
     allow_dirty: bool,
 ) -> None:
     """Sync the current branch with its upstream or an explicit remote base ref, fast-forward first."""
-    repo_state.require_remote()
-    repo_state.require_attached()
-    manage_log.log_task("identifying default remote")
+    repo_state.require_repo()
+    branch_name = repo_state.get_attached_branch_name()
+    manage_log.log_task("choosing the remote")
     default_remote_name = repo_state.get_default_remote_name()
-    manage_log.log_task("verifying clean worktree (unless --allow-dirty)")
+    manage_log.log_task("checking the worktree is clean")
     repo_state.ensure_clean_worktree(allow_dirty=allow_dirty)
     manage_log.log_task("fetching from remote")
     ## fetch before any merge/pull so we're working with up-to-date remote refs.
@@ -143,6 +136,10 @@ def cmd_sync_branch(
     if base_name:
         if "/" not in base_name:
             manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
+        manage_log.log_outcome(
+            f"a base was given, so merging '{base_name}' instead of pulling from the upstream",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
         manage_log.log_task("merging explicit base into current branch with --ff")
         ## `--ff` means: fast-forward if possible (no merge commit needed when
         ## the histories are linear), but fall back to a real merge commit if
@@ -159,7 +156,16 @@ def cmd_sync_branch(
             status=manage_log.OutcomeStatus.SUCCESS,
             items={"default remote": default_remote_name},
         )
-    elif repo_state.has_upstream():
+    else:
+        upstream = repo_state.find_upstream(branch_name=branch_name)
+        if upstream is None:
+            manage_log.exit_with_error(
+                "no upstream set; publish (git_helpers push) or provide a base: git_helpers sync-branch <remote>/<base>",
+            )
+        manage_log.log_outcome(
+            f"no base given, so pulling from the upstream '{upstream.ref_name}'",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
         manage_log.log_task("pulling with --ff")
         ## same semantics as above but via `pull`, which combines fetch + merge
         ## against the configured upstream in one step. `--no-rebase` overrides
@@ -175,10 +181,6 @@ def cmd_sync_branch(
             "synced via 'git pull --ff'",
             status=manage_log.OutcomeStatus.SUCCESS,
             items={"default remote": default_remote_name},
-        )
-    else:
-        manage_log.exit_with_error(
-            "no upstream set; publish (git_helpers push) or provide a base: git_helpers sync-branch <remote>/<base>",
         )
 
 

@@ -364,6 +364,8 @@ def scan_repos(
     dirty_count = 0
     unpushed_count = 0
     unpulled_count = 0
+    pulled_repo_count = 0
+    pushed_branch_count = 0
     anything_shown = False
     for repo in repos:
         status = _get_repo_status(
@@ -386,13 +388,15 @@ def scan_repos(
             anything_shown = True
             if pull:
                 current_branch = _get_current_branch(repo)
-                _do_pull(
+                repo_was_pulled = _do_pull(
                     path=repo,
                     status=status,
                     current_branch=current_branch,
                 )
+                if repo_was_pulled:
+                    pulled_repo_count += 1
             if push:
-                _do_push(
+                pushed_branch_count += _do_push(
                     path=repo,
                     status=status,
                 )
@@ -407,6 +411,10 @@ def scan_repos(
         summary_parts.append(f"{unpushed_count} with unpushed commits")
     if unpulled_count:
         summary_parts.append(f"{unpulled_count} with unpulled commits")
+    if pull:
+        summary_parts.append(f"{pulled_repo_count} repos pulled")
+    if push:
+        summary_parts.append(f"{pushed_branch_count} branches pushed")
     if (dirty_count > 0) or (unpushed_count > 0) or (unpulled_count > 0):
         summary_status = manage_log.OutcomeStatus.WARNING
     else:

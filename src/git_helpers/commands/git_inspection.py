@@ -35,6 +35,51 @@ def _diff_color_args(
 ##
 
 
+def _describe(
+    value: object,
+    *,
+    none_text: str,
+) -> str:
+    if value is None:
+        return none_text
+    else:
+        return str(value)
+
+
+def show_repo_state() -> None:
+    """Print every fact git_helpers reads about the repo in the current directory."""
+    manage_log.log_task("reading the repo state")
+    repo_state_snapshot = repo_state.collect_repo_state()
+    if repo_state_snapshot.remote_names:
+        remotes_text = ", ".join(repo_state_snapshot.remote_names)
+    else:
+        remotes_text = "none"
+    if repo_state_snapshot.upstream is None:
+        upstream_text = "none"
+    else:
+        upstream_text = repo_state_snapshot.upstream.ref_name
+    if repo_state_snapshot.worktree_is_clean:
+        worktree_text = "clean"
+    else:
+        worktree_text = "has uncommitted changes"
+    rows = {
+        "repo root": str(repo_state_snapshot.repo_root),
+        "git dir": str(repo_state_snapshot.git_dir),
+        "remotes": remotes_text,
+        "default remote": _describe(repo_state_snapshot.default_remote_name, none_text="none"),
+        "remote default branch": _describe(repo_state_snapshot.remote_default_branch_name, none_text="not advertised"),
+        "current branch": _describe(repo_state_snapshot.current_branch_name, none_text="none (HEAD is detached)"),
+        "HEAD commit": _describe(repo_state_snapshot.head_commit_hash, none_text="none (no commits yet)"),
+        "upstream": upstream_text,
+        "worktree": worktree_text,
+        "in-progress operation": _describe(repo_state_snapshot.in_progress_operation, none_text="none"),
+        "worktrees": " ".join(repo_state_snapshot.worktree_paths),
+    }
+    label_width = max(len(_label) for _label in rows) + 1
+    for _label, _value_text in rows.items():
+        manage_log.log_return(f"{_label + ':':<{label_width}} {_value_text}")
+
+
 def show_current_commit_hash() -> None:
     """Print the full commit hash that HEAD currently points to."""
     repo_state.require_repo()
@@ -54,28 +99,24 @@ def show_upstream_state() -> None:
     """Print the current branch name, its upstream ref, and the upstream's latest commit."""
     repo_state.require_repo()
     manage_log.log_task("identifying current branch")
-    current_branch_name = repo_state.current_branch()
-    manage_log.log_task("resolving upstream (if any)")
-    ## resolve `@{u}` to a human-readable name like "origin/main".
-    cmd_resolve_upstream = [
-        "git",
-        "rev-parse",
-        "--abbrev-ref",
-        "--symbolic-full-name",
-        "@{u}",
-    ]
-    if repo_state.has_upstream():
-        upstream_name = manage_shell.query_cmd_and_capture_output(
-            cmd_parts=cmd_resolve_upstream,
-            raise_error=True,
+    branch_name = repo_state.find_current_branch_name()
+    if branch_name is None:
+        manage_log.log_outcome(
+            "HEAD is detached, so there is no upstream",
+            status=manage_log.OutcomeStatus.WARNING,
         )
-    else:
-        upstream_name = ""
-    if upstream_name:
+        return
+    manage_log.log_outcome(
+        f"on branch '{branch_name}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
+    manage_log.log_task("resolving upstream (if any)")
+    upstream = repo_state.find_upstream(branch_name=branch_name)
+    if upstream is not None:
+        upstream_name = upstream.ref_name
         manage_log.log_return(f"upstream:     {upstream_name}")
         manage_log.log_task("showing the latest commit on the upstream")
-        ## `-1` limits to one commit; `--oneline` keeps output compact;
-        ## `--decorate` shows branch/tag labels alongside the commit hash.
+        ## `-1` limits to one commit; `--format` prints it on one line with its branch and tag labels.
         cmd_show_upstream_commit = [
             "git",
             "log",
@@ -110,7 +151,7 @@ def show_branches_status() -> None:
     manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_prune)
     manage_log.log_task("showing local branches with upstream and ahead/behind")
     ## `-vv` (very verbose) shows the upstream ref and ahead/behind counts
-    ## for each branch. `--no-abbrev` prints full SHAs so nothing is truncated.
+    ## for each branch. `--no-abbrev` prints full hashes so nothing is truncated.
     cmd_show_branch_verbose = [
         "git",
         "branch",
@@ -123,23 +164,15 @@ def show_branches_status() -> None:
 def count_ahead_behind() -> None:
     """Print how many commits the current branch is ahead of and behind its upstream."""
     repo_state.require_repo()
+    branch_name = repo_state.get_attached_branch_name()
     manage_log.log_task("determining upstream for current branch")
-    if not repo_state.has_upstream():
-        manage_log.exit_with_error(f"no upstream set for {repo_state.current_branch()}")
-    cmd_resolve_upstream = [
-        "git",
-        "rev-parse",
-        "--abbrev-ref",
-        "--symbolic-full-name",
-        "@{u}",
-    ]
-    upstream_name = manage_shell.query_cmd_and_capture_output(
-        cmd_parts=cmd_resolve_upstream,
-        raise_error=True,
-    )
-    manage_log.log_note(
-        "resolved upstream",
-        items={"upstream": upstream_name},
+    upstream = repo_state.find_upstream(branch_name=branch_name)
+    if upstream is None:
+        manage_log.exit_with_error(f"no upstream set for {branch_name}")
+    upstream_name = upstream.ref_name
+    manage_log.log_outcome(
+        f"upstream is '{upstream_name}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
     )
     manage_log.log_task("fetching latest refs from remote")
     ## stay on the superproject; this only compares HEAD to its upstream.
@@ -174,23 +207,15 @@ def count_ahead_behind() -> None:
 def show_unpulled_commits() -> None:
     """List commits that exist on the upstream but have not yet been pulled locally."""
     repo_state.require_repo()
+    branch_name = repo_state.get_attached_branch_name()
     manage_log.log_task("determining upstream")
-    if not repo_state.has_upstream():
-        manage_log.exit_with_error("no upstream set")
-    cmd_resolve_upstream = [
-        "git",
-        "rev-parse",
-        "--abbrev-ref",
-        "--symbolic-full-name",
-        "@{u}",
-    ]
-    upstream_name = manage_shell.query_cmd_and_capture_output(
-        cmd_parts=cmd_resolve_upstream,
-        raise_error=True,
-    )
-    manage_log.log_note(
-        "resolved upstream",
-        items={"upstream": upstream_name},
+    upstream = repo_state.find_upstream(branch_name=branch_name)
+    if upstream is None:
+        manage_log.exit_with_error(f"no upstream set for {branch_name}")
+    upstream_name = upstream.ref_name
+    manage_log.log_outcome(
+        f"upstream is '{upstream_name}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
     )
     manage_log.log_task("fetching latest from remote")
     ## stay on the superproject; this only lists commits missing on HEAD.
@@ -250,19 +275,23 @@ def show_commits_on_branch(
             manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
         remote_base = base
     else:
-        inferred = repo_state.get_default_branch_name()
+        inferred = repo_state.get_default_branch_name(remote_name=remote)
         if not inferred:
             manage_log.exit_with_error(
                 "could not infer default branch; pass base explicitly, e.g. origin/main",
             )
         remote_base = f"{remote}/{inferred}"
-    branch = repo_state.current_branch()
+    branch_name = repo_state.find_current_branch_name()
     base_branch = remote_base.split("/", 1)[-1]
-    if branch == base_branch:
+    if branch_name == base_branch:
         manage_log.exit_with_error(
             f"already on '{base_branch}'; show-commits-on-branch compares a feature branch to its base",
         )
-    manage_log.log_task(f"showing commits on '{branch}' not in '{remote_base}'")
+    if branch_name is None:
+        head_label = "detached HEAD"
+    else:
+        head_label = f"'{branch_name}'"
+    manage_log.log_task(f"showing commits on {head_label} not in '{remote_base}'")
     cmd = [
         "git",
         "log",
@@ -352,15 +381,15 @@ def show_diff_committed(
             manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
         remote_base = base
     else:
-        inferred = repo_state.get_default_branch_name()
+        inferred = repo_state.get_default_branch_name(remote_name=remote)
         if not inferred:
             manage_log.exit_with_error(
                 "could not infer default branch; pass base explicitly, e.g. origin/main",
             )
         remote_base = f"{remote}/{inferred}"
-    branch = repo_state.current_branch()
+    branch_name = repo_state.find_current_branch_name()
     base_branch = remote_base.split("/", 1)[-1]
-    if branch == base_branch:
+    if branch_name == base_branch:
         manage_log.exit_with_error(
             f"already on '{base_branch}'; show-diff-committed compares a feature branch to its base"
             "; use show-diff-n-commits N for commit-range diffs",

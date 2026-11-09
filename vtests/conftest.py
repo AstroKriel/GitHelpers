@@ -14,6 +14,7 @@ import pytest
 from huginn import _manage_output
 
 ## local
+from git_helpers import repo_state
 from vtests import helpers as vtest_helpers
 
 ##
@@ -25,6 +26,12 @@ from vtests import helpers as vtest_helpers
 def reset_huginn_state() -> None:
     """Start each test with no log file and every built-in flag off, so no test writes to the real log or inherits a dry run."""
     _manage_output.reset_active_state()
+
+
+@pytest.fixture(autouse=True)
+def reset_repo_state() -> None:
+    """Start each test with no cached repo facts, so no test reuses another test's repo."""
+    repo_state.reset_state()
 
 
 @pytest.fixture
