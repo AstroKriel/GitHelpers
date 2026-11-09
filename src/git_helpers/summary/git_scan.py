@@ -25,6 +25,7 @@ class _BranchStatus:
     upstream_remote: str = ""
     commits_ahead: int = 0
     commits_behind: int = 0
+    upstream_is_gone: bool = False
 
 
 @dataclass(frozen=True)
@@ -151,9 +152,11 @@ def _get_repo_status(
 ) -> _RepoStatus:
     if is_fetching:
         ## a failed fetch (offline, or no remote) still leaves the local state worth reporting.
+        ## `--prune` drops tracking refs for deleted remote branches, so their local branches show as gone.
         cmd_fetch = [
             "git",
             "fetch",
+            "--prune",
             "--quiet",
         ]
         manage_shell.run_cmd_and_show_output(
@@ -195,12 +198,15 @@ def _get_repo_status(
             track=track,
             label="behind",
         )
-        if (commits_ahead > 0) or (commits_behind > 0):
+        ## git marks a branch whose upstream was deleted on the remote with the tracking value '[gone]'.
+        upstream_is_gone = track == "[gone]"
+        if (commits_ahead > 0) or (commits_behind > 0) or upstream_is_gone:
             branch_status = _BranchStatus(
                 name=branch_name,
                 upstream_remote=remote_name,
                 commits_ahead=commits_ahead,
                 commits_behind=commits_behind,
+                upstream_is_gone=upstream_is_gone,
             )
             diverged.append(branch_status)
     ## `%cr` is the relative commit date (e.g. '2 days ago'); `%ct` is the same date in seconds.
@@ -263,15 +269,20 @@ def _report_repo_status(
         items["dirty"] = f"{repo_status.dirty_files} file(s)"
     unpushed_branches: list[str] = []
     unpulled_branches: list[str] = []
+    gone_upstream_branches: list[str] = []
     for branch_status in repo_status.diverged:
         if branch_status.commits_ahead:
             unpushed_branches.append(f"{branch_status.name} ({branch_status.commits_ahead} commit(s) ahead)")
         if branch_status.commits_behind:
             unpulled_branches.append(f"{branch_status.name} ({branch_status.commits_behind} commit(s) behind)")
+        if branch_status.upstream_is_gone:
+            gone_upstream_branches.append(branch_status.name)
     if unpushed_branches:
         items["unpushed"] = ", ".join(unpushed_branches)
     if unpulled_branches:
         items["unpulled"] = ", ".join(unpulled_branches)
+    if gone_upstream_branches:
+        items["gone upstream"] = ", ".join(gone_upstream_branches)
     if repo_status.dirty_files or repo_status.diverged:
         manage_log.log_outcome(
             "needs attention",
@@ -422,6 +433,7 @@ def scan_repos(
     dirty_count = 0
     unpushed_count = 0
     unpulled_count = 0
+    gone_upstream_count = 0
     pulled_repo_count = 0
     pushed_branch_count = 0
     anything_shown = False
@@ -438,6 +450,8 @@ def scan_repos(
             unpushed_count += 1
         if any(_branch_status.commits_behind for _branch_status in repo_status.diverged):
             unpulled_count += 1
+        if any(_branch_status.upstream_is_gone for _branch_status in repo_status.diverged):
+            gone_upstream_count += 1
         ## with --since, show the recently active repos; otherwise show the ones that need attention.
         if since is None:
             repo_is_shown = bool(repo_status.dirty_files or repo_status.diverged)
@@ -474,11 +488,13 @@ def scan_repos(
         summary_parts.append(f"{unpushed_count} with unpushed commits")
     if unpulled_count:
         summary_parts.append(f"{unpulled_count} with unpulled commits")
+    if gone_upstream_count:
+        summary_parts.append(f"{gone_upstream_count} with gone upstreams")
     if pull:
         summary_parts.append(f"{pulled_repo_count} repos pulled")
     if push:
         summary_parts.append(f"{pushed_branch_count} branches pushed")
-    if (dirty_count > 0) or (unpushed_count > 0) or (unpulled_count > 0):
+    if (dirty_count > 0) or (unpushed_count > 0) or (unpulled_count > 0) or (gone_upstream_count > 0):
         summary_status = manage_log.OutcomeStatus.WARNING
     else:
         summary_status = manage_log.OutcomeStatus.SUCCESS

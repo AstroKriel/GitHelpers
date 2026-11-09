@@ -281,6 +281,27 @@ class TestGetRepoStatus_Diverged:
         assert status.diverged[0].commits_ahead == 0
         assert status.diverged[0].commits_behind == 1
 
+    def test_detects_upstream_deleted_on_the_remote(
+        self,
+        scan_root: Path,
+        tmp_path: Path,
+    ) -> None:
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
+        vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "feature"], cwd=repo)
+        ## delete the branch on the remote itself, so only a pruning fetch can notice
+        vtest_helpers.git(["branch", "-D", "feature"], cwd=remote)
+        status = git_scan._get_repo_status(
+            repo_path=repo,
+            is_fetching=True,
+        )
+        assert len(status.diverged) == 1
+        assert status.diverged[0].name == "feature"
+        assert status.diverged[0].upstream_is_gone
+
     def test_pushed_repo_has_no_divergence(
         self,
         scan_root: Path,
