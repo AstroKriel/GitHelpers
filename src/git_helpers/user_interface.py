@@ -8,7 +8,11 @@
 from typing import ClassVar
 
 ## personal
-from huginn import cmd_args, manage_cli, manage_log
+from huginn import (
+    cmd_args,
+    manage_cli,
+    manage_log,
+)
 
 ## local
 from git_helpers.commands import (

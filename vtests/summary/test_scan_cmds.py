@@ -12,14 +12,8 @@ import pytest
 
 ## local
 from git_helpers.summary import git_scan
-from vtests.helpers import git, make_commit
-from vtests.summary.conftest import (
-    add_submodule,
-    enable_submodule_scanning,
-    make_bare_remote,
-    make_repo_at,
-    set_submodule_ignore_all,
-)
+from vtests import helpers as vtest_helpers
+from vtests.summary import conftest as summary_conftest
 
 ##
 ## === DISCOVERY
@@ -32,7 +26,7 @@ class TestFindRepos_Discovery:
         self,
         scan_root: Path,
     ) -> None:
-        make_repo_at(scan_root / "proj")
+        summary_conftest.make_repo_at(scan_root / "proj")
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=1,
@@ -43,7 +37,7 @@ class TestFindRepos_Discovery:
         self,
         scan_root: Path,
     ) -> None:
-        make_repo_at(scan_root / "group" / "proj")
+        summary_conftest.make_repo_at(scan_root / "group" / "proj")
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=2,
@@ -54,7 +48,7 @@ class TestFindRepos_Discovery:
         self,
         scan_root: Path,
     ) -> None:
-        make_repo_at(scan_root / "group" / "proj")
+        summary_conftest.make_repo_at(scan_root / "group" / "proj")
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=1,
@@ -65,8 +59,8 @@ class TestFindRepos_Discovery:
         self,
         scan_root: Path,
     ) -> None:
-        parent = make_repo_at(scan_root / "outer")
-        make_repo_at(parent / "inner")
+        parent = summary_conftest.make_repo_at(scan_root / "outer")
+        summary_conftest.make_repo_at(parent / "inner")
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=3,
@@ -77,8 +71,8 @@ class TestFindRepos_Discovery:
         self,
         scan_root: Path,
     ) -> None:
-        make_repo_at(scan_root / "a")
-        make_repo_at(scan_root / "b")
+        summary_conftest.make_repo_at(scan_root / "a")
+        summary_conftest.make_repo_at(scan_root / "b")
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=1,
@@ -155,10 +149,10 @@ class TestFindRepos_SubmoduleRecursion:
         scan_root: Path,
         tmp_path: Path,
     ) -> None:
-        parent = make_repo_at(scan_root / "parent")
-        sub_source = make_repo_at(tmp_path / "sub_source")
-        add_submodule(parent, sub_source, "sub")
-        enable_submodule_scanning(parent)
+        parent = summary_conftest.make_repo_at(scan_root / "parent")
+        sub_source = summary_conftest.make_repo_at(tmp_path / "sub_source")
+        summary_conftest.add_submodule(parent, sub_source, "sub")
+        summary_conftest.enable_submodule_scanning(parent)
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=1,
@@ -170,10 +164,10 @@ class TestFindRepos_SubmoduleRecursion:
         scan_root: Path,
         tmp_path: Path,
     ) -> None:
-        parent = make_repo_at(scan_root / "parent")
-        sub_source = make_repo_at(tmp_path / "sub_source")
-        add_submodule(parent, sub_source, "active")
-        enable_submodule_scanning(parent)
+        parent = summary_conftest.make_repo_at(scan_root / "parent")
+        sub_source = summary_conftest.make_repo_at(tmp_path / "sub_source")
+        summary_conftest.add_submodule(parent, sub_source, "active")
+        summary_conftest.enable_submodule_scanning(parent)
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=1,
@@ -186,11 +180,11 @@ class TestFindRepos_SubmoduleRecursion:
         scan_root: Path,
         tmp_path: Path,
     ) -> None:
-        parent = make_repo_at(scan_root / "parent")
-        sub_source = make_repo_at(tmp_path / "sub_source")
-        add_submodule(parent, sub_source, "passive")
-        set_submodule_ignore_all(parent, "passive")
-        enable_submodule_scanning(parent)
+        parent = summary_conftest.make_repo_at(scan_root / "parent")
+        sub_source = summary_conftest.make_repo_at(tmp_path / "sub_source")
+        summary_conftest.add_submodule(parent, sub_source, "passive")
+        summary_conftest.set_submodule_ignore_all(parent, "passive")
+        summary_conftest.enable_submodule_scanning(parent)
         repos = git_scan._find_repos(
             root=scan_root,
             max_depth=1,
@@ -209,7 +203,7 @@ class TestGetRepoStatus_DirtyFiles:
         self,
         scan_root: Path,
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
             path=repo,
             is_fetching=False,
@@ -220,7 +214,7 @@ class TestGetRepoStatus_DirtyFiles:
         self,
         scan_root: Path,
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
         (repo / "dirty.txt").write_text("changes")
         status = git_scan._get_repo_status(
             path=repo,
@@ -235,7 +229,7 @@ class TestGetRepoStatus_Diverged:
         self,
         scan_root: Path,
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
             path=repo,
             is_fetching=False,
@@ -247,11 +241,11 @@ class TestGetRepoStatus_Diverged:
         scan_root: Path,
         tmp_path: Path,
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
-        make_commit(repo, msg="extra")
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
+        vtest_helpers.make_commit(repo, msg="extra")
         status = git_scan._get_repo_status(
             path=repo,
             is_fetching=False,
@@ -266,17 +260,17 @@ class TestGetRepoStatus_Diverged:
         scan_root: Path,
         tmp_path: Path,
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         ## a second clone pushes a new commit to the remote
         other = tmp_path / "other"
-        git(["clone", str(remote), str(other)], cwd=tmp_path)
+        vtest_helpers.git(["clone", str(remote), str(other)], cwd=tmp_path)
         for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
-            git(["config", key, val], cwd=other)
-        make_commit(other, msg="remote commit")
-        git(["push"], cwd=other)
+            vtest_helpers.git(["config", key, val], cwd=other)
+        vtest_helpers.make_commit(other, msg="remote commit")
+        vtest_helpers.git(["push"], cwd=other)
         ## repo fetches and now sees it is behind
         status = git_scan._get_repo_status(
             path=repo,
@@ -292,10 +286,10 @@ class TestGetRepoStatus_Diverged:
         scan_root: Path,
         tmp_path: Path,
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         status = git_scan._get_repo_status(
             path=repo,
             is_fetching=False,
@@ -309,7 +303,7 @@ class TestGetRepoStatus_CommitsInWindow:
         self,
         scan_root: Path,
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
             path=repo,
             is_fetching=False,
@@ -320,8 +314,8 @@ class TestGetRepoStatus_CommitsInWindow:
         self,
         scan_root: Path,
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
-        make_commit(repo, msg="second")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.make_commit(repo, msg="second")
         status = git_scan._get_repo_status(
             path=repo,
             is_fetching=False,
@@ -336,7 +330,7 @@ class TestGetRepoStatus_LastCommit:
         self,
         scan_root: Path,
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
         status = git_scan._get_repo_status(
             path=repo,
             is_fetching=False,
@@ -371,10 +365,10 @@ class TestScanRepos_Output:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         git_scan.scan_repos(
             depth=1,
             no_fetch=True,
@@ -387,7 +381,7 @@ class TestScanRepos_Output:
         scan_root: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
         (repo / "dirty.txt").write_text("changes")
         git_scan.scan_repos(
             depth=1,
@@ -403,11 +397,11 @@ class TestScanRepos_Output:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
-        make_commit(repo, msg="extra")
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
+        vtest_helpers.make_commit(repo, msg="extra")
         git_scan.scan_repos(
             depth=1,
             no_fetch=True,
@@ -422,16 +416,16 @@ class TestScanRepos_Output:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         other = tmp_path / "other"
-        git(["clone", str(remote), str(other)], cwd=tmp_path)
+        vtest_helpers.git(["clone", str(remote), str(other)], cwd=tmp_path)
         for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
-            git(["config", key, val], cwd=other)
-        make_commit(other, msg="remote commit")
-        git(["push"], cwd=other)
+            vtest_helpers.git(["config", key, val], cwd=other)
+        vtest_helpers.make_commit(other, msg="remote commit")
+        vtest_helpers.git(["push"], cwd=other)
         git_scan.scan_repos(
             depth=1,
             no_fetch=True,
@@ -452,10 +446,10 @@ class TestScanRepos_Output:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         git_scan.scan_repos(
             depth=1,
             since=1,
@@ -469,7 +463,7 @@ class TestScanRepos_Output:
         scan_root: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        repo = make_repo_at(scan_root / "proj")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
         (repo / "dirty.txt").write_text("changes")
         git_scan.scan_repos(
             depth=1,
@@ -485,16 +479,16 @@ class TestScanRepos_Output:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        remote = make_bare_remote(tmp_path / "remote.git")
-        repo = make_repo_at(scan_root / "proj")
-        git(["remote", "add", "origin", str(remote)], cwd=repo)
-        git(["push", "-u", "origin", "main"], cwd=repo)
+        remote = summary_conftest.make_bare_remote(tmp_path / "remote.git")
+        repo = summary_conftest.make_repo_at(scan_root / "proj")
+        vtest_helpers.git(["remote", "add", "origin", str(remote)], cwd=repo)
+        vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo)
         other = tmp_path / "other"
-        git(["clone", str(remote), str(other)], cwd=tmp_path)
+        vtest_helpers.git(["clone", str(remote), str(other)], cwd=tmp_path)
         for key, val in {"user.name": "Test", "user.email": "t@t.com"}.items():
-            git(["config", key, val], cwd=other)
-        make_commit(other, msg="remote commit")
-        git(["push"], cwd=other)
+            vtest_helpers.git(["config", key, val], cwd=other)
+        vtest_helpers.make_commit(other, msg="remote commit")
+        vtest_helpers.git(["push"], cwd=other)
         git_scan.scan_repos(
             depth=1,
             no_fetch=False,
@@ -507,7 +501,7 @@ class TestScanRepos_Output:
         scan_root: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        make_repo_at(scan_root / "proj")
+        summary_conftest.make_repo_at(scan_root / "proj")
         git_scan.scan_repos(
             depth=1,
             since=1,
@@ -521,7 +515,7 @@ class TestScanRepos_Output:
         scan_root: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        repo = make_repo_at(scan_root / "group" / "myproject")
+        repo = summary_conftest.make_repo_at(scan_root / "group" / "myproject")
         (repo / "dirty.txt").write_text("changes")
         git_scan.scan_repos(
             depth=2,
@@ -534,7 +528,7 @@ class TestScanRepos_Output:
         self,
         scan_root: Path,
     ) -> None:
-        make_repo_at(scan_root / "proj")
+        summary_conftest.make_repo_at(scan_root / "proj")
         with pytest.raises(SystemExit):
             git_scan.scan_repos(
                 depth=1,
@@ -546,7 +540,7 @@ class TestScanRepos_Output:
         self,
         scan_root: Path,
     ) -> None:
-        make_repo_at(scan_root / "proj")
+        summary_conftest.make_repo_at(scan_root / "proj")
         with pytest.raises(SystemExit):
             git_scan.scan_repos(
                 depth=1,

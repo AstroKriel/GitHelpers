@@ -12,7 +12,7 @@ import pytest
 
 ## local
 from git_helpers.commands import git_submodules
-from vtests.helpers import GIT_USER, git, make_commit
+from vtests import helpers as vtest_helpers
 
 ##
 ## === FIXTURES
@@ -26,14 +26,14 @@ def sub_remote(
     """A bare sub-repo remote with one commit on main; suitable as a submodule URL."""
     remote_dir = tmp_path / "sub.git"
     remote_dir.mkdir()
-    git(["init", "--bare", "-b", "main"], cwd=remote_dir)
+    vtest_helpers.git(["init", "--bare", "-b", "main"], cwd=remote_dir)
     ## seed it with a commit via a temp working clone so the remote is non-empty
     work_dir = tmp_path / "sub_seed"
-    git(["clone", str(remote_dir), str(work_dir)], cwd=tmp_path)
-    for key, val in GIT_USER.items():
-        git(["config", key, val], cwd=work_dir)
-    make_commit(work_dir, msg="sub init")
-    git(["push", "-u", "origin", "main"], cwd=work_dir)
+    vtest_helpers.git(["clone", str(remote_dir), str(work_dir)], cwd=tmp_path)
+    for key, val in vtest_helpers.GIT_USER.items():
+        vtest_helpers.git(["config", key, val], cwd=work_dir)
+    vtest_helpers.make_commit(work_dir, msg="sub init")
+    vtest_helpers.git(["push", "-u", "origin", "main"], cwd=work_dir)
     return remote_dir
 
 
@@ -50,29 +50,29 @@ def make_repo_with_submodule(
     """
     parent = tmp_path / "parent"
     parent.mkdir()
-    git(["init", "-b", "main"], cwd=parent)
-    for key, val in GIT_USER.items():
-        git(["config", key, val], cwd=parent)
-    make_commit(parent, msg="parent init")
+    vtest_helpers.git(["init", "-b", "main"], cwd=parent)
+    for key, val in vtest_helpers.GIT_USER.items():
+        vtest_helpers.git(["config", key, val], cwd=parent)
+    vtest_helpers.make_commit(parent, msg="parent init")
     ## allow local-path submodule clones — git 2.38+ restricts the file protocol by default.
     ## env vars are inherited by all subprocess calls (including git clone inside submodule add).
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
     monkeypatch.setenv("GIT_CONFIG_KEY_0", "protocol.file.allow")
     monkeypatch.setenv("GIT_CONFIG_VALUE_0", "always")
-    git(["submodule", "add", str(sub_remote), "sub"], cwd=parent)
-    git(["commit", "-m", "add sub submodule"], cwd=parent)
+    vtest_helpers.git(["submodule", "add", str(sub_remote), "sub"], cwd=parent)
+    vtest_helpers.git(["commit", "-m", "add sub submodule"], cwd=parent)
     ## explicitly set origin/HEAD inside the submodule so symbolic-ref detection works
-    git(["remote", "set-head", "origin", "main"], cwd=parent / "sub")
+    vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=parent / "sub")
     ## push a new commit to sub_remote so the submodule is behind origin/main after detaching;
     ## this ensures `git pull` inside cmd_fix_submodule actually advances the pointer
     sub_seed2 = tmp_path / "sub_seed2"
-    git(["clone", str(sub_remote), str(sub_seed2)], cwd=tmp_path)
-    for key, val in GIT_USER.items():
-        git(["config", key, val], cwd=sub_seed2)
-    make_commit(sub_seed2, msg="sub update")
-    git(["push"], cwd=sub_seed2)
+    vtest_helpers.git(["clone", str(sub_remote), str(sub_seed2)], cwd=tmp_path)
+    for key, val in vtest_helpers.GIT_USER.items():
+        vtest_helpers.git(["config", key, val], cwd=sub_seed2)
+    vtest_helpers.make_commit(sub_seed2, msg="sub update")
+    vtest_helpers.git(["push"], cwd=sub_seed2)
     ## detach HEAD in the submodule at the old commit — simulates a fresh `git submodule update`
-    git(["-C", "sub", "checkout", "--detach", "HEAD"], cwd=parent)
+    vtest_helpers.git(["-C", "sub", "checkout", "--detach", "HEAD"], cwd=parent)
     monkeypatch.chdir(parent)
     return parent, parent / "sub"
 
@@ -94,7 +94,7 @@ def test_detect_from_local_returns_none_when_origin_head_not_set(
     make_repo_with_submodule: tuple[Path, Path],
 ) -> None:
     _, sub_dir = make_repo_with_submodule
-    git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
+    vtest_helpers.git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
     result = git_submodules._detect_default_branch_from_local(str(sub_dir))
     assert result is None
 
@@ -131,7 +131,7 @@ def test_fix_submodule_with_explicit_branch_restores_tracked_branch(
         submodule_path="sub",
         branch="main",
     )
-    branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
+    branch = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
 
 
@@ -143,7 +143,7 @@ def test_fix_submodule_with_explicit_branch_commits_pointer_in_parent(
         submodule_path="sub",
         branch="main",
     )
-    msg = git(["log", "-1", "--format=%s"], cwd=parent).stdout.strip()
+    msg = vtest_helpers.git(["log", "-1", "--format=%s"], cwd=parent).stdout.strip()
     assert msg == "fix: update sub pointer after repair"
 
 
@@ -152,13 +152,13 @@ def test_fix_submodule_reads_branch_from_gitmodules(
 ) -> None:
     parent, sub_dir = make_repo_with_submodule
     ## set a non-default branch in .gitmodules and remove origin/HEAD so only .gitmodules can succeed
-    git(["config", "-f", ".gitmodules", "submodule.sub.branch", "main"], cwd=parent)
-    git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
+    vtest_helpers.git(["config", "-f", ".gitmodules", "submodule.sub.branch", "main"], cwd=parent)
+    vtest_helpers.git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
     git_submodules.cmd_fix_submodule(
         submodule_path="sub",
         branch=None,
     )
-    branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
+    branch = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
 
 
@@ -171,7 +171,7 @@ def test_fix_submodule_falls_back_to_origin_head_when_gitmodules_has_no_branch(
         submodule_path="sub",
         branch=None,
     )
-    branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
+    branch = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
 
 
@@ -180,7 +180,7 @@ def test_fix_submodule_kills_when_branch_not_detectable(
 ) -> None:
     ## .gitmodules has no branch entry by default; removing origin/HEAD leaves nothing to detect
     _, sub_dir = make_repo_with_submodule
-    git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
+    vtest_helpers.git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
     with pytest.raises(SystemExit):
         git_submodules.cmd_fix_submodule(
             submodule_path="sub",
@@ -239,7 +239,7 @@ def test_add_submodule_with_explicit_branch_creates_commit(
         local_name="sub",
         branch="main",
     )
-    msg = git(["log", "-1", "--format=%s"], cwd=make_repo_).stdout.strip()
+    msg = vtest_helpers.git(["log", "-1", "--format=%s"], cwd=make_repo_).stdout.strip()
     assert msg == "add sub submodule"
 
 

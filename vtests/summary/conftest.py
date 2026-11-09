@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 ## local
-from vtests.helpers import GIT_USER, git, make_commit
+from vtests import helpers as vtest_helpers
 
 ##
 ## === FIXTURES
@@ -35,10 +35,10 @@ def make_repo_at(
         parents=True,
         exist_ok=True,
     )
-    git(["init", "-b", "main"], cwd=path)
-    for key, val in GIT_USER.items():
-        git(["config", key, val], cwd=path)
-    make_commit(path, msg="init")
+    vtest_helpers.git(["init", "-b", "main"], cwd=path)
+    for key, val in vtest_helpers.GIT_USER.items():
+        vtest_helpers.git(["config", key, val], cwd=path)
+    vtest_helpers.make_commit(path, msg="init")
     return path
 
 
@@ -49,7 +49,7 @@ def make_bare_remote(
         parents=True,
         exist_ok=True,
     )
-    git(["init", "--bare", "-b", "main"], cwd=path)
+    vtest_helpers.git(["init", "--bare", "-b", "main"], cwd=path)
     return path
 
 
@@ -59,8 +59,8 @@ def add_submodule(
     sub_name: str,
 ) -> Path:
     """Add sub_source as a submodule of parent_repo; returns the submodule worktree path."""
-    git(["-c", "protocol.file.allow=always", "submodule", "add", str(sub_source), sub_name], cwd=parent_repo)
-    git(["commit", "-m", f"add {sub_name} submodule"], cwd=parent_repo)
+    vtest_helpers.git(["-c", "protocol.file.allow=always", "submodule", "add", str(sub_source), sub_name], cwd=parent_repo)
+    vtest_helpers.git(["commit", "-m", f"add {sub_name} submodule"], cwd=parent_repo)
     return parent_repo / sub_name
 
 
@@ -69,16 +69,16 @@ def set_submodule_ignore_all(
     sub_name: str,
 ) -> None:
     """Set ignore = all on a submodule entry in .gitmodules and commit."""
-    git(["config", "-f", ".gitmodules", f"submodule.{sub_name}.ignore", "all"], cwd=repo)
-    git(["add", ".gitmodules"], cwd=repo)
-    git(["commit", "-m", f"set {sub_name} ignore = all"], cwd=repo)
+    vtest_helpers.git(["config", "-f", ".gitmodules", f"submodule.{sub_name}.ignore", "all"], cwd=repo)
+    vtest_helpers.git(["add", ".gitmodules"], cwd=repo)
+    vtest_helpers.git(["commit", "-m", f"set {sub_name} ignore = all"], cwd=repo)
 
 
 def enable_submodule_scanning(
     repo: Path,
 ) -> None:
     """Opt a repo into submodule scanning via the git-helpers.scan-submodules local config."""
-    git(["config", "--local", "git-helpers.scan-submodules", "true"], cwd=repo)
+    vtest_helpers.git(["config", "--local", "git-helpers.scan-submodules", "true"], cwd=repo)
 
 
 ## } V-TEST CONFTEST

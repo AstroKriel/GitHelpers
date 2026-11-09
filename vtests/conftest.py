@@ -14,7 +14,7 @@ import pytest
 from huginn import _manage_output
 
 ## local
-from vtests.helpers import GIT_USER, git, make_commit
+from vtests import helpers as vtest_helpers
 
 ##
 ## === FIXTURES
@@ -35,10 +35,10 @@ def make_repo_(
     """A minimal local git repo on main with one commit, no remote."""
     repo_dir = tmp_path / "tmp_repo"
     repo_dir.mkdir()
-    git(["init", "-b", "main"], cwd=repo_dir)
-    for key, val in GIT_USER.items():
-        git(["config", key, val], cwd=repo_dir)
-    make_commit(repo_dir, msg="init")
+    vtest_helpers.git(["init", "-b", "main"], cwd=repo_dir)
+    for key, val in vtest_helpers.GIT_USER.items():
+        vtest_helpers.git(["config", key, val], cwd=repo_dir)
+    vtest_helpers.make_commit(repo_dir, msg="init")
     monkeypatch.chdir(repo_dir)
     return repo_dir
 
@@ -52,16 +52,16 @@ def make_repo_with_remote(
     ## bare remote — simulates a shared server-side repo
     remote_dir = tmp_path / "remote.git"
     remote_dir.mkdir()
-    git(["init", "--bare", "-b", "main"], cwd=remote_dir)
+    vtest_helpers.git(["init", "--bare", "-b", "main"], cwd=remote_dir)
     ## local repo wired to the bare remote
     repo_dir = tmp_path / "tmp_repo"
     repo_dir.mkdir()
-    git(["init", "-b", "main"], cwd=repo_dir)
-    for key, val in GIT_USER.items():
-        git(["config", key, val], cwd=repo_dir)
-    git(["remote", "add", "origin", str(remote_dir)], cwd=repo_dir)
-    make_commit(repo_dir, msg="init")
-    git(["push", "-u", "origin", "main"], cwd=repo_dir)
+    vtest_helpers.git(["init", "-b", "main"], cwd=repo_dir)
+    for key, val in vtest_helpers.GIT_USER.items():
+        vtest_helpers.git(["config", key, val], cwd=repo_dir)
+    vtest_helpers.git(["remote", "add", "origin", str(remote_dir)], cwd=repo_dir)
+    vtest_helpers.make_commit(repo_dir, msg="init")
+    vtest_helpers.git(["push", "-u", "origin", "main"], cwd=repo_dir)
     monkeypatch.chdir(repo_dir)
     return repo_dir, remote_dir
 
