@@ -13,7 +13,6 @@ import pytest
 
 ## local
 from git_helpers.commands import git_branches
-from git_helpers.shell_interface import Config
 from vtests import helpers as vtest_helpers
 
 ##
@@ -27,7 +26,7 @@ def test_delete_local_branch_removes_branch(
     vtest_helpers.git(["checkout", "-b", "to-delete"], cwd=make_repo_)
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
     vtest_helpers.git(["merge", "to-delete"], cwd=make_repo_)
-    git_branches.cmd_delete_local_branch(Config(), "to-delete")
+    git_branches.cmd_delete_local_branch(branch_name="to-delete")
     assert "to-delete" not in vtest_helpers.local_branches(make_repo_)
 
 
@@ -35,7 +34,7 @@ def test_delete_local_branch_refuses_current_branch(
     make_repo_: Path,
 ) -> None:
     with pytest.raises(SystemExit):
-        git_branches.cmd_delete_local_branch(Config(), "main")
+        git_branches.cmd_delete_local_branch(branch_name="main")
 
 
 def test_delete_local_branch_refuses_unmerged_branch(
@@ -46,7 +45,7 @@ def test_delete_local_branch_refuses_unmerged_branch(
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
     ## git refuses -d on unmerged branches — raises CalledProcessError
     with pytest.raises(subprocess.CalledProcessError):
-        git_branches.cmd_delete_local_branch(Config(), "unmerged")
+        git_branches.cmd_delete_local_branch(branch_name="unmerged")
     ## branch should still be there
     assert "unmerged" in vtest_helpers.local_branches(make_repo_)
 
@@ -66,7 +65,7 @@ def test_prune_gone_locals_removes_branch_with_deleted_remote(
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["push", "origin", "--delete", "gone-branch"], cwd=repo_dir)
     ## prune should clean it up
-    git_branches.cmd_prune_gone_locals(Config())
+    git_branches.cmd_prune_gone_locals()
     assert "gone-branch" not in vtest_helpers.local_branches(repo_dir)
 
 
@@ -78,7 +77,7 @@ def test_prune_gone_locals_leaves_active_branches(
     vtest_helpers.make_commit(repo_dir, msg="active commit")
     vtest_helpers.git(["push", "-u", "origin", "active-branch"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
-    git_branches.cmd_prune_gone_locals(Config())
+    git_branches.cmd_prune_gone_locals()
     assert "active-branch" in vtest_helpers.local_branches(repo_dir)
 
 
@@ -96,7 +95,7 @@ def test_prune_merged_locals_removes_merged_branch(
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["merge", "merged-feature", "--no-ff", "-m", "merge feature"], cwd=repo_dir)
     vtest_helpers.git(["push"], cwd=repo_dir)
-    git_branches.cmd_prune_merged_locals(Config(), "origin/main")
+    git_branches.cmd_prune_merged_locals(base_name="origin/main")
     assert "merged-feature" not in vtest_helpers.local_branches(repo_dir)
 
 
@@ -104,7 +103,7 @@ def test_prune_merged_locals_never_deletes_main(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    git_branches.cmd_prune_merged_locals(Config(), "origin/main")
+    git_branches.cmd_prune_merged_locals(base_name="origin/main")
     assert "main" in vtest_helpers.local_branches(repo_dir)
 
 
@@ -118,7 +117,7 @@ def test_prune_merged_locals_never_deletes_current_branch(
     vtest_helpers.git(["merge", "current", "--no-ff", "-m", "merge current"], cwd=repo_dir)
     vtest_helpers.git(["push"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "current"], cwd=repo_dir)
-    git_branches.cmd_prune_merged_locals(Config(), "origin/main")
+    git_branches.cmd_prune_merged_locals(base_name="origin/main")
     assert "current" in vtest_helpers.local_branches(repo_dir)
 
 
@@ -132,7 +131,7 @@ def test_prune_merged_locals_skips_branch_with_worktree(
     vtest_helpers.git(["branch", "in-progress"], cwd=repo_dir)
     worktree_dir = repo_dir.parent / "in-progress-worktree"
     vtest_helpers.git(["worktree", "add", str(worktree_dir), "in-progress"], cwd=repo_dir)
-    git_branches.cmd_prune_merged_locals(Config(), "origin/main")
+    git_branches.cmd_prune_merged_locals(base_name="origin/main")
     assert "in-progress" in vtest_helpers.local_branches(repo_dir)
 
 
@@ -151,7 +150,7 @@ def test_prune_merged_locals_does_not_abort_on_worktree_branch(
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["merge", "merged-feature", "--no-ff", "-m", "merge feature"], cwd=repo_dir)
     vtest_helpers.git(["push"], cwd=repo_dir)
-    git_branches.cmd_prune_merged_locals(Config(), "origin/main")
+    git_branches.cmd_prune_merged_locals(base_name="origin/main")
     assert "in-progress" in vtest_helpers.local_branches(repo_dir)
     assert "merged-feature" not in vtest_helpers.local_branches(repo_dir)
 
@@ -165,7 +164,10 @@ def test_track_remote_branch_creates_and_checks_out_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    git_branches.cmd_track_remote_branch(Config(), "origin/main", "local-main")
+    git_branches.cmd_track_remote_branch(
+        remote_branch="origin/main",
+        local_branch="local-main",
+    )
     current = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir).stdout.strip()
     assert current == "local-main"
     upstream = vtest_helpers.git(
@@ -187,7 +189,7 @@ def test_track_remote_branch_defaults_local_name_from_remote(
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["branch", "-D", "feature-x"], cwd=repo_dir)
     ## no local_branch arg — should derive "feature-x" from "origin/feature-x"
-    git_branches.cmd_track_remote_branch(Config(), "origin/feature-x")
+    git_branches.cmd_track_remote_branch(remote_branch="origin/feature-x")
     current = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=repo_dir).stdout.strip()
     assert current == "feature-x"
 
@@ -201,7 +203,10 @@ def test_create_branch_from_remote_creates_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    git_branches.cmd_create_branch_from_remote(Config(), "new-feature", "origin/main")
+    git_branches.cmd_create_branch_from_remote(
+        new_branch_name="new-feature",
+        start_ref="origin/main",
+    )
     assert "new-feature" in vtest_helpers.local_branches(repo_dir)
 
 
@@ -209,7 +214,10 @@ def test_create_branch_from_remote_sets_upstream(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    git_branches.cmd_create_branch_from_remote(Config(), "new-feature", "origin/main")
+    git_branches.cmd_create_branch_from_remote(
+        new_branch_name="new-feature",
+        start_ref="origin/main",
+    )
     upstream = vtest_helpers.git(
         ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
         cwd=repo_dir,
@@ -227,7 +235,7 @@ def test_create_branch_from_default_creates_branch(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
-    git_branches.cmd_create_branch_from_default(Config(), "new-feature")
+    git_branches.cmd_create_branch_from_default(new_branch_name="new-feature")
     assert "new-feature" in vtest_helpers.local_branches(repo_dir)
 
 
@@ -236,7 +244,7 @@ def test_create_branch_from_default_sets_upstream(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
-    git_branches.cmd_create_branch_from_default(Config(), "new-feature")
+    git_branches.cmd_create_branch_from_default(new_branch_name="new-feature")
     upstream = vtest_helpers.git(
         ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
         cwd=repo_dir,
@@ -264,7 +272,7 @@ def test_cleanup_local_branches_runs_both_passes(
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     vtest_helpers.git(["merge", "merged", "--no-ff", "-m", "merge merged"], cwd=repo_dir)
     vtest_helpers.git(["push"], cwd=repo_dir)
-    git_branches.cmd_cleanup_local_branches(Config(), "origin/main")
+    git_branches.cmd_cleanup_local_branches(base_name="origin/main")
     branches = vtest_helpers.local_branches(repo_dir)
     assert "gone" not in branches
     assert "merged" not in branches

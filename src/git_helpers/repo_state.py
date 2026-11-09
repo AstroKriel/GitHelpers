@@ -4,8 +4,8 @@
 ## === DEPENDENCIES
 ##
 
-## local
-from git_helpers import shell_interface
+## personal
+from huginn import manage_log, manage_shell
 
 ##
 ## === INTERNAL HELPERS
@@ -23,9 +23,9 @@ def list_worktrees() -> list[dict[str, str]]:
         "list",
         "--porcelain",
     ]
-    output = shell_interface.query_cmd(
-        cmd=cmd_list_worktrees,
-        error_on_failure=True,
+    output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_worktrees,
+        raise_error=True,
     )
     worktrees: list[dict[str, str]] = []
     current: dict[str, str] = {}
@@ -63,8 +63,8 @@ def require_repo() -> None:
         "rev-parse",
         "--is-inside-work-tree",
     ]
-    if shell_interface.probe_cmd(cmd_check_repo) != 0:
-        shell_interface.kill("not inside a git repo")
+    if manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_repo) != 0:
+        manage_log.exit_with_error("not inside a git repo")
 
 
 def has_remote() -> bool:
@@ -74,9 +74,9 @@ def has_remote() -> bool:
         "git",
         "remote",
     ]
-    remotes = shell_interface.query_cmd(
-        cmd=cmd_list_remotes,
-        error_on_failure=False,
+    remotes = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_remotes,
+        raise_error=False,
     )
     return bool(remotes.strip())
 
@@ -84,7 +84,7 @@ def has_remote() -> bool:
 def require_remote() -> None:
     """Exit with an error if no remotes are configured."""
     if not has_remote():
-        shell_interface.kill("no remotes configured (try: git remote add origin <url>)")
+        manage_log.exit_with_error("no remotes configured (try: git remote add origin <url>)")
 
 
 def get_default_remote_name() -> str:
@@ -98,22 +98,28 @@ def get_default_remote_name() -> str:
         "get-url",
         "origin",
     ]
-    if shell_interface.probe_cmd(cmd_check_origin) == 0:
-        shell_interface.log_outcome("selecting 'origin' as default remote")
+    if manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_origin) == 0:
+        manage_log.log_outcome(
+            "selecting 'origin' as default remote",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
         return "origin"
     ## no 'origin'; fall back to whatever remote was configured first.
     cmd_list_remotes = [
         "git",
         "remote",
     ]
-    remotes = shell_interface.query_cmd(
-        cmd=cmd_list_remotes,
-        error_on_failure=True,
+    remotes = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_remotes,
+        raise_error=True,
     ).splitlines()
     if remotes:
-        shell_interface.log_outcome(f"selecting first configured remote: {remotes[0]}")
+        manage_log.log_outcome(
+            f"selecting first configured remote: {remotes[0]}",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
         return remotes[0]
-    shell_interface.kill("no remotes configured (try: git remote add origin <url>)")
+    manage_log.exit_with_error("no remotes configured (try: git remote add origin <url>)")
 
 
 def get_default_branch_name() -> str:
@@ -124,23 +130,29 @@ def get_default_branch_name() -> str:
     ## point at its default branch (e.g. refs/remotes/origin/HEAD -> origin/main).
     ## It's populated by `git remote set-head` or automatically on clone.
     ## `-q` suppresses the error if the ref doesn't exist; we check stdout instead.
-    ## error_on_failure=False returns "" when the ref doesn't exist; -q suppresses git's own error output.
+    ## raise_error=False returns "" when the ref doesn't exist; -q suppresses git's own error output.
     cmd_read_remote_head = [
         "git",
         "symbolic-ref",
         "-q",
         f"refs/remotes/{default_remote_name}/HEAD",
     ]
-    ref_value = shell_interface.query_cmd(
-        cmd=cmd_read_remote_head,
-        error_on_failure=False,
+    ref_value = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_read_remote_head,
+        raise_error=False,
     )
     if not ref_value:
-        shell_interface.log_outcome("no remote default branch advertised")
+        manage_log.log_outcome(
+            "no remote default branch advertised",
+            status=manage_log.OutcomeStatus.WARNING,
+        )
         return ""
     ## strip the leading "refs/remotes/<remote>/" to get just the branch name.
     default_branch_name = ref_value.removeprefix(f"refs/remotes/{default_remote_name}/")
-    shell_interface.log_outcome(f"remote default branch is '{default_branch_name}'")
+    manage_log.log_outcome(
+        f"remote default branch is '{default_branch_name}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
     return default_branch_name
 
 
@@ -157,13 +169,13 @@ def has_upstream() -> bool:
         "--symbolic-full-name",
         "@{u}",
     ]
-    return shell_interface.probe_cmd(cmd_check_upstream) == 0
+    return manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_upstream) == 0
 
 
 def get_upstream_branch_name() -> str:
     """Return the branch portion of the upstream ref (e.g. 'main' from 'origin/main')."""
     require_repo()
-    shell_interface.log_step("reading upstream branch name")
+    manage_log.log_task("reading upstream branch name")
     ## `@{u}` resolves to the full upstream ref, e.g. 'origin/development'.
     ## split on the first '/' and take the remainder to get just the branch name;
     ## this handles branch names that themselves contain slashes (e.g. 'fix/my-bug').
@@ -174,12 +186,15 @@ def get_upstream_branch_name() -> str:
         "--symbolic-full-name",
         "@{u}",
     ]
-    upstream_ref = shell_interface.query_cmd(
-        cmd=cmd_get_upstream,
-        error_on_failure=True,
+    upstream_ref = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_get_upstream,
+        raise_error=True,
     )
     branch_name = upstream_ref.split("/", 1)[1]
-    shell_interface.log_outcome(f"upstream branch is '{branch_name}'")
+    manage_log.log_outcome(
+        f"upstream branch is '{branch_name}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
     return branch_name
 
 
@@ -195,9 +210,9 @@ def current_branch() -> str:
         "--abbrev-ref",
         "HEAD",
     ]
-    current_branch_name = shell_interface.query_cmd(
-        cmd=cmd_get_branch_name,
-        error_on_failure=True,
+    current_branch_name = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_get_branch_name,
+        raise_error=True,
     )
     if current_branch_name == "HEAD":
         ## detached HEAD: no branch name is available, so use the commit hash prefix instead.
@@ -209,23 +224,33 @@ def current_branch() -> str:
             "--short",
             "HEAD",
         ]
-        commit_hash_prefix = shell_interface.query_cmd(
-            cmd=cmd_get_commit_hash_prefix,
-            error_on_failure=True,
+        commit_hash_prefix = manage_shell.query_cmd_and_capture_output(
+            cmd_parts=cmd_get_commit_hash_prefix,
+            raise_error=True,
         )
-        shell_interface.log_outcome(f"detached HEAD at {commit_hash_prefix}")
+        manage_log.log_outcome(
+            f"detached HEAD at {commit_hash_prefix}",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
         return f"DETACHED@{commit_hash_prefix}"
-    shell_interface.log_outcome(f"on branch '{current_branch_name}'")
+    manage_log.log_outcome(
+        f"on branch '{current_branch_name}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
     return current_branch_name
 
 
 def ensure_clean_worktree(
-    config: shell_interface.Config,
+    *,
+    allow_dirty: bool,
 ) -> None:
-    """Exit with an error if the worktree has uncommitted or unstaged changes."""
+    """Exit with an error if the worktree has uncommitted or unstaged changes, unless `allow_dirty`."""
     require_repo()
-    if config.allow_dirty:
-        shell_interface.log_outcome("continuing despite dirty worktree (--allow-dirty)")
+    if allow_dirty:
+        manage_log.log_outcome(
+            "clean worktree check skipped (--allow-dirty)",
+            status=manage_log.OutcomeStatus.SKIPPED,
+        )
         return
     ## `git diff --quiet` exits non-zero if there are unstaged changes.
     ## `git diff --cached --quiet` exits non-zero if there are staged-but-uncommitted changes.
@@ -241,18 +266,24 @@ def ensure_clean_worktree(
         "--cached",
         "--quiet",
     ]
-    has_unstaged_changes = shell_interface.probe_cmd(cmd_check_unstaged) != 0
-    has_staged_changes = shell_interface.probe_cmd(cmd_check_staged) != 0
+    has_unstaged_changes = manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_unstaged) != 0
+    has_staged_changes = manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_staged) != 0
     is_dirty = has_unstaged_changes or has_staged_changes
     if is_dirty:
-        shell_interface.kill("working tree not clean (stash/commit first). Try: git status --short")
-    shell_interface.log_outcome("worktree is clean")
+        manage_log.exit_with_error("working tree not clean (stash/commit first). Try: git status --short")
+    manage_log.log_outcome(
+        "worktree is clean",
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
 
 
-def remote_branch_exists(remote_name: str, branch_name: str) -> bool:
+def remote_branch_exists(
+    remote_name: str,
+    branch_name: str,
+) -> bool:
     """Return True if branch_name exists on remote_name."""
     ## `ls-remote --exit-code --heads` exits non-zero when the ref is absent,
-    ## so we can use probe_cmd directly without parsing output.
+    ## so we can use its exit code directly without parsing output.
     cmd_check_remote_branch = [
         "git",
         "ls-remote",
@@ -261,13 +292,13 @@ def remote_branch_exists(remote_name: str, branch_name: str) -> bool:
         remote_name,
         branch_name,
     ]
-    return shell_interface.probe_cmd(cmd_check_remote_branch) == 0
+    return manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_remote_branch) == 0
 
 
 def is_detached() -> bool:
     """Return True if HEAD is not pointing at a branch (detached HEAD state)."""
     require_repo()
-    shell_interface.log_step("checking whether HEAD is attached to a branch")
+    manage_log.log_task("checking whether HEAD is attached to a branch")
     ## `symbolic-ref HEAD` prints the full ref name (e.g. refs/heads/main) when
     ## on a branch, and exits non-zero (printing nothing) in detached HEAD state.
     ## `-q` suppresses the error message so we can check stdout cleanly.
@@ -277,18 +308,21 @@ def is_detached() -> bool:
         "-q",
         "HEAD",
     ]
-    head_ref = shell_interface.query_cmd(
-        cmd=cmd_get_head_ref,
-        error_on_failure=False,
-    )
-    shell_interface.bind_var(
-        var_name="head_ref",
-        var_value=head_ref or "<empty>",
+    head_ref = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_get_head_ref,
+        raise_error=False,
     )
     if not head_ref:
-        shell_interface.log_outcome("HEAD is detached (not on any branch)")
+        manage_log.log_outcome(
+            "HEAD is detached (not on any branch)",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
         return True
-    shell_interface.log_outcome(f"HEAD is attached to branch '{head_ref.removeprefix('refs/heads/')}'")
+    manage_log.log_outcome(
+        f"HEAD is attached to branch '{head_ref.removeprefix('refs/heads/')}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
+        items={"head ref": head_ref},
+    )
     return False
 
 
@@ -297,7 +331,7 @@ def require_attached() -> None:
     ## many operations (push, sync, branch deletion) don't make sense without
     ## a named branch to act on; detached HEAD is a commit-only state.
     if is_detached():
-        shell_interface.kill("operation not valid in detached HEAD state")
+        manage_log.exit_with_error("operation not valid in detached HEAD state")
 
 
 ## } MODULE

@@ -7,8 +7,11 @@
 ## stdlib
 import pathlib
 
+## personal
+from huginn import manage_log, manage_shell
+
 ## local
-from git_helpers import shell_interface, repo_state
+from git_helpers import repo_state
 
 ##
 ## === HELPERS
@@ -26,36 +29,28 @@ def _get_main_worktree_path() -> pathlib.Path:
 
 
 def cmd_create_worktree(
-    config: shell_interface.Config,
+    *,
     branch_name: str,
     worktree_path: str | None = None,
-    base_ref: str | None = None,
+    base: str | None = None,
 ) -> None:
     """Create a worktree for a branch, initialising submodules automatically.
 
     Defaults the path to ../<repo-name>-worktrees/<branch-slug> (sibling of the main checkout).
-    When base_ref is given, branch_name is created fresh from it (git refuses if branch_name
+    When base is given, branch_name is created fresh from it (git refuses if branch_name
     already exists); otherwise an existing branch_name is worktree'd as-is.
     """
     repo_state.require_repo()
-    shell_interface.bind_var(
-        var_name="branch_name",
-        var_value=branch_name,
-    )
     if worktree_path is None:
-        shell_interface.log_step("deriving default worktree path from repo name and branch")
+        manage_log.log_task("deriving default worktree path from repo name and branch")
         ## use the main worktree (index 0) rather than --show-toplevel so the path
         ## is correct when this command is called from inside a linked worktree.
         main_worktree = _get_main_worktree_path()
         repo_name = main_worktree.name
         branch_slug = branch_name.replace("/", "-")
         worktree_path = str(main_worktree.parent / f"{repo_name}-worktrees" / branch_slug)
-    shell_interface.bind_var(
-        var_name="worktree_path",
-        var_value=worktree_path,
-    )
-    shell_interface.log_step("creating worktree")
-    if base_ref is None:
+    manage_log.log_task("creating worktree")
+    if base is None:
         cmd_worktree_add = [
             "git",
             "worktree",
@@ -64,13 +59,13 @@ def cmd_create_worktree(
             branch_name,
         ]
     else:
-        shell_interface.bind_var(
-            var_name="base_ref",
-            var_value=base_ref,
+        manage_log.log_note(
+            "creating branch from base",
+            items={"base": base},
         )
-        ## `-b` creates branch_name fresh from base_ref in the same step; the
+        ## `-b` creates branch_name fresh from base in the same step; the
         ## repo this command is run from is never switched or checked out into.
-        ## `--no-track`: git auto-tracks a remote-tracking base_ref (e.g. upstream/development)
+        ## `--no-track`: git auto-tracks a remote-tracking base (e.g. upstream/development)
         ## otherwise, which is wrong: branch_name should track its own remote counterpart once
         ## pushed, not the ref it was branched from (same reasoning as create-branch-from-remote).
         cmd_worktree_add = [
@@ -81,13 +76,10 @@ def cmd_create_worktree(
             "-b",
             branch_name,
             "--no-track",
-            base_ref,
+            base,
         ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_worktree_add,
-    )
-    shell_interface.log_step("initialising submodules")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_worktree_add)
+    manage_log.log_task("initialising submodules")
     ## `git -C` runs the submodule command from inside the new worktree without
     ## changing the shell's working directory.
     cmd_submodule_init = [
@@ -98,11 +90,8 @@ def cmd_create_worktree(
         "update",
         "--init",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_submodule_init,
-    )
-    shell_interface.log_step("configuring upstream tracking")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_submodule_init)
+    manage_log.log_task("configuring upstream tracking")
     if repo_state.has_remote():
         remote_name = repo_state.get_default_remote_name()
         if repo_state.remote_branch_exists(remote_name, branch_name):
@@ -117,33 +106,27 @@ def cmd_create_worktree(
                 f"{remote_name}/{branch_name}",
                 branch_name,
             ]
-            shell_interface.run_cmd(
-                config=config,
-                cmd=cmd_set_upstream,
-            )
+            manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_upstream)
         else:
-            shell_interface.log_msg(
-                f"  '{remote_name}/{branch_name}' not on remote yet; "
+            manage_log.log_note(
+                f"'{remote_name}/{branch_name}' not on remote yet; "
                 f"run 'git_helpers push' from inside the worktree to publish and set tracking",
             )
     else:
-        shell_interface.log_msg("  no remote configured; skipping upstream setup")
-    shell_interface.log_outcome(
+        manage_log.log_note("no remote configured; skipping upstream setup")
+    manage_log.log_outcome(
         f"created worktree for '{branch_name}' at '{worktree_path}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
     )
 
 
 def cmd_remove_worktree(
-    config: shell_interface.Config,
+    *,
     branch_name: str,
 ) -> None:
     """Remove the worktree for a branch and delete the local branch in one step."""
     repo_state.require_repo()
-    shell_interface.bind_var(
-        var_name="branch_name",
-        var_value=branch_name,
-    )
-    shell_interface.log_step("finding worktree for branch")
+    manage_log.log_task("finding worktree for branch")
     worktrees = repo_state.list_worktrees()
     ## index 0 is the main checkout; never remove it
     match = next(
@@ -151,13 +134,9 @@ def cmd_remove_worktree(
         None,
     )
     if not match:
-        shell_interface.kill(f"no worktree found for branch '{branch_name}'")
+        manage_log.exit_with_error(f"no worktree found for branch '{branch_name}'")
     worktree_path = match["path"]
-    shell_interface.bind_var(
-        var_name="worktree_path",
-        var_value=worktree_path,
-    )
-    shell_interface.log_step("removing worktree (--force for submodules)")
+    manage_log.log_task("removing worktree (--force for submodules)")
     ## --force is required when the worktree contains submodules; without it git
     ## refuses because submodule .git dirs look like nested repositories.
     cmd_remove = [
@@ -167,11 +146,8 @@ def cmd_remove_worktree(
         "--force",
         worktree_path,
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_remove,
-    )
-    shell_interface.log_step("deleting local branch (-d)")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_remove)
+    manage_log.log_task("deleting local branch (-d)")
     cmd_delete_branch = [
         "git",
         "branch",
@@ -179,14 +155,16 @@ def cmd_remove_worktree(
         "--",
         branch_name,
     ]
-    success = shell_interface.try_run_cmd(
-        config=config,
-        cmd=cmd_delete_branch,
+    success = manage_shell.run_cmd_and_show_output(
+        cmd_parts=cmd_delete_branch,
+        raise_error=False,
     )
-    if not success:
+    if success:
+        branch_is_kept = False
+    else:
         remote_name = repo_state.get_default_remote_name()
         if not repo_state.remote_branch_exists(remote_name, branch_name):
-            shell_interface.log_step(
+            manage_log.log_task(
                 f"'{remote_name}/{branch_name}' no longer exists on remote; force-deleting local branch (-D)",
             )
             cmd_force_delete_branch = [
@@ -196,66 +174,63 @@ def cmd_remove_worktree(
                 "--",
                 branch_name,
             ]
-            shell_interface.run_cmd(
-                config=config,
-                cmd=cmd_force_delete_branch,
-            )
+            manage_shell.run_cmd_and_show_output(cmd_parts=cmd_force_delete_branch)
+            branch_is_kept = False
         else:
-            shell_interface.log_msg(
-                f"  could not delete '{branch_name}' (remote branch still exists; merge or close it first)",
-            )
-    shell_interface.log_outcome(f"removed worktree for '{branch_name}'")
+            branch_is_kept = True
+    if branch_is_kept:
+        manage_log.log_outcome(
+            f"removed worktree for '{branch_name}' but kept the branch: its remote branch still exists; merge or close it first",
+            status=manage_log.OutcomeStatus.WARNING,
+            items={"worktree path": worktree_path},
+        )
+    else:
+        manage_log.log_outcome(
+            f"removed worktree for '{branch_name}'",
+            status=manage_log.OutcomeStatus.SUCCESS,
+            items={"worktree path": worktree_path},
+        )
 
 
-def cmd_prune_worktrees(
-    config: shell_interface.Config,
-) -> None:
+def cmd_prune_worktrees() -> None:
     """Remove worktrees whose upstream branch has been deleted and delete their local branches."""
     repo_state.require_repo()
-    shell_interface.log_step("refreshing remote-tracking refs (fetch --prune)")
+    manage_log.log_task("refreshing remote-tracking refs (fetch --prune)")
     cmd_fetch_prune = [
         "git",
         "fetch",
         "--prune",
         "--quiet",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_fetch_prune,
-    )
-    shell_interface.log_step(r"finding local branches with \[gone] upstream")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_prune)
+    manage_log.log_task("finding local branches with [gone] upstream")
     cmd_list_branch_tracking = [
         "git",
         "for-each-ref",
         "--format=%(refname:short) %(upstream:track)",
         "refs/heads/",
     ]
-    all_branches_output = shell_interface.query_cmd(
-        cmd=cmd_list_branch_tracking,
-        error_on_failure=True,
+    all_branches_output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_branch_tracking,
+        raise_error=True,
     )
-    gone_branches = {
-        line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line
-    }
-    shell_interface.log_step(r"finding worktrees checked out on \[gone] branches")
+    gone_branches = {line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line}
+    manage_log.log_task("finding worktrees checked out on [gone] branches")
     worktrees = repo_state.list_worktrees()
     ## index 0 is the main checkout; never prune it
-    prunable = [
-        worktree for worktree in worktrees[1:]
-        if worktree.get("branch") in gone_branches
-    ]
+    prunable = [worktree for worktree in worktrees[1:] if worktree.get("branch") in gone_branches]
     if not prunable:
-        shell_interface.log_outcome("no prunable worktrees")
+        manage_log.log_outcome(
+            "no prunable worktrees",
+            status=manage_log.OutcomeStatus.SKIPPED,
+        )
         return
-    shell_interface.bind_var(
-        var_name="worktrees_to_remove",
-        var_value=" ".join(worktree["path"] for worktree in prunable),
-    )
+    removed_worktree_paths = " ".join(worktree["path"] for worktree in prunable)
     skipped_branches: list[str] = []
     for worktree in prunable:
         path = worktree["path"]
         branch = worktree["branch"]
-        shell_interface.log_step(f"removing worktree '{path}'")
+        manage_log.log_task(f"removing worktree '{path}'")
         cmd_remove = [
             "git",
             "worktree",
@@ -263,11 +238,8 @@ def cmd_prune_worktrees(
             "--force",
             path,
         ]
-        shell_interface.run_cmd(
-            config=config,
-            cmd=cmd_remove,
-        )
-        shell_interface.log_step(f"deleting local branch '{branch}' (-d)")
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_remove)
+        manage_log.log_task(f"deleting local branch '{branch}' (-d)")
         cmd_delete_branch = [
             "git",
             "branch",
@@ -275,29 +247,33 @@ def cmd_prune_worktrees(
             "--",
             branch,
         ]
-        success = shell_interface.try_run_cmd(
-            config=config,
-            cmd=cmd_delete_branch,
+        success = manage_shell.run_cmd_and_show_output(
+            cmd_parts=cmd_delete_branch,
+            raise_error=False,
         )
         if not success:
             skipped_branches.append(branch)
-            shell_interface.log_msg(
-                rf"  skipped '{branch}' (unmerged commits; likely squash-merged: "
-                r"run 'git_helpers force-delete-gone' to force-delete all \[gone] branches with -D)",
+            manage_log.log_note(
+                f"kept '{branch}' (unmerged commits; likely squash-merged: "
+                "run 'git_helpers force-delete-gone' to force-delete all [gone] branches with -D)",
             )
     removed_count = len(prunable) - len(skipped_branches)
     if skipped_branches:
-        shell_interface.log_outcome(
+        manage_log.log_outcome(
             f"removed {removed_count} worktree(s); could not delete {len(skipped_branches)} branch(es): {', '.join(skipped_branches)}",
+            status=manage_log.OutcomeStatus.WARNING,
+            items={"removed worktrees": removed_worktree_paths},
         )
     else:
-        shell_interface.log_outcome(
+        manage_log.log_outcome(
             f"removed {len(prunable)} worktree(s) and deleted their branches",
+            status=manage_log.OutcomeStatus.SUCCESS,
+            items={"removed worktrees": removed_worktree_paths},
         )
 
 
 def cmd_rename_branch(
-    config: shell_interface.Config,
+    *,
     new_name: str,
 ) -> None:
     """Rename the current branch; move and relink its worktree if one exists.
@@ -309,9 +285,7 @@ def cmd_rename_branch(
     repo_state.require_repo()
     repo_state.require_attached()
     old_name = repo_state.current_branch()
-    shell_interface.bind_var(var_name="old_name", var_value=old_name)
-    shell_interface.bind_var(var_name="new_name", var_value=new_name)
-    shell_interface.log_step("checking for a linked worktree on this branch")
+    manage_log.log_task("checking for a linked worktree on this branch")
     worktrees = repo_state.list_worktrees()
     worktree_match = next(
         (worktree for worktree in worktrees[1:] if worktree.get("branch") == old_name),
@@ -325,18 +299,19 @@ def cmd_rename_branch(
         main_worktree = _get_main_worktree_path()
         new_branch_slug = new_name.replace("/", "-")
         new_worktree_path = main_worktree.parent / f"{main_worktree.name}-worktrees" / new_branch_slug
-        shell_interface.bind_var(var_name="old_worktree_path", var_value=str(old_worktree_path))
-        shell_interface.bind_var(var_name="new_worktree_path", var_value=str(new_worktree_path))
         if new_worktree_path.exists():
-            shell_interface.kill(f"target worktree path '{new_worktree_path}' already exists")
-    shell_interface.log_step("renaming branch")
+            manage_log.exit_with_error(f"target worktree path '{new_worktree_path}' already exists")
+    manage_log.log_task("renaming branch")
     cmd_branch_rename = ["git", "branch", "-m", old_name, new_name]
-    shell_interface.run_cmd(config=config, cmd=cmd_branch_rename)
-    shell_interface.log_outcome(f"renamed branch '{old_name}' to '{new_name}'")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_branch_rename)
+    manage_log.log_outcome(
+        f"renamed branch '{old_name}' to '{new_name}'",
+        status=manage_log.OutcomeStatus.SUCCESS,
+    )
     if old_worktree_path is not None and new_worktree_path is not None and main_worktree is not None:
-        shell_interface.log_step("moving worktree directory")
+        manage_log.log_task("moving worktree directory")
         old_worktree_path.rename(new_worktree_path)
-        shell_interface.log_step("relinking worktree")
+        manage_log.log_task("relinking worktree")
         ## run repair via the main worktree so the cwd is always valid, even when
         ## called from inside the worktree that was just moved.
         cmd_repair = [
@@ -347,8 +322,12 @@ def cmd_rename_branch(
             "repair",
             str(new_worktree_path),
         ]
-        shell_interface.run_cmd(config=config, cmd=cmd_repair)
-        shell_interface.log_outcome(f"moved worktree to '{new_worktree_path}'")
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_repair)
+        manage_log.log_outcome(
+            f"moved worktree to '{new_worktree_path}'",
+            status=manage_log.OutcomeStatus.SUCCESS,
+            items={"old worktree path": old_worktree_path},
+        )
 
 
 ## } MODULE

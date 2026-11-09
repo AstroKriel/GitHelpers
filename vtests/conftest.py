@@ -10,12 +10,21 @@ from pathlib import Path
 ## third-party
 import pytest
 
+## personal
+from huginn import _manage_output
+
 ## local
 from vtests.helpers import GIT_USER, git, make_commit
 
 ##
 ## === FIXTURES
 ##
+
+
+@pytest.fixture(autouse=True)
+def reset_huginn_state() -> None:
+    """Start each test with no log file and every built-in flag off, so no test writes to the real log or inherits a dry run."""
+    _manage_output.reset_active_state()
 
 
 @pytest.fixture

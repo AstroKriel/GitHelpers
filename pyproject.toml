@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [{ name = "Neco Kriel", email = "necokriel@gmail.com" }]
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "rich>=13.0",
+    "huginn",
 ]
 
 [build-system]
@@ -18,6 +18,9 @@ sources = ["src"]
 
 [project.scripts]
 git_helpers = "git_helpers.user_interface:main"
+
+[tool.uv.sources]
+huginn = { git = "https://github.com/AstroKriel/TerminalInterface.git", rev = "db0adb9d7fdfc0bb0636c1b2905b29b6bca8bd8e" }
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]

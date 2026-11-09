@@ -32,7 +32,6 @@ def test_get_default_remote_name_falls_back_to_first_remote(
     assert repo_state.get_default_remote_name() == "upstream"
 
 
-
 ##
 ## === get_upstream_branch_name
 ##

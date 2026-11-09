@@ -12,7 +12,6 @@ import pytest
 
 ## local
 from git_helpers.commands import git_submodules
-from git_helpers.shell_interface import Config
 from vtests.helpers import GIT_USER, git, make_commit
 
 ##
@@ -128,7 +127,10 @@ def test_fix_submodule_with_explicit_branch_restores_tracked_branch(
     make_repo_with_submodule: tuple[Path, Path],
 ) -> None:
     _, sub_dir = make_repo_with_submodule
-    git_submodules.cmd_fix_submodule(Config(), "sub", "main")
+    git_submodules.cmd_fix_submodule(
+        submodule_path="sub",
+        branch="main",
+    )
     branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
 
@@ -137,7 +139,10 @@ def test_fix_submodule_with_explicit_branch_commits_pointer_in_parent(
     make_repo_with_submodule: tuple[Path, Path],
 ) -> None:
     parent, _ = make_repo_with_submodule
-    git_submodules.cmd_fix_submodule(Config(), "sub", "main")
+    git_submodules.cmd_fix_submodule(
+        submodule_path="sub",
+        branch="main",
+    )
     msg = git(["log", "-1", "--format=%s"], cwd=parent).stdout.strip()
     assert msg == "fix: update sub pointer after repair"
 
@@ -149,7 +154,10 @@ def test_fix_submodule_reads_branch_from_gitmodules(
     ## set a non-default branch in .gitmodules and remove origin/HEAD so only .gitmodules can succeed
     git(["config", "-f", ".gitmodules", "submodule.sub.branch", "main"], cwd=parent)
     git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
-    git_submodules.cmd_fix_submodule(Config(), "sub", None)
+    git_submodules.cmd_fix_submodule(
+        submodule_path="sub",
+        branch=None,
+    )
     branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
 
@@ -159,7 +167,10 @@ def test_fix_submodule_falls_back_to_origin_head_when_gitmodules_has_no_branch(
 ) -> None:
     ## fixture's .gitmodules has no branch entry by default — origin/HEAD is the only source
     _, sub_dir = make_repo_with_submodule
-    git_submodules.cmd_fix_submodule(Config(), "sub", None)
+    git_submodules.cmd_fix_submodule(
+        submodule_path="sub",
+        branch=None,
+    )
     branch = git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
 
@@ -171,7 +182,10 @@ def test_fix_submodule_kills_when_branch_not_detectable(
     _, sub_dir = make_repo_with_submodule
     git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
     with pytest.raises(SystemExit):
-        git_submodules.cmd_fix_submodule(Config(), "sub", None)
+        git_submodules.cmd_fix_submodule(
+            submodule_path="sub",
+            branch=None,
+        )
 
 
 ##
@@ -187,7 +201,11 @@ def test_add_submodule_with_explicit_branch_creates_directory(
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
     monkeypatch.setenv("GIT_CONFIG_KEY_0", "protocol.file.allow")
     monkeypatch.setenv("GIT_CONFIG_VALUE_0", "always")
-    git_submodules.cmd_add_submodule(Config(), str(sub_remote), "sub", "main")
+    git_submodules.cmd_add_submodule(
+        url=str(sub_remote),
+        local_name="sub",
+        branch="main",
+    )
     assert (make_repo_ / "sub").is_dir()
 
 
@@ -199,7 +217,11 @@ def test_add_submodule_with_explicit_branch_writes_gitmodules(
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
     monkeypatch.setenv("GIT_CONFIG_KEY_0", "protocol.file.allow")
     monkeypatch.setenv("GIT_CONFIG_VALUE_0", "always")
-    git_submodules.cmd_add_submodule(Config(), str(sub_remote), "sub", "main")
+    git_submodules.cmd_add_submodule(
+        url=str(sub_remote),
+        local_name="sub",
+        branch="main",
+    )
     gitmodules = (make_repo_ / ".gitmodules").read_text()
     assert "branch = main" in gitmodules
 
@@ -212,7 +234,11 @@ def test_add_submodule_with_explicit_branch_creates_commit(
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
     monkeypatch.setenv("GIT_CONFIG_KEY_0", "protocol.file.allow")
     monkeypatch.setenv("GIT_CONFIG_VALUE_0", "always")
-    git_submodules.cmd_add_submodule(Config(), str(sub_remote), "sub", "main")
+    git_submodules.cmd_add_submodule(
+        url=str(sub_remote),
+        local_name="sub",
+        branch="main",
+    )
     msg = git(["log", "-1", "--format=%s"], cwd=make_repo_).stdout.strip()
     assert msg == "add sub submodule"
 
@@ -225,7 +251,11 @@ def test_add_submodule_auto_detects_branch_from_remote(
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
     monkeypatch.setenv("GIT_CONFIG_KEY_0", "protocol.file.allow")
     monkeypatch.setenv("GIT_CONFIG_VALUE_0", "always")
-    git_submodules.cmd_add_submodule(Config(), str(sub_remote), "sub", None)
+    git_submodules.cmd_add_submodule(
+        url=str(sub_remote),
+        local_name="sub",
+        branch=None,
+    )
     gitmodules = (make_repo_ / ".gitmodules").read_text()
     assert "branch = main" in gitmodules
 
@@ -235,7 +265,11 @@ def test_add_submodule_kills_before_cloning_when_branch_not_detectable(
     tmp_path: Path,
 ) -> None:
     with pytest.raises(SystemExit):
-        git_submodules.cmd_add_submodule(Config(), str(tmp_path / "does_not_exist"), "sub", None)
+        git_submodules.cmd_add_submodule(
+            url=str(tmp_path / "does_not_exist"),
+            local_name="sub",
+            branch=None,
+        )
     ## submodule directory must not have been created — kill happened before any git mutations
     assert not (make_repo_ / "sub").exists()
 

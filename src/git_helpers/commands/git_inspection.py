@@ -4,18 +4,20 @@
 ## === DEPENDENCIES
 ##
 
-## stdlib
-import sys
+## personal
+from huginn import manage_log, manage_shell
 
 ## local
-from git_helpers import shell_interface, repo_state
+from git_helpers import repo_state
 
 ##
 ## === HELPERS
 ##
 
 
-def _diff_color_args(word_diff: bool) -> list[str]:
+def _diff_color_args(
+    word_diff: bool,
+) -> list[str]:
     """Return the color-related flags shared by all `git diff` commands.
 
     `--color-words` highlights only the changed tokens inline rather than
@@ -33,18 +35,7 @@ def _diff_color_args(word_diff: bool) -> list[str]:
 ##
 
 
-def check_is_detached(
-    _config: shell_interface.Config,
-) -> None:
-    """Exit 0 if HEAD is detached, 1 if on a branch; usable in shell conditionals."""
-    ## exit 0 (success/true) if detached, 1 (false) if on a branch; matches
-    ## the Unix convention so this can be used in shell conditionals.
-    sys.exit(0 if repo_state.is_detached() else 1)
-
-
-def show_current_commit_hash(
-    _config: shell_interface.Config,
-) -> None:
+def show_current_commit_hash() -> None:
     """Print the full commit hash that HEAD currently points to."""
     repo_state.require_repo()
     cmd_show_current_commit_hash = [
@@ -52,21 +43,19 @@ def show_current_commit_hash(
         "rev-parse",
         "HEAD",
     ]
-    current_commit_hash = shell_interface.query_cmd(
-        cmd=cmd_show_current_commit_hash,
-        error_on_failure=True,
+    current_commit_hash = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_show_current_commit_hash,
+        raise_error=True,
     )
-    shell_interface.log_result(current_commit_hash)
+    manage_log.log_return(current_commit_hash)
 
 
-def show_upstream_state(
-    config: shell_interface.Config,
-) -> None:
+def show_upstream_state() -> None:
     """Print the current branch name, its upstream ref, and the upstream's latest commit."""
     repo_state.require_repo()
-    shell_interface.log_step("identifying current branch")
+    manage_log.log_task("identifying current branch")
     current_branch_name = repo_state.current_branch()
-    shell_interface.log_step("resolving upstream (if any)")
+    manage_log.log_task("resolving upstream (if any)")
     ## resolve `@{u}` to a human-readable name like "origin/main".
     cmd_resolve_upstream = [
         "git",
@@ -76,15 +65,15 @@ def show_upstream_state(
         "@{u}",
     ]
     if repo_state.has_upstream():
-        upstream_name = shell_interface.query_cmd(
-            cmd=cmd_resolve_upstream,
-            error_on_failure=True,
+        upstream_name = manage_shell.query_cmd_and_capture_output(
+            cmd_parts=cmd_resolve_upstream,
+            raise_error=True,
         )
     else:
         upstream_name = ""
     if upstream_name:
-        shell_interface.log_result(f"upstream:     {upstream_name}")
-        shell_interface.log_step("showing the latest commit on the upstream")
+        manage_log.log_return(f"upstream:     {upstream_name}")
+        manage_log.log_task("showing the latest commit on the upstream")
         ## `-1` limits to one commit; `--oneline` keeps output compact;
         ## `--decorate` shows branch/tag labels alongside the commit hash.
         cmd_show_upstream_commit = [
@@ -94,20 +83,18 @@ def show_upstream_state(
             "-1",
             upstream_name,
         ]
-        shell_interface.run_cmd(
-            config=config,
-            cmd=cmd_show_upstream_commit,
-        )
+        manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_upstream_commit)
     else:
-        shell_interface.log_outcome("no upstream configured for current branch")
+        manage_log.log_outcome(
+            "no upstream configured for current branch",
+            status=manage_log.OutcomeStatus.WARNING,
+        )
 
 
-def show_branches_status(
-    config: shell_interface.Config,
-) -> None:
+def show_branches_status() -> None:
     """Fetch from remote, then list all local branches with their upstream and ahead/behind counts."""
     repo_state.require_repo()
-    shell_interface.log_step("refreshing remote-tracking information")
+    manage_log.log_task("refreshing remote-tracking information")
     ## `--prune` removes local tracking refs for branches that no longer exist
     ## on the remote, so the status view reflects current reality.
     ## `--no-recurse-submodules` keeps the fetch on the superproject only; this
@@ -120,11 +107,8 @@ def show_branches_status(
         "--no-recurse-submodules",
         "--quiet",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_fetch_prune,
-    )
-    shell_interface.log_step("showing local branches with upstream and ahead/behind")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_prune)
+    manage_log.log_task("showing local branches with upstream and ahead/behind")
     ## `-vv` (very verbose) shows the upstream ref and ahead/behind counts
     ## for each branch. `--no-abbrev` prints full SHAs so nothing is truncated.
     cmd_show_branch_verbose = [
@@ -133,20 +117,15 @@ def show_branches_status(
         "-vv",
         "--no-abbrev",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_show_branch_verbose,
-    )
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_branch_verbose)
 
 
-def count_ahead_behind(
-    config: shell_interface.Config,
-) -> None:
+def count_ahead_behind() -> None:
     """Print how many commits the current branch is ahead of and behind its upstream."""
     repo_state.require_repo()
-    shell_interface.log_step("determining upstream for current branch")
+    manage_log.log_task("determining upstream for current branch")
     if not repo_state.has_upstream():
-        shell_interface.kill(f"no upstream set for {repo_state.current_branch()}")
+        manage_log.exit_with_error(f"no upstream set for {repo_state.current_branch()}")
     cmd_resolve_upstream = [
         "git",
         "rev-parse",
@@ -154,15 +133,15 @@ def count_ahead_behind(
         "--symbolic-full-name",
         "@{u}",
     ]
-    upstream_name = shell_interface.query_cmd(
-        cmd=cmd_resolve_upstream,
-        error_on_failure=True,
+    upstream_name = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_resolve_upstream,
+        raise_error=True,
     )
-    shell_interface.bind_var(
-        var_name="upstream_name",
-        var_value=upstream_name,
+    manage_log.log_note(
+        "resolved upstream",
+        items={"upstream": upstream_name},
     )
-    shell_interface.log_step("fetching latest refs from remote")
+    manage_log.log_task("fetching latest refs from remote")
     ## stay on the superproject; this only compares HEAD to its upstream.
     cmd_fetch_quiet = [
         "git",
@@ -170,11 +149,8 @@ def count_ahead_behind(
         "--no-recurse-submodules",
         "--quiet",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_fetch_quiet,
-    )
-    shell_interface.log_step("computing ahead/behind vs upstream")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_quiet)
+    manage_log.log_task("computing ahead/behind vs upstream")
     ## `rev-list --left-right HEAD...<upstream>` lists commits reachable from
     ## either side but not both (the symmetric difference). `--count` collapses
     ## that to two numbers: commits only in HEAD (ahead) and only in upstream (behind).
@@ -187,30 +163,20 @@ def count_ahead_behind(
         "--count",
         f"HEAD...{upstream_name}",
     ]
-    ahead_behind_counts = shell_interface.query_cmd(
-        cmd=cmd_count_ahead_behind,
-        error_on_failure=True,
+    ahead_behind_counts = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_count_ahead_behind,
+        raise_error=True,
     )
     ahead_count, behind_count = ahead_behind_counts.split()
-    shell_interface.bind_var(
-        var_name="ahead_count",
-        var_value=ahead_count,
-    )
-    shell_interface.bind_var(
-        var_name="behind_count",
-        var_value=behind_count,
-    )
-    shell_interface.log_result(f"ahead: {ahead_count}; behind: {behind_count}")
+    manage_log.log_return(f"ahead: {ahead_count}; behind: {behind_count}")
 
 
-def show_unpulled_commits(
-    config: shell_interface.Config,
-) -> None:
+def show_unpulled_commits() -> None:
     """List commits that exist on the upstream but have not yet been pulled locally."""
     repo_state.require_repo()
-    shell_interface.log_step("determining upstream")
+    manage_log.log_task("determining upstream")
     if not repo_state.has_upstream():
-        shell_interface.kill("no upstream set")
+        manage_log.exit_with_error("no upstream set")
     cmd_resolve_upstream = [
         "git",
         "rev-parse",
@@ -218,15 +184,15 @@ def show_unpulled_commits(
         "--symbolic-full-name",
         "@{u}",
     ]
-    upstream_name = shell_interface.query_cmd(
-        cmd=cmd_resolve_upstream,
-        error_on_failure=True,
+    upstream_name = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_resolve_upstream,
+        raise_error=True,
     )
-    shell_interface.bind_var(
-        var_name="upstream_name",
-        var_value=upstream_name,
+    manage_log.log_note(
+        "resolved upstream",
+        items={"upstream": upstream_name},
     )
-    shell_interface.log_step("fetching latest from remote")
+    manage_log.log_task("fetching latest from remote")
     ## stay on the superproject; this only lists commits missing on HEAD.
     cmd_fetch_quiet = [
         "git",
@@ -234,11 +200,8 @@ def show_unpulled_commits(
         "--no-recurse-submodules",
         "--quiet",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_fetch_quiet,
-    )
-    shell_interface.log_step("listing commits present upstream but missing locally")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_quiet)
+    manage_log.log_task("listing commits present upstream but missing locally")
     ## `HEAD..upstream` (two dots) = commits reachable from upstream but NOT
     ## from HEAD (commits that exist on the remote but haven't been pulled yet).
     cmd_show_unpulled = [
@@ -247,15 +210,10 @@ def show_unpulled_commits(
         "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
         f"HEAD..{upstream_name}",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_show_unpulled,
-    )
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_unpulled)
 
 
-def show_local_remotes(
-    _config: shell_interface.Config,
-) -> None:
+def show_local_remotes() -> None:
     """List all configured remotes and their fetch/push URLs."""
     repo_state.require_repo()
     ## `-v` prints both fetch and push URLs for each remote; deduplicate with
@@ -265,16 +223,16 @@ def show_local_remotes(
         "remote",
         "-v",
     ]
-    remotes_output = shell_interface.query_cmd(
-        cmd=cmd_list_remotes,
-        error_on_failure=True,
+    remotes_output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_list_remotes,
+        raise_error=True,
     )
     for line in sorted(set(remotes_output.splitlines())):
-        shell_interface.log_result(line)
+        manage_log.log_return(line)
 
 
 def show_commits_on_branch(
-    config: shell_interface.Config,
+    *,
     base: str | None = None,
     show_files_changed: bool = False,
     no_fetch: bool = False,
@@ -283,45 +241,47 @@ def show_commits_on_branch(
     repo_state.require_repo()
     remote = repo_state.get_default_remote_name()
     if not no_fetch:
-        shell_interface.log_step(f"fetching from {remote}")
-        shell_interface.run_cmd(
-            config=config,
-            cmd=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
+        manage_log.log_task(f"fetching from {remote}")
+        manage_shell.run_cmd_and_show_output(
+            cmd_parts=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
         )
     if base:
         if "/" not in base:
-            shell_interface.kill("base must be remote-qualified, e.g. origin/main")
+            manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
         remote_base = base
     else:
         inferred = repo_state.get_default_branch_name()
         if not inferred:
-            shell_interface.kill("could not infer default branch; pass base explicitly, e.g. origin/main")
+            manage_log.exit_with_error(
+                "could not infer default branch; pass base explicitly, e.g. origin/main",
+            )
         remote_base = f"{remote}/{inferred}"
     branch = repo_state.current_branch()
     base_branch = remote_base.split("/", 1)[-1]
     if branch == base_branch:
-        shell_interface.kill(
-            f"already on '{base_branch}'; show-commits-on-branch compares a feature branch to its base"
+        manage_log.exit_with_error(
+            f"already on '{base_branch}'; show-commits-on-branch compares a feature branch to its base",
         )
-    shell_interface.log_step(f"showing commits on '{branch}' not in '{remote_base}'")
-    cmd = ["git", "log", f"{remote_base}..HEAD", "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d"]
+    manage_log.log_task(f"showing commits on '{branch}' not in '{remote_base}'")
+    cmd = [
+        "git",
+        "log",
+        f"{remote_base}..HEAD",
+        "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
+    ]
     if show_files_changed:
         cmd.append("--stat")
-    shell_interface.run_cmd(config=config, cmd=cmd)
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
 
 
 def show_recent_commits(
-    config: shell_interface.Config,
+    *,
     max_entries: int = 20,
     show_files_changed: bool = False,
 ) -> None:
     """Print the most recent N commits on the current branch (default 20)."""
     repo_state.require_repo()
-    shell_interface.bind_var(
-        var_name="max_entries",
-        var_value=str(max_entries),
-    )
-    shell_interface.log_step("showing recent commits on current branch")
+    manage_log.log_task("showing recent commits on current branch")
     ## `--format` = custom one-line format: short commit hash, date, relative age, subject, decorations.
     ## `--stat` = list files changed and insertion/deletion counts per commit.
     ## `-n` = limit to the most recent N entries.
@@ -334,45 +294,45 @@ def show_recent_commits(
     ]
     if show_files_changed:
         cmd_show_recent_commits.append("--stat")
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_show_recent_commits,
-    )
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_recent_commits)
 
 
 def show_diff(
-    config: shell_interface.Config,
+    *,
     path: str | None = None,
     word_diff: bool = False,
 ) -> None:
     """Show all local changes vs HEAD (staged, unstaged, and uncommitted)."""
     repo_state.require_repo()
-    shell_interface.log_step("showing local changes vs HEAD")
+    manage_log.log_task("showing local changes vs HEAD")
     cmd = ["git", "diff", *_diff_color_args(word_diff), "HEAD"]
     if path:
         cmd += ["--", path]
-    shell_interface.run_cmd(config=config, cmd=cmd)
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
 
 
 def show_diff_untracked(
-    config: shell_interface.Config,
+    *,
     path: str,
     word_diff: bool = False,
 ) -> None:
     """Show the diff for an untracked file, as if it were newly added (untracked files have no history to diff)."""
     repo_state.require_repo()
-    shell_interface.log_step(f"showing diff for untracked file '{path}'")
+    manage_log.log_task(f"showing diff for untracked file '{path}'")
     ## `--no-index` diffs two paths directly, bypassing git's index, so it works
     ## on files with no history; diffing against /dev/null shows the whole file
     ## as an addition. It exits 1 when a difference is found (the expected
-    ## outcome here), so use try_run_cmd rather than run_cmd to avoid treating
-    ## that as a command failure.
+    ## outcome here), so pass `raise_error=False` to avoid treating that as a
+    ## command failure.
     cmd = ["git", "diff", *_diff_color_args(word_diff), "--no-index", "/dev/null", path]
-    shell_interface.try_run_cmd(config=config, cmd=cmd)
+    manage_shell.query_cmd_and_show_output(
+        cmd_parts=cmd,
+        raise_error=False,
+    )
 
 
 def show_diff_committed(
-    config: shell_interface.Config,
+    *,
     base: str | None = None,
     name_only: bool = False,
     no_fetch: bool = False,
@@ -383,61 +343,62 @@ def show_diff_committed(
     repo_state.require_repo()
     remote = repo_state.get_default_remote_name()
     if not no_fetch:
-        shell_interface.log_step(f"fetching from {remote}")
-        shell_interface.run_cmd(
-            config=config,
-            cmd=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
+        manage_log.log_task(f"fetching from {remote}")
+        manage_shell.run_cmd_and_show_output(
+            cmd_parts=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
         )
     if base:
         if "/" not in base:
-            shell_interface.kill("base must be remote-qualified, e.g. origin/main")
+            manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
         remote_base = base
     else:
         inferred = repo_state.get_default_branch_name()
         if not inferred:
-            shell_interface.kill("could not infer default branch; pass base explicitly, e.g. origin/main")
+            manage_log.exit_with_error(
+                "could not infer default branch; pass base explicitly, e.g. origin/main",
+            )
         remote_base = f"{remote}/{inferred}"
     branch = repo_state.current_branch()
     base_branch = remote_base.split("/", 1)[-1]
     if branch == base_branch:
-        shell_interface.kill(
+        manage_log.exit_with_error(
             f"already on '{base_branch}'; show-diff-committed compares a feature branch to its base"
-            "; use show-diff-n-commits N for commit-range diffs"
+            "; use show-diff-n-commits N for commit-range diffs",
         )
-    shell_interface.log_step(f"showing committed changes vs '{remote_base}'")
+    manage_log.log_task(f"showing committed changes vs '{remote_base}'")
     cmd = ["git", "diff", *_diff_color_args(word_diff), f"{remote_base}...HEAD"]
     if name_only:
         cmd.append("--name-only")
     if path:
         cmd += ["--", path]
-    shell_interface.run_cmd(config=config, cmd=cmd)
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
 
 
 def show_commit(
-    config: shell_interface.Config,
+    *,
     commit: str,
     word_diff: bool = False,
 ) -> None:
     """Show the message and diff introduced by a specific commit."""
     repo_state.require_repo()
-    shell_interface.log_step(f"showing changes introduced by {commit}")
+    manage_log.log_task(f"showing changes introduced by {commit}")
     cmd = ["git", "show", *_diff_color_args(word_diff), commit]
-    shell_interface.run_cmd(config=config, cmd=cmd)
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
 
 
 def show_commit_info(
-    config: shell_interface.Config,
+    *,
     commit: str,
 ) -> None:
     """Show the full hash, author date, and subject for a commit; fetches it first if not already local."""
     repo_state.require_repo()
-    shell_interface.log_step(f"checking whether '{commit}' is available locally")
+    manage_log.log_task(f"checking whether '{commit}' is available locally")
     cmd_check_local = ["git", "cat-file", "-e", f"{commit}^{{commit}}"]
-    if shell_interface.probe_cmd(cmd_check_local) != 0:
+    if manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_local) != 0:
         remote = repo_state.get_default_remote_name()
-        shell_interface.log_step(f"not found locally; fetching '{commit}' from {remote}")
-        shell_interface.run_cmd(config=config, cmd=["git", "fetch", remote, commit])
-    shell_interface.log_step(f"showing info for '{commit}'")
+        manage_log.log_task(f"not found locally; fetching '{commit}' from {remote}")
+        manage_shell.run_cmd_and_show_output(cmd_parts=["git", "fetch", remote, commit])
+    manage_log.log_task(f"showing info for '{commit}'")
     cmd_show_commit_info = [
         "git",
         "log",
@@ -445,11 +406,11 @@ def show_commit_info(
         "--format=%C(auto)%H %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
         commit,
     ]
-    shell_interface.run_cmd(config=config, cmd=cmd_show_commit_info)
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_commit_info)
 
 
 def show_diff_last(
-    config: shell_interface.Config,
+    *,
     num_commits: int,
     include_uncommitted: bool = False,
     path: str | None = None,
@@ -458,25 +419,19 @@ def show_diff_last(
     """Show changes over the last N commits, optionally including uncommitted local changes."""
     repo_state.require_repo()
     if num_commits < 1:
-        shell_interface.kill("num_commits must be at least 1")
-    shell_interface.bind_var(
-        var_name="num_commits",
-        var_value=str(num_commits),
-    )
+        manage_log.exit_with_error("num_commits must be at least 1")
     if include_uncommitted:
-        shell_interface.log_step(f"showing changes over last {num_commits} commits including local changes")
+        manage_log.log_task(f"showing changes over last {num_commits} commits including local changes")
         cmd = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}"]
     else:
-        shell_interface.log_step(f"showing committed changes over last {num_commits} commits")
+        manage_log.log_task(f"showing committed changes over last {num_commits} commits")
         cmd = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}", "HEAD"]
     if path:
         cmd += ["--", path]
-    shell_interface.run_cmd(config=config, cmd=cmd)
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
 
 
-def show_submodules_status(
-    _config: shell_interface.Config,
-) -> None:
+def show_submodules_status() -> None:
     """Print the commit hash and initialisation status of each submodule, if any."""
     repo_state.require_repo()
     ## `submodule status` prints one line per submodule:
@@ -488,9 +443,9 @@ def show_submodules_status(
         "submodule",
         "status",
     ]
-    submodules_output = shell_interface.query_cmd(
-        cmd=cmd_submodule_status,
-        error_on_failure=False,
+    submodules_output = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_submodule_status,
+        raise_error=False,
     )
     if submodules_output:
         submodule_lines = submodules_output.splitlines()
@@ -499,7 +454,7 @@ def show_submodules_status(
             "no submodules or not initialized",
         ]
     for line in submodule_lines:
-        shell_interface.log_result(line)
+        manage_log.log_return(line)
 
 
 ## } MODULE

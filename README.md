@@ -19,8 +19,7 @@ uv tool install .
 Verify everything is working:
 
 ```bash
-git_helpers self-check  # verify git is on your PATH
-git_helpers --help      # list all available commands
+git_helpers --help  # list all available commands
 ```
 
 `uv` places installed tools in `~/.local/bin`, so if `git_helpers` isn't found after the install, add the following to your shell config (`~/.zshrc` for zsh, `~/.bashrc` for bash):
@@ -157,36 +156,28 @@ git_helpers show-global-config  # show the current values of the git settings th
 
 ---
 
-## Global flags
+## Built-in flags
 
-These flags apply to any command and are placed before the subcommand:
+These flags apply to any command and are placed before it:
 
 ```bash
-git_helpers --dry-run <cmd>      # print commands without executing them
-git_helpers --allow-dirty <cmd>  # skip the clean worktree check
+git_helpers --dry-run <cmd>       # show each change without running it
+git_helpers --hide-actions <cmd>  # leave actions off the terminal; the log still records them
 ```
 
-`--dry-run` is useful for previewing what a command will do before committing to it.
+`--dry-run` is useful for previewing what a command will do before committing to it. `sync-branch` also takes `--allow-dirty`, after the command, to skip its clean worktree check.
 
 ---
 
-## Output legend
+## Output and log
 
-| Symbol | Color | Meaning |
-|---|---|---|
-| `○` | white | action starting |
-| `●` | green | action outcome |
-| `●` | red | error |
-| `→` | blue | command being run |
-| `→` | orange | skipped command (dry-run) |
-| `→` | gray | read-only lookup command |
-| `·` | gray | resolved value / context |
+Output comes from [huginn](https://github.com/AstroKriel/TerminalInterface). `git_helpers --help` ends with a style legend that explains each kind of line, e.g. `→ query:` for a git command that only reads the repo and `→ run:` for one that changes it. Every run is also logged to `~/.huginn_logs/git_helpers.log`, except dry runs.
 
 ---
 
 ## Run test suites
 
-Tests are run with `pytest`, and are broken into two categories. `utests/` tests the Python logic (argument parsing, config handling) without executing any git commands, and `vtests/` tests that the actual git operations produce the expected repo state.
+Tests are run with `pytest`, and are broken into two categories. `utests/` tests the Python logic (the command table and its arguments) without executing any git commands, and `vtests/` tests that the actual git operations produce the expected repo state.
 
 Run the full suite from the repo root:
 
@@ -209,9 +200,8 @@ uv run pytest vtests/
 GitHelpers/
 ├── src/
 │   └── git_helpers/
-│       ├── user_interface.py  # [entrypoint] argparse wiring and main()
+│       ├── user_interface.py  # [entrypoint] the command table and main()
 │       ├── repo_state.py  # [internal] repo state queries and guards
-│       ├── shell_interface.py  # [internal] config, logging, subprocess wrappers
 │       ├── commands/
 │       │   ├── git_config.py  # global git config commands
 │       │   ├── git_inspection.py  # read-only inspection commands

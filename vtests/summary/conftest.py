@@ -19,14 +19,22 @@ from vtests.helpers import GIT_USER, git, make_commit
 
 
 @pytest.fixture
-def scan_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def scan_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Path:
     """A temp directory with no .git; cwd is set here so scan-repos starts from a clean root."""
     monkeypatch.chdir(tmp_path)
     return tmp_path
 
 
-def make_repo_at(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
+def make_repo_at(
+    path: Path,
+) -> Path:
+    path.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
     git(["init", "-b", "main"], cwd=path)
     for key, val in GIT_USER.items():
         git(["config", key, val], cwd=path)
@@ -34,8 +42,13 @@ def make_repo_at(path: Path) -> Path:
     return path
 
 
-def make_bare_remote(path: Path) -> Path:
-    path.mkdir(parents=True, exist_ok=True)
+def make_bare_remote(
+    path: Path,
+) -> Path:
+    path.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
     git(["init", "--bare", "-b", "main"], cwd=path)
     return path
 
@@ -61,7 +74,9 @@ def set_submodule_ignore_all(
     git(["commit", "-m", f"set {sub_name} ignore = all"], cwd=repo)
 
 
-def enable_submodule_scanning(repo: Path) -> None:
+def enable_submodule_scanning(
+    repo: Path,
+) -> None:
     """Opt a repo into submodule scanning via the git-helpers.scan-submodules local config."""
     git(["config", "--local", "git-helpers.scan-submodules", "true"], cwd=repo)
 

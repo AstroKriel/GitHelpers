@@ -13,7 +13,6 @@ import pytest
 
 ## local
 from git_helpers.commands import git_inspection
-from git_helpers.shell_interface import Config
 from vtests import helpers as vtest_helpers
 
 ##
@@ -25,14 +24,14 @@ def test_show_recent_commits_runs_without_error(
     make_repo_: Path,
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=5)
-    git_inspection.show_recent_commits(Config(), max_entries=3)
+    git_inspection.show_recent_commits(max_entries=3)
 
 
 def test_show_recent_commits_default_max_entries(
     make_repo_: Path,
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=5)
-    git_inspection.show_recent_commits(Config())
+    git_inspection.show_recent_commits()
 
 
 def test_show_recent_commits_stat_includes_stat_flag(
@@ -40,7 +39,7 @@ def test_show_recent_commits_stat_includes_stat_flag(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=2)
-    git_inspection.show_recent_commits(Config(dry_run=True), show_files_changed=True)
+    git_inspection.show_recent_commits(show_files_changed=True)
     out = capsys.readouterr().err
     assert "--stat" in out
 
@@ -55,8 +54,12 @@ def test_ahead_behind_shows_correct_counts(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    vtest_helpers.make_commits(repo_dir, num_commits=2, prefix="local")
-    git_inspection.count_ahead_behind(Config())
+    vtest_helpers.make_commits(
+        repo_dir,
+        num_commits=2,
+        prefix="local",
+    )
+    git_inspection.count_ahead_behind()
     out = capsys.readouterr().out
     assert "ahead: 2" in out
     assert "behind: 0" in out
@@ -73,11 +76,15 @@ def test_ahead_behind_behind_counts(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, num_commits=3, prefix="remote")
+    vtest_helpers.make_commits(
+        second_dir,
+        num_commits=3,
+        prefix="remote",
+    )
     vtest_helpers.git(["push"], cwd=second_dir)
     ## fetch to update tracking refs without pulling
     vtest_helpers.git(["fetch"], cwd=repo_dir)
-    git_inspection.count_ahead_behind(Config())
+    git_inspection.count_ahead_behind()
     out = capsys.readouterr().out
     assert "ahead: 0" in out
     assert "behind: 3" in out
@@ -92,7 +99,7 @@ def test_local_remotes_lists_origin(
     make_repo_with_remote: tuple[Path, Path],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    git_inspection.show_local_remotes(Config())
+    git_inspection.show_local_remotes()
     out = capsys.readouterr().out
     assert "origin" in out
 
@@ -103,7 +110,7 @@ def test_local_remotes_lists_multiple_remotes(
 ) -> None:
     repo_dir, remote_dir = make_repo_with_remote
     vtest_helpers.git(["remote", "add", "upstream", str(remote_dir)], cwd=repo_dir)
-    git_inspection.show_local_remotes(Config())
+    git_inspection.show_local_remotes()
     out = capsys.readouterr().out
     assert "origin" in out
     assert "upstream" in out
@@ -125,37 +132,17 @@ def test_unpulled_commits_shows_remote_commits(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, num_commits=2, prefix="upstream commit")
+    vtest_helpers.make_commits(
+        second_dir,
+        num_commits=2,
+        prefix="upstream commit",
+    )
     vtest_helpers.git(["push"], cwd=second_dir)
-    git_inspection.show_unpulled_commits(Config())
+    git_inspection.show_unpulled_commits()
     ## the run_cmd output goes to the terminal (subprocess), but the function
     ## should complete without error; verify the remote commits exist
     result = vtest_helpers.git(["log", "--oneline", "HEAD..origin/main"], cwd=repo_dir)
     assert "upstream commit" in result.stdout
-
-
-##
-## === is-detached
-##
-
-
-def test_is_detached_exits_1_on_branch(
-    make_repo_: Path,
-) -> None:
-    with pytest.raises(SystemExit) as exc:
-        git_inspection.check_is_detached(Config())
-    assert exc.value.code == 1
-
-
-def test_is_detached_exits_0_when_detached(
-    make_repo_: Path,
-) -> None:
-    commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    ## detach HEAD by checking out a commit directly
-    subprocess.run(["git", "checkout", commit_hash], cwd=make_repo_, capture_output=True, check=True)
-    with pytest.raises(SystemExit) as exc:
-        git_inspection.check_is_detached(Config())
-    assert exc.value.code == 0
 
 
 ##
@@ -169,7 +156,7 @@ def test_show_diff_runs_without_error(
 ) -> None:
     (make_repo_ / "dirty.txt").write_text("change")
     vtest_helpers.git(["add", "dirty.txt"], cwd=make_repo_)
-    git_inspection.show_diff(Config(dry_run=True))
+    git_inspection.show_diff()
     out = capsys.readouterr().err
     assert "git diff --color=always HEAD" in out
 
@@ -180,7 +167,7 @@ def test_show_diff_with_path_scopes_command(
 ) -> None:
     (make_repo_ / "dirty.txt").write_text("change")
     vtest_helpers.git(["add", "dirty.txt"], cwd=make_repo_)
-    git_inspection.show_diff(Config(dry_run=True), path="dirty.txt")
+    git_inspection.show_diff(path="dirty.txt")
     out = capsys.readouterr().err
     assert "dirty.txt" in out
 
@@ -189,7 +176,7 @@ def test_show_diff_word_diff_includes_flag(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    git_inspection.show_diff(Config(dry_run=True), word_diff=True)
+    git_inspection.show_diff(word_diff=True)
     out = capsys.readouterr().err
     assert "--color-words" in out
 
@@ -198,7 +185,7 @@ def test_show_diff_omits_word_diff_flag_by_default(
     make_repo_: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    git_inspection.show_diff(Config(dry_run=True))
+    git_inspection.show_diff()
     out = capsys.readouterr().err
     assert "--color-words" not in out
 
@@ -214,7 +201,7 @@ def test_show_diff_untracked_runs_without_error(
     (make_repo_ / "new_file.txt").write_text("new content\n")
     ## real run: git diff --no-index exits 1 when a difference is found (the
     ## normal case here), so this must not raise despite the non-zero exit code
-    git_inspection.show_diff_untracked(Config(), path="new_file.txt")
+    git_inspection.show_diff_untracked(path="new_file.txt")
 
 
 def test_show_diff_untracked_diffs_against_dev_null(
@@ -222,7 +209,7 @@ def test_show_diff_untracked_diffs_against_dev_null(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     (make_repo_ / "new_file.txt").write_text("new content\n")
-    git_inspection.show_diff_untracked(Config(dry_run=True), path="new_file.txt")
+    git_inspection.show_diff_untracked(path="new_file.txt")
     out = capsys.readouterr().err
     assert "git diff --color=always --no-index /dev/null new_file.txt" in out
 
@@ -232,7 +219,10 @@ def test_show_diff_untracked_word_diff_includes_flag(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     (make_repo_ / "new_file.txt").write_text("new content\n")
-    git_inspection.show_diff_untracked(Config(dry_run=True), path="new_file.txt", word_diff=True)
+    git_inspection.show_diff_untracked(
+        path="new_file.txt",
+        word_diff=True,
+    )
     out = capsys.readouterr().err
     assert "--color-words" in out
 
@@ -249,7 +239,10 @@ def test_show_diff_committed_with_explicit_base(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=2)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="origin/main", no_fetch=True)
+    git_inspection.show_diff_committed(
+        base="origin/main",
+        no_fetch=True,
+    )
     out = capsys.readouterr().err
     assert "origin/main...HEAD" in out
 
@@ -261,7 +254,11 @@ def test_show_diff_committed_with_path(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="origin/main", no_fetch=True, path=".commit_counter")
+    git_inspection.show_diff_committed(
+        base="origin/main",
+        no_fetch=True,
+        path=".commit_counter",
+    )
     out = capsys.readouterr().err
     assert "origin/main...HEAD" in out
     assert ".commit_counter" in out
@@ -275,7 +272,7 @@ def test_show_diff_committed_infers_default_branch(
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True), no_fetch=True)
+    git_inspection.show_diff_committed(no_fetch=True)
     out = capsys.readouterr().err
     assert "origin/main...HEAD" in out
 
@@ -287,7 +284,7 @@ def test_show_diff_committed_fetches_by_default(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="origin/main")
+    git_inspection.show_diff_committed(base="origin/main")
     out = capsys.readouterr().err
     assert "git fetch" in out
 
@@ -297,7 +294,10 @@ def test_show_diff_committed_kills_when_base_not_remote_qualified(
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=make_repo_with_remote[0])
     with pytest.raises(SystemExit):
-        git_inspection.show_diff_committed(Config(), base="main", no_fetch=True)
+        git_inspection.show_diff_committed(
+            base="main",
+            no_fetch=True,
+        )
 
 
 def test_show_diff_committed_name_only_includes_flag(
@@ -307,7 +307,11 @@ def test_show_diff_committed_name_only_includes_flag(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="origin/main", name_only=True, no_fetch=True)
+    git_inspection.show_diff_committed(
+        base="origin/main",
+        name_only=True,
+        no_fetch=True,
+    )
     out = capsys.readouterr().err
     assert "--name-only" in out
 
@@ -316,7 +320,10 @@ def test_show_diff_committed_kills_when_on_base_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     with pytest.raises(SystemExit):
-        git_inspection.show_diff_committed(Config(), base="origin/main", no_fetch=True)
+        git_inspection.show_diff_committed(
+            base="origin/main",
+            no_fetch=True,
+        )
 
 
 def test_show_diff_committed_word_diff_includes_flag(
@@ -326,7 +333,11 @@ def test_show_diff_committed_word_diff_includes_flag(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_diff_committed(Config(dry_run=True), base="origin/main", no_fetch=True, word_diff=True)
+    git_inspection.show_diff_committed(
+        base="origin/main",
+        no_fetch=True,
+        word_diff=True,
+    )
     out = capsys.readouterr().err
     assert "--color-words" in out
 
@@ -343,7 +354,10 @@ def test_show_commits_on_branch_uses_two_dot_range(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=2)
-    git_inspection.show_commits_on_branch(Config(dry_run=True), base="origin/main", no_fetch=True)
+    git_inspection.show_commits_on_branch(
+        base="origin/main",
+        no_fetch=True,
+    )
     out = capsys.readouterr().err
     assert "origin/main..HEAD" in out
 
@@ -356,7 +370,7 @@ def test_show_commits_on_branch_infers_default_branch(
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_commits_on_branch(Config(dry_run=True), no_fetch=True)
+    git_inspection.show_commits_on_branch(no_fetch=True)
     out = capsys.readouterr().err
     assert "origin/main..HEAD" in out
 
@@ -368,7 +382,11 @@ def test_show_commits_on_branch_show_files_changed_includes_stat(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_commits_on_branch(Config(dry_run=True), base="origin/main", show_files_changed=True, no_fetch=True)
+    git_inspection.show_commits_on_branch(
+        base="origin/main",
+        show_files_changed=True,
+        no_fetch=True,
+    )
     out = capsys.readouterr().err
     assert "--stat" in out
 
@@ -380,7 +398,7 @@ def test_show_commits_on_branch_fetches_by_default(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.make_commits(repo_dir, num_commits=1)
-    git_inspection.show_commits_on_branch(Config(dry_run=True), base="origin/main")
+    git_inspection.show_commits_on_branch(base="origin/main")
     out = capsys.readouterr().err
     assert "git fetch" in out
 
@@ -389,7 +407,10 @@ def test_show_commits_on_branch_kills_when_on_base_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     with pytest.raises(SystemExit):
-        git_inspection.show_commits_on_branch(Config(), base="origin/main", no_fetch=True)
+        git_inspection.show_commits_on_branch(
+            base="origin/main",
+            no_fetch=True,
+        )
 
 
 def test_show_commits_on_branch_kills_when_base_not_remote_qualified(
@@ -397,7 +418,10 @@ def test_show_commits_on_branch_kills_when_base_not_remote_qualified(
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=make_repo_with_remote[0])
     with pytest.raises(SystemExit):
-        git_inspection.show_commits_on_branch(Config(), base="main", no_fetch=True)
+        git_inspection.show_commits_on_branch(
+            base="main",
+            no_fetch=True,
+        )
 
 
 ##
@@ -410,9 +434,9 @@ def test_show_diff_last_committed_uses_correct_refs(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=3)
-    git_inspection.show_diff_last(Config(dry_run=True), num_commits=3)
+    git_inspection.show_diff_last(num_commits=3)
     out = capsys.readouterr().err
-    assert "HEAD~3 HEAD" in out
+    assert "'HEAD~3' HEAD" in out
 
 
 def test_show_diff_last_include_uncommitted_omits_head_arg(
@@ -420,10 +444,13 @@ def test_show_diff_last_include_uncommitted_omits_head_arg(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=2)
-    git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, include_uncommitted=True)
+    git_inspection.show_diff_last(
+        num_commits=2,
+        include_uncommitted=True,
+    )
     out = capsys.readouterr().err
-    assert "HEAD~2" in out
-    assert "HEAD~2 HEAD" not in out
+    assert "'HEAD~2'" in out
+    assert "'HEAD~2' HEAD" not in out
 
 
 def test_show_diff_last_with_path_scopes_command(
@@ -431,7 +458,10 @@ def test_show_diff_last_with_path_scopes_command(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=2)
-    git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, path=".commit_counter")
+    git_inspection.show_diff_last(
+        num_commits=2,
+        path=".commit_counter",
+    )
     out = capsys.readouterr().err
     assert "HEAD~2" in out
     assert ".commit_counter" in out
@@ -441,7 +471,7 @@ def test_show_diff_last_kills_on_zero_commits(
     make_repo_: Path,
 ) -> None:
     with pytest.raises(SystemExit):
-        git_inspection.show_diff_last(Config(), num_commits=0)
+        git_inspection.show_diff_last(num_commits=0)
 
 
 def test_show_diff_last_word_diff_includes_flag(
@@ -449,7 +479,10 @@ def test_show_diff_last_word_diff_includes_flag(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=2)
-    git_inspection.show_diff_last(Config(dry_run=True), num_commits=2, word_diff=True)
+    git_inspection.show_diff_last(
+        num_commits=2,
+        word_diff=True,
+    )
     out = capsys.readouterr().err
     assert "--color-words" in out
 
@@ -465,7 +498,10 @@ def test_show_commit_word_diff_includes_flag(
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=1)
     commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    git_inspection.show_commit(Config(dry_run=True), commit=commit_hash, word_diff=True)
+    git_inspection.show_commit(
+        commit=commit_hash,
+        word_diff=True,
+    )
     out = capsys.readouterr().err
     assert "--color-words" in out
 
@@ -476,7 +512,7 @@ def test_show_commit_omits_word_diff_flag_by_default(
 ) -> None:
     vtest_helpers.make_commits(make_repo_, num_commits=1)
     commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    git_inspection.show_commit(Config(dry_run=True), commit=commit_hash)
+    git_inspection.show_commit(commit=commit_hash)
     out = capsys.readouterr().err
     assert "--color-words" not in out
 
@@ -491,7 +527,7 @@ def test_show_current_commit_hash_prints_correct_hash(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    git_inspection.show_current_commit_hash(Config())
+    git_inspection.show_current_commit_hash()
     out = capsys.readouterr().out
     assert commit_hash in out
 
@@ -506,7 +542,7 @@ def test_show_commit_info_omits_fetch_when_already_local(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=make_repo_).stdout.strip()
-    git_inspection.show_commit_info(Config(dry_run=True), commit=commit_hash)
+    git_inspection.show_commit_info(commit=commit_hash)
     out = capsys.readouterr().err
     assert "git fetch" not in out
     assert commit_hash in out
@@ -522,10 +558,14 @@ def test_show_commit_info_fetches_when_not_local(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, num_commits=1, prefix="remote-only")
+    vtest_helpers.make_commits(
+        second_dir,
+        num_commits=1,
+        prefix="remote-only",
+    )
     vtest_helpers.git(["push"], cwd=second_dir)
     commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
-    git_inspection.show_commit_info(Config(dry_run=True), commit=commit_hash)
+    git_inspection.show_commit_info(commit=commit_hash)
     out = capsys.readouterr().err
     assert "git fetch" in out
 
@@ -539,11 +579,15 @@ def test_show_commit_info_real_fetch_makes_commit_available_locally(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, num_commits=1, prefix="remote-only")
+    vtest_helpers.make_commits(
+        second_dir,
+        num_commits=1,
+        prefix="remote-only",
+    )
     vtest_helpers.git(["push"], cwd=second_dir)
     commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=second_dir).stdout.strip()
     ## real (non-dry) run: must actually fetch the commit into repo_dir
-    git_inspection.show_commit_info(Config(), commit=commit_hash)
+    git_inspection.show_commit_info(commit=commit_hash)
     result = subprocess.run(
         ["git", "cat-file", "-e", f"{commit_hash}^{{commit}}"],
         cwd=repo_dir,

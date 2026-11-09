@@ -12,7 +12,6 @@ import pytest
 
 ## local
 from git_helpers.commands import git_sync
-from git_helpers.shell_interface import Config
 from vtests import helpers as vtest_helpers
 
 ##
@@ -27,7 +26,7 @@ def test_sync_branch_fails_with_dirty_worktree(
     (repo_dir / "dirty.txt").write_text("uncommitted change")
     vtest_helpers.git(["add", "dirty.txt"], cwd=repo_dir)
     with pytest.raises(SystemExit):
-        git_sync.cmd_sync_branch(Config())
+        git_sync.cmd_sync_branch(allow_dirty=False)
 
 
 def test_sync_branch_proceeds_with_allow_dirty(
@@ -37,7 +36,7 @@ def test_sync_branch_proceeds_with_allow_dirty(
     (repo_dir / "dirty.txt").write_text("uncommitted change")
     vtest_helpers.git(["add", "dirty.txt"], cwd=repo_dir)
     ## no remote commits to pull - just verify the dirty check is skipped
-    git_sync.cmd_sync_branch(Config(allow_dirty=True))
+    git_sync.cmd_sync_branch(allow_dirty=True)
 
 
 def test_sync_branch_pulls_remote_commits(
@@ -50,11 +49,15 @@ def test_sync_branch_pulls_remote_commits(
     vtest_helpers.git(["clone", str(remote_dir), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commits(second_dir, num_commits=2, prefix="remote commit")
+    vtest_helpers.make_commits(
+        second_dir,
+        num_commits=2,
+        prefix="remote commit",
+    )
     vtest_helpers.git(["push"], cwd=second_dir)
     ## sync should bring those commits into the local repo
     commit_hash_before = vtest_helpers.head_commit_hash(repo_dir)
-    git_sync.cmd_sync_branch(Config())
+    git_sync.cmd_sync_branch(allow_dirty=False)
     commit_hash_after = vtest_helpers.head_commit_hash(repo_dir)
     assert commit_hash_before != commit_hash_after
 
@@ -65,7 +68,11 @@ def test_sync_branch_with_explicit_base(
     repo_dir, _ = make_repo_with_remote
     ## create a feature branch with some commits
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
-    vtest_helpers.make_commits(repo_dir, num_commits=2, prefix="feature")
+    vtest_helpers.make_commits(
+        repo_dir,
+        num_commits=2,
+        prefix="feature",
+    )
     vtest_helpers.git(["push", "-u", "origin", "feature"], cwd=repo_dir)
     ## add commits to main on remote
     second_dir = repo_dir.parent / "second"
@@ -73,10 +80,17 @@ def test_sync_branch_with_explicit_base(
     vtest_helpers.git(["clone", str(repo_dir.parent / "remote.git"), str(second_dir)], cwd=repo_dir.parent)
     for key, val in [("user.name", "Test Dummy"), ("user.email", "TestDummy@bla.com")]:
         vtest_helpers.git(["config", key, val], cwd=second_dir)
-    vtest_helpers.make_commit(second_dir, msg="main update", filename=".main_counter")
+    vtest_helpers.make_commit(
+        second_dir,
+        msg="main update",
+        filename=".main_counter",
+    )
     vtest_helpers.git(["push"], cwd=second_dir)
     ## sync feature branch against origin/main
-    git_sync.cmd_sync_branch(Config(), "origin/main")
+    git_sync.cmd_sync_branch(
+        base_name="origin/main",
+        allow_dirty=False,
+    )
 
 
 ##
@@ -88,7 +102,7 @@ def test_rename_last_commit_changes_msg(
     make_repo_: Path,
 ) -> None:
     original_msg = vtest_helpers.current_commit_msg(make_repo_)
-    git_sync.cmd_rename_last_commit(Config(), ["new", "commit", "message"])
+    git_sync.cmd_rename_last_commit(msg=["new", "commit", "message"])
     assert vtest_helpers.current_commit_msg(make_repo_) == "new commit message"
     assert vtest_helpers.current_commit_msg(make_repo_) != original_msg
 
@@ -96,7 +110,7 @@ def test_rename_last_commit_changes_msg(
 def test_rename_last_commit_joins_words(
     make_repo_: Path,
 ) -> None:
-    git_sync.cmd_rename_last_commit(Config(), ["fix", "typo", "in", "readme"])
+    git_sync.cmd_rename_last_commit(msg=["fix", "typo", "in", "readme"])
     assert vtest_helpers.current_commit_msg(make_repo_) == "fix typo in readme"
 
 
@@ -105,7 +119,7 @@ def test_rename_last_commit_preserves_hash_prefix(
 ) -> None:
     ## amend changes the commit hash; verify it actually changed
     commit_hash_before = vtest_helpers.head_commit_hash(make_repo_)
-    git_sync.cmd_rename_last_commit(Config(), ["amended"])
+    git_sync.cmd_rename_last_commit(msg=["amended"])
     commit_hash_after = vtest_helpers.head_commit_hash(make_repo_)
     assert commit_hash_before != commit_hash_after
 
@@ -120,7 +134,7 @@ def test_amend_last_includes_staged_changes(
 ) -> None:
     (make_repo_ / "staged.txt").write_text("new content")
     vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
-    git_sync.cmd_amend_last_commit(Config(), [])
+    git_sync.cmd_amend_last_commit(msg=[])
     files_in_last_commit = vtest_helpers.git(
         ["show", "--name-only", "--format=", "HEAD"],
         cwd=make_repo_,
@@ -133,7 +147,7 @@ def test_amend_last_with_msg_updates_msg(
 ) -> None:
     (make_repo_ / "staged.txt").write_text("content")
     vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
-    git_sync.cmd_amend_last_commit(Config(), ["updated", "message"])
+    git_sync.cmd_amend_last_commit(msg=["updated", "message"])
     assert vtest_helpers.current_commit_msg(make_repo_) == "updated message"
 
 
@@ -143,7 +157,7 @@ def test_amend_last_without_msg_keeps_msg(
     original_msg = vtest_helpers.current_commit_msg(make_repo_)
     (make_repo_ / "staged.txt").write_text("content")
     vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
-    git_sync.cmd_amend_last_commit(Config(), [])
+    git_sync.cmd_amend_last_commit(msg=[])
     assert vtest_helpers.current_commit_msg(make_repo_) == original_msg
 
 
@@ -153,7 +167,7 @@ def test_amend_last_changes_hash(
     (make_repo_ / "staged.txt").write_text("content")
     vtest_helpers.git(["add", "staged.txt"], cwd=make_repo_)
     commit_hash_before = vtest_helpers.head_commit_hash(make_repo_)
-    git_sync.cmd_amend_last_commit(Config(), [])
+    git_sync.cmd_amend_last_commit(msg=[])
     assert vtest_helpers.head_commit_hash(make_repo_) != commit_hash_before
 
 
@@ -168,7 +182,7 @@ def test_push_sets_upstream_when_none(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "no-upstream"], cwd=repo_dir)
     vtest_helpers.make_commit(repo_dir, msg="branch commit")
-    git_sync.cmd_push(Config(), [])
+    git_sync.cmd_push(extra_args=[])
     upstream = vtest_helpers.git(
         ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
         cwd=repo_dir,
@@ -182,7 +196,7 @@ def test_push_with_existing_upstream_pushes_commit(
     repo_dir, remote_dir = make_repo_with_remote
     vtest_helpers.make_commit(repo_dir, msg="new commit")
     local_commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=repo_dir).stdout.strip()
-    git_sync.cmd_push(Config(), [])
+    git_sync.cmd_push(extra_args=[])
     remote_commit_hash = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
     assert local_commit_hash == remote_commit_hash
 
@@ -199,7 +213,7 @@ def test_push_with_mismatched_upstream_creates_new_remote_branch(
     ## upstream still points at origin/main; local branch name is 'feature/thing'
     vtest_helpers.git(["branch", "--set-upstream-to=origin/main", "feature/thing"], cwd=repo_dir)
     vtest_helpers.make_commit(repo_dir, msg="feature commit")
-    git_sync.cmd_push(Config(), [])
+    git_sync.cmd_push(extra_args=[])
     ## upstream must now be the same-named remote branch
     new_upstream = vtest_helpers.upstream_of(repo_dir, "feature/thing")
     assert new_upstream == "origin/feature/thing"

@@ -7,12 +7,27 @@
 ## stdlib
 from pathlib import Path
 
+## personal
+from huginn import manage_cli
+
 ## local
-from git_helpers.commands import git_branches
-from git_helpers.commands import git_sync
-from git_helpers.commands import git_worktrees
-from git_helpers.shell_interface import Config
+from git_helpers import user_interface
 from vtests import helpers as vtest_helpers
+
+##
+## === HELPERS
+##
+
+
+def _run_dry(
+    cmd_argv: list[str],
+) -> None:
+    argv = ["--dry-run", *cmd_argv]
+    manage_cli.run_cli(
+        command_line_tool=user_interface.COMMAND_LINE_TOOL,
+        argv=argv,
+    )
+
 
 ##
 ## === TESTS
@@ -26,7 +41,7 @@ def test_dry_run_delete_branch_leaves_branch_intact(
     vtest_helpers.make_commit(make_repo_, msg="dry commit")
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
     vtest_helpers.git(["merge", "dry-target"], cwd=make_repo_)
-    git_branches.cmd_delete_local_branch(Config(dry_run=True), "dry-target")
+    _run_dry(["delete-local-branch", "dry-target"])
     assert "dry-target" in vtest_helpers.local_branches(make_repo_)
 
 
@@ -34,7 +49,7 @@ def test_dry_run_rename_last_commit_leaves_msg_unchanged(
     make_repo_: Path,
 ) -> None:
     original_msg = vtest_helpers.current_commit_msg(make_repo_)
-    git_sync.cmd_rename_last_commit(Config(dry_run=True), ["completely", "different", "message"])
+    _run_dry(["rename-last-commit", "completely", "different", "message"])
     assert vtest_helpers.current_commit_msg(make_repo_) == original_msg
 
 
@@ -42,7 +57,7 @@ def test_dry_run_rename_last_commit_leaves_hash_unchanged(
     make_repo_: Path,
 ) -> None:
     commit_hash_before = vtest_helpers.head_commit_hash(make_repo_)
-    git_sync.cmd_rename_last_commit(Config(dry_run=True), ["new", "message"])
+    _run_dry(["rename-last-commit", "new", "message"])
     assert vtest_helpers.head_commit_hash(make_repo_) == commit_hash_before
 
 
@@ -60,7 +75,7 @@ def test_dry_run_sync_branch_leaves_head_unchanged(
     vtest_helpers.git(["push"], cwd=second_dir)
     ## dry-run sync should leave HEAD where it is
     commit_hash_before = vtest_helpers.head_commit_hash(repo_dir)
-    git_sync.cmd_sync_branch(Config(dry_run=True))
+    _run_dry(["sync-branch"])
     assert vtest_helpers.head_commit_hash(repo_dir) == commit_hash_before
 
 
@@ -75,7 +90,7 @@ def test_dry_run_push_does_not_push(
     repo_dir, remote_dir = make_repo_with_remote
     remote_commit_hash_before = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
     vtest_helpers.make_commit(repo_dir, msg="local only")
-    git_sync.cmd_push(Config(dry_run=True), [])
+    _run_dry(["push"])
     remote_commit_hash_after = vtest_helpers.git(["rev-parse", "HEAD"], cwd=remote_dir).stdout.strip()
     assert remote_commit_hash_before == remote_commit_hash_after
 
@@ -95,7 +110,7 @@ def test_dry_run_create_branch_from_remote_creates_no_branch(
 ) -> None:
     repo_dir, _ = make_repo_with_remote
     before = vtest_helpers.local_branches(repo_dir)
-    git_branches.cmd_create_branch_from_remote(Config(dry_run=True), "new-feature", "origin/main")
+    _run_dry(["create-branch-from-remote", "new-feature", "origin/main"])
     assert vtest_helpers.local_branches(repo_dir) == before
 
 
@@ -103,7 +118,7 @@ def test_dry_run_track_remote_branch_creates_no_branch(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    git_branches.cmd_track_remote_branch(Config(dry_run=True), "origin/main", "tracked-main")
+    _run_dry(["track-remote-branch", "origin/main", "tracked-main"])
     assert "tracked-main" not in vtest_helpers.local_branches(repo_dir)
 
 
@@ -113,7 +128,7 @@ def test_dry_run_create_branch_from_default_creates_no_branch(
     repo_dir, _ = make_repo_with_remote
     ## set-head tells git which branch is the remote default (normally set by clone)
     vtest_helpers.git(["remote", "set-head", "origin", "main"], cwd=repo_dir)
-    git_branches.cmd_create_branch_from_default(Config(dry_run=True), "new-feature")
+    _run_dry(["create-branch-from-default", "new-feature"])
     assert "new-feature" not in vtest_helpers.local_branches(repo_dir)
 
 
@@ -126,7 +141,7 @@ def test_dry_run_create_worktree_with_base_creates_no_worktree(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    git_worktrees.cmd_create_worktree(Config(dry_run=True), "feature", base_ref="origin/main")
+    _run_dry(["create-worktree", "feature", "--base", "origin/main"])
     worktree_path = repo_dir.parent / f"{repo_dir.name}-worktrees" / "feature"
     assert not worktree_path.exists()
     assert "feature" not in vtest_helpers.local_branches(repo_dir)

@@ -4,8 +4,11 @@
 ## === DEPENDENCIES
 ##
 
+## personal
+from huginn import manage_log, manage_shell
+
 ## local
-from git_helpers import shell_interface, repo_state
+from git_helpers import repo_state
 
 ##
 ## === HELPERS
@@ -25,9 +28,9 @@ def _detect_default_branch_from_local(
         "--short",
         "refs/remotes/origin/HEAD",
     ]
-    result = shell_interface.query_cmd(
-        cmd=cmd_detect_local_branch,
-        error_on_failure=False,
+    result = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_detect_local_branch,
+        raise_error=False,
     )
     if not result:
         return None
@@ -49,9 +52,9 @@ def _read_gitmodules_branch(
         "--get-regexp",
         r"submodule\..*\.path",
     ]
-    path_entries = shell_interface.query_cmd(
-        cmd=cmd_read_gitmodules_paths,
-        error_on_failure=False,
+    path_entries = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_read_gitmodules_paths,
+        raise_error=False,
     )
     for line in path_entries.splitlines():
         key, _, value = line.partition(" ")
@@ -67,9 +70,9 @@ def _read_gitmodules_branch(
             ".gitmodules",
             f"submodule.{name}.branch",
         ]
-        branch = shell_interface.query_cmd(
-            cmd=cmd_read_gitmodules_branch,
-            error_on_failure=False,
+        branch = manage_shell.query_cmd_and_capture_output(
+            cmd_parts=cmd_read_gitmodules_branch,
+            raise_error=False,
         )
         return branch or None
     return None
@@ -88,9 +91,9 @@ def _detect_default_branch_from_url(
         url,
         "HEAD",
     ]
-    result = shell_interface.query_cmd(
-        cmd=cmd_detect_remote_branch,
-        error_on_failure=False,
+    result = manage_shell.query_cmd_and_capture_output(
+        cmd_parts=cmd_detect_remote_branch,
+        raise_error=False,
     )
     for line in result.splitlines():
         if line.startswith("ref:") and "HEAD" in line:
@@ -106,12 +109,10 @@ def _detect_default_branch_from_url(
 ##
 
 
-def cmd_update_submodules(
-    config: shell_interface.Config,
-) -> None:
+def cmd_update_submodules() -> None:
     """Pull the latest commits for all submodules from their tracked branches."""
     repo_state.require_repo()
-    shell_interface.log_step("updating all submodules to latest on their tracked branch")
+    manage_log.log_task("updating all submodules to latest on their tracked branch")
     ## `--remote` fetches from each submodule's remote and checks out the latest
     ## commit on the tracked branch (set in .gitmodules via `branch = main`).
     ## `--recursive` handles nested submodules.
@@ -122,40 +123,32 @@ def cmd_update_submodules(
         "--remote",
         "--recursive",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_pull_submodule,
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_pull_submodule)
+    manage_log.log_outcome(
+        "all submodules updated to latest",
+        status=manage_log.OutcomeStatus.SUCCESS,
     )
-    shell_interface.log_outcome("all submodules updated to latest")
 
 
 def cmd_fix_submodule(
-    config: shell_interface.Config,
+    *,
     submodule_path: str,
-    branch: str | None,
+    branch: str | None = None,
 ) -> None:
     """Repair a submodule stuck in detached HEAD: checkout default branch, pull, bump parent pointer."""
     repo_state.require_repo()
-    shell_interface.bind_var(
-        var_name="submodule_path",
-        var_value=submodule_path,
-    )
     if branch is None:
-        shell_interface.log_step("reading tracked branch from .gitmodules")
+        manage_log.log_task("reading tracked branch from .gitmodules")
         branch = _read_gitmodules_branch(submodule_path)
     if branch is None:
-        shell_interface.log_step("detecting default branch of the submodule")
+        manage_log.log_task("detecting default branch of the submodule")
         branch = _detect_default_branch_from_local(submodule_path)
     if branch is None:
-        shell_interface.kill(
+        manage_log.exit_with_error(
             f"could not detect tracked branch for '{submodule_path}'; "
             "pass it explicitly: fix-submodule <path> <branch>",
         )
-    shell_interface.bind_var(
-        var_name="branch",
-        var_value=branch,
-    )
-    shell_interface.log_step(f"checking out {branch} inside the submodule")
+    manage_log.log_task(f"checking out {branch} inside the submodule")
     ## `git -C <path>` runs the command as if cwd were <path>; avoids needing
     ## to actually cd in and out of the submodule directory.
     cmd_checkout_branch = [
@@ -165,75 +158,55 @@ def cmd_fix_submodule(
         "checkout",
         branch,
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_checkout_branch,
-    )
-    shell_interface.log_step("pulling latest commits inside the submodule")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_checkout_branch)
+    manage_log.log_task("pulling latest commits inside the submodule")
     cmd_pull_submodule = [
         "git",
         "-C",
         submodule_path,
         "pull",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_pull_submodule,
-    )
-    shell_interface.log_step("staging updated submodule pointer in parent repo")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_pull_submodule)
+    manage_log.log_task("staging updated submodule pointer in parent repo")
     ## staging the submodule path tells the parent to record the new HEAD commit hash.
     cmd_stage_submodule = [
         "git",
         "add",
         submodule_path,
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_stage_submodule,
-    )
-    shell_interface.log_step("committing updated pointer in parent repo")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_stage_submodule)
+    manage_log.log_task("committing updated pointer in parent repo")
     cmd_commit_pointer = [
         "git",
         "commit",
         "-m",
         f"fix: update {submodule_path} pointer after repair",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_commit_pointer,
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_commit_pointer)
+    manage_log.log_outcome(
+        f"repaired '{submodule_path}' and bumped parent pointer",
+        status=manage_log.OutcomeStatus.SUCCESS,
+        items={"branch": branch},
     )
-    shell_interface.log_outcome(f"repaired '{submodule_path}' and bumped parent pointer")
 
 
 def cmd_add_submodule(
-    config: shell_interface.Config,
+    *,
     url: str,
     local_name: str,
-    branch: str | None,
+    branch: str | None = None,
 ) -> None:
     """Add a new submodule, pin it to track its default branch, and commit .gitmodules + pointer."""
     repo_state.require_repo()
-    shell_interface.bind_var(
-        var_name="url",
-        var_value=url,
-    )
-    shell_interface.bind_var(
-        var_name="local_name",
-        var_value=local_name,
-    )
     if branch is None:
-        shell_interface.log_step("detecting default branch from remote")
+        manage_log.log_task("detecting default branch from remote")
         branch = _detect_default_branch_from_url(url)
         if branch is None:
-            shell_interface.kill(
+            manage_log.exit_with_error(
                 f"could not detect default branch for '{url}'; "
                 "pass it explicitly: add-submodule <url> <name> <branch>",
             )
-    shell_interface.bind_var(
-        var_name="branch",
-        var_value=branch,
-    )
-    shell_interface.log_step("adding submodule")
+    manage_log.log_task("adding submodule")
     ## `submodule add` clones the remote into <local_name> and registers it in .gitmodules.
     cmd_add_submodule = [
         "git",
@@ -242,11 +215,8 @@ def cmd_add_submodule(
         url,
         local_name,
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_add_submodule,
-    )
-    shell_interface.log_step(f"setting tracked branch to {branch} in .gitmodules")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_add_submodule)
+    manage_log.log_task(f"setting tracked branch to {branch} in .gitmodules")
     ## record `branch = <branch>` so `git submodule update --remote` knows which
     ## branch to follow when pulling new commits.
     cmd_set_gitmodules_branch = [
@@ -257,33 +227,28 @@ def cmd_add_submodule(
         f"submodule.{local_name}.branch",
         branch,
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_set_gitmodules_branch,
-    )
-    shell_interface.log_step("staging .gitmodules and submodule pointer")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_gitmodules_branch)
+    manage_log.log_task("staging .gitmodules and submodule pointer")
     cmd_stage_gitmodules = [
         "git",
         "add",
         ".gitmodules",
         local_name,
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_stage_gitmodules,
-    )
-    shell_interface.log_step("committing")
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_stage_gitmodules)
+    manage_log.log_task("committing")
     cmd_commit_submodule = [
         "git",
         "commit",
         "-m",
         f"add {local_name} submodule",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_commit_submodule,
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_commit_submodule)
+    manage_log.log_outcome(
+        f"added submodule '{local_name}' tracking {branch}",
+        status=manage_log.OutcomeStatus.SUCCESS,
+        items={"url": url},
     )
-    shell_interface.log_outcome(f"added submodule '{local_name}' tracking {branch}")
 
 
 ## } MODULE

@@ -14,7 +14,6 @@ import pytest
 ## local
 from git_helpers.commands import git_sync
 from git_helpers.commands import git_worktrees
-from git_helpers.shell_interface import Config
 from vtests import helpers as vtest_helpers
 
 ##
@@ -22,7 +21,10 @@ from vtests import helpers as vtest_helpers
 ##
 
 
-def worktree_path_for(repo_dir: Path, branch_name: str) -> Path:
+def worktree_path_for(
+    repo_dir: Path,
+    branch_name: str,
+) -> Path:
     """Return the expected default worktree path for a branch (sibling of repo_dir)."""
     branch_slug = branch_name.replace("/", "-")
     return repo_dir.parent / f"{repo_dir.name}-worktrees" / branch_slug
@@ -38,7 +40,7 @@ def test_create_worktree_creates_directory(
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=make_repo_)
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
-    git_worktrees.cmd_create_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
     assert worktree_path_for(make_repo_, "feature").is_dir()
 
 
@@ -51,7 +53,7 @@ def test_create_worktree_sets_upstream_when_remote_branch_exists(
     vtest_helpers.git(["push", "origin", "feature"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
     assert vtest_helpers.upstream_of(repo_dir, "feature") == ""
-    git_worktrees.cmd_create_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
     assert vtest_helpers.upstream_of(repo_dir, "feature") == "origin/feature"
 
 
@@ -61,7 +63,7 @@ def test_create_worktree_no_upstream_when_remote_branch_missing(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
-    git_worktrees.cmd_create_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
     assert vtest_helpers.upstream_of(repo_dir, "feature") == ""
 
 
@@ -70,14 +72,17 @@ def test_create_worktree_no_upstream_when_no_remote(
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=make_repo_)
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
-    git_worktrees.cmd_create_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
     assert vtest_helpers.upstream_of(make_repo_, "feature") == ""
 
 
 def test_create_worktree_with_base_creates_new_branch(
     make_repo_: Path,
 ) -> None:
-    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="main")
+    git_worktrees.cmd_create_worktree(
+        branch_name="feature",
+        base="main",
+    )
     assert worktree_path_for(make_repo_, "feature").is_dir()
     assert "feature" in vtest_helpers.local_branches(make_repo_)
 
@@ -85,7 +90,10 @@ def test_create_worktree_with_base_creates_new_branch(
 def test_create_worktree_with_base_does_not_switch_current_checkout(
     make_repo_: Path,
 ) -> None:
-    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="main")
+    git_worktrees.cmd_create_worktree(
+        branch_name="feature",
+        base="main",
+    )
     ## the base clone this command was run from must stay on its original branch
     result = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=make_repo_)
     assert result.stdout.strip() == "main"
@@ -95,10 +103,13 @@ def test_create_worktree_with_base_does_not_track_remote_base_ref(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     repo_dir, _ = make_repo_with_remote
-    ## base_ref is remote-qualified; without --no-track, git would auto-track it,
+    ## base is remote-qualified; without --no-track, git would auto-track it,
     ## which is wrong: the new branch should track its own remote counterpart
     ## once pushed, not the ref it was branched from
-    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="origin/main")
+    git_worktrees.cmd_create_worktree(
+        branch_name="feature",
+        base="origin/main",
+    )
     assert vtest_helpers.upstream_of(repo_dir, "feature") == ""
 
 
@@ -109,11 +120,14 @@ def test_create_worktree_with_base_then_push_sets_correct_upstream(
     repo_dir, _ = make_repo_with_remote
     ## a --base-created branch starts untracked (see test above); pushing from
     ## inside its worktree must still land it on origin/<branch_name>, not the
-    ## base_ref it was forked from
-    git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="origin/main")
+    ## base it was forked from
+    git_worktrees.cmd_create_worktree(
+        branch_name="feature",
+        base="origin/main",
+    )
     worktree_path = worktree_path_for(repo_dir, "feature")
     monkeypatch.chdir(worktree_path)
-    git_sync.cmd_push(Config(), [])
+    git_sync.cmd_push(extra_args=[])
     assert vtest_helpers.upstream_of(worktree_path, "feature") == "origin/feature"
 
 
@@ -122,7 +136,10 @@ def test_create_worktree_with_base_fails_when_branch_already_exists(
 ) -> None:
     vtest_helpers.git(["branch", "feature"], cwd=make_repo_)
     with pytest.raises(subprocess.CalledProcessError):
-        git_worktrees.cmd_create_worktree(Config(), "feature", base_ref="main")
+        git_worktrees.cmd_create_worktree(
+            branch_name="feature",
+            base="main",
+        )
 
 
 ##
@@ -136,10 +153,10 @@ def test_remove_worktree_removes_directory(
     repo_dir, _ = make_repo_with_remote
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
-    git_worktrees.cmd_create_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
     worktree_path = worktree_path_for(repo_dir, "feature")
     assert worktree_path.is_dir()
-    git_worktrees.cmd_remove_worktree(Config(), "feature")
+    git_worktrees.cmd_remove_worktree(branch_name="feature")
     assert not worktree_path.exists()
 
 
@@ -150,8 +167,8 @@ def test_remove_worktree_deletes_branch_when_merged(
     ## branch has no commits beyond main, so -d succeeds
     vtest_helpers.git(["checkout", "-b", "feature"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
-    git_worktrees.cmd_create_worktree(Config(), "feature")
-    git_worktrees.cmd_remove_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
+    git_worktrees.cmd_remove_worktree(branch_name="feature")
     assert "feature" not in vtest_helpers.local_branches(repo_dir)
 
 
@@ -165,10 +182,10 @@ def test_remove_worktree_force_deletes_when_remote_branch_gone(
     vtest_helpers.make_commit(repo_dir, msg="feature work")
     vtest_helpers.git(["push", "-u", "origin", "feature"], cwd=repo_dir)
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
-    git_worktrees.cmd_create_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
     ## delete the remote branch (as GitHub does after a squash merge)
     vtest_helpers.git(["push", "origin", "--delete", "feature"], cwd=repo_dir)
-    git_worktrees.cmd_remove_worktree(Config(), "feature")
+    git_worktrees.cmd_remove_worktree(branch_name="feature")
     assert "feature" not in vtest_helpers.local_branches(repo_dir)
 
 
@@ -184,8 +201,8 @@ def test_remove_worktree_keeps_branch_when_remote_still_exists(
     vtest_helpers.git(["push", "-u", "origin", "feature"], cwd=repo_dir)
     vtest_helpers.make_commit(repo_dir, msg="unpushed work")
     vtest_helpers.git(["checkout", "main"], cwd=repo_dir)
-    git_worktrees.cmd_create_worktree(Config(), "feature")
-    git_worktrees.cmd_remove_worktree(Config(), "feature")
+    git_worktrees.cmd_create_worktree(branch_name="feature")
+    git_worktrees.cmd_remove_worktree(branch_name="feature")
     worktree_path = worktree_path_for(repo_dir, "feature")
     assert not worktree_path.exists()
     assert "feature" in vtest_helpers.local_branches(repo_dir)
@@ -195,7 +212,7 @@ def test_remove_worktree_fails_when_no_worktree_found(
     make_repo_with_remote: tuple[Path, Path],
 ) -> None:
     with pytest.raises(SystemExit):
-        git_worktrees.cmd_remove_worktree(Config(), "nonexistent-branch")
+        git_worktrees.cmd_remove_worktree(branch_name="nonexistent-branch")
 
 
 ##
@@ -207,7 +224,7 @@ def test_rename_branch_renames_branch(
     make_repo_: Path,
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "old-name"], cwd=make_repo_)
-    git_worktrees.cmd_rename_branch(Config(), "new-name")
+    git_worktrees.cmd_rename_branch(new_name="new-name")
     assert "new-name" in vtest_helpers.local_branches(make_repo_)
     assert "old-name" not in vtest_helpers.local_branches(make_repo_)
 
@@ -218,13 +235,13 @@ def test_rename_branch_moves_worktree_directory(
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "old/name"], cwd=make_repo_)
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
-    git_worktrees.cmd_create_worktree(Config(), "old/name")
+    git_worktrees.cmd_create_worktree(branch_name="old/name")
     old_worktree_path = worktree_path_for(make_repo_, "old/name")
     assert old_worktree_path.is_dir()
     ## rename-branch operates on the current branch; switch cwd into the linked
     ## worktree (old/name is already checked out there, so checkout from main fails)
     monkeypatch.chdir(old_worktree_path)
-    git_worktrees.cmd_rename_branch(Config(), "new/name")
+    git_worktrees.cmd_rename_branch(new_name="new/name")
     new_worktree_path = worktree_path_for(make_repo_, "new/name")
     assert not old_worktree_path.exists()
     assert new_worktree_path.is_dir()
@@ -236,10 +253,10 @@ def test_rename_branch_relinks_worktree(
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "old/name"], cwd=make_repo_)
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
-    git_worktrees.cmd_create_worktree(Config(), "old/name")
+    git_worktrees.cmd_create_worktree(branch_name="old/name")
     old_worktree_path = worktree_path_for(make_repo_, "old/name")
     monkeypatch.chdir(old_worktree_path)
-    git_worktrees.cmd_rename_branch(Config(), "new/name")
+    git_worktrees.cmd_rename_branch(new_name="new/name")
     new_worktree_path = worktree_path_for(make_repo_, "new/name")
     ## verify git sees the worktree correctly after repair
     result = vtest_helpers.git(["worktree", "list", "--porcelain"], cwd=make_repo_)
@@ -252,14 +269,14 @@ def test_rename_branch_aborts_when_target_path_exists(
 ) -> None:
     vtest_helpers.git(["checkout", "-b", "old/name"], cwd=make_repo_)
     vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
-    git_worktrees.cmd_create_worktree(Config(), "old/name")
+    git_worktrees.cmd_create_worktree(branch_name="old/name")
     old_worktree_path = worktree_path_for(make_repo_, "old/name")
     ## pre-create the target path to trigger the pre-flight check
     target = worktree_path_for(make_repo_, "new/name")
     target.mkdir(parents=True)
     monkeypatch.chdir(old_worktree_path)
     with pytest.raises(SystemExit):
-        git_worktrees.cmd_rename_branch(Config(), "new/name")
+        git_worktrees.cmd_rename_branch(new_name="new/name")
     ## branch must be unchanged
     assert "old/name" in vtest_helpers.local_branches(make_repo_)
 

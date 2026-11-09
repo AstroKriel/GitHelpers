@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12, <3.14"
 
 [[package]]
@@ -16,7 +16,7 @@ name = "git-helpers"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "rich" },
+    { name = "huginn" },
 ]
 
 [package.dev-dependencies]
@@ -25,10 +25,18 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "rich", specifier = ">=13.0" }]
+requires-dist = [{ name = "huginn", git = "https://github.com/AstroKriel/TerminalInterface.git?rev=db0adb9d7fdfc0bb0636c1b2905b29b6bca8bd8e" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
+
+[[package]]
+name = "huginn"
+version = "0.1.0"
+source = { git = "https://github.com/AstroKriel/TerminalInterface.git?rev=db0adb9d7fdfc0bb0636c1b2905b29b6bca8bd8e#db0adb9d7fdfc0bb0636c1b2905b29b6bca8bd8e" }
+dependencies = [
+    { name = "rich" },
+]
 
 [[package]]
 name = "iniconfig"

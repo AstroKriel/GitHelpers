@@ -4,17 +4,15 @@
 ## === DEPENDENCIES
 ##
 
-## local
-from git_helpers import shell_interface
+## personal
+from huginn import manage_log, manage_shell
 
 ##
 ## === GIT CONFIGURATION
 ##
 
 
-def cmd_set_global_config(
-    config: shell_interface.Config,
-) -> None:
+def cmd_set_global_config() -> None:
     """Write pull-rebase and FF-first merge defaults, enable rerere, and set the default branch to main, in ~/.gitconfig."""
     ## pull.rebase=true: when pulling, replay local commits on top of the
     ## remote instead of creating a merge commit. Keeps history linear and
@@ -26,10 +24,7 @@ def cmd_set_global_config(
         "pull.rebase",
         "true",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_set_pull_rebase,
-    )
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_pull_rebase)
     ## pull.ff=true + merge.ff=true: prefer fast-forward when the histories
     ## are linear; only create a merge commit when branches have actually diverged.
     cmd_set_pull_ff = [
@@ -39,10 +34,7 @@ def cmd_set_global_config(
         "pull.ff",
         "true",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_set_pull_ff,
-    )
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_pull_ff)
     cmd_set_merge_ff = [
         "git",
         "config",
@@ -50,10 +42,7 @@ def cmd_set_global_config(
         "merge.ff",
         "true",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_set_merge_ff,
-    )
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_merge_ff)
     ## rerere (Reuse Recorded Resolution): git remembers how you resolved a
     ## conflict and re-applies the same resolution automatically next time.
     cmd_set_rerere = [
@@ -63,10 +52,7 @@ def cmd_set_global_config(
         "rerere.enabled",
         "true",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_set_rerere,
-    )
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_rerere)
     ## init.defaultBranch=main: `git init` and clones of empty remotes start
     ## on `main` instead of the built-in `master`.
     cmd_set_default_branch = [
@@ -76,16 +62,14 @@ def cmd_set_global_config(
         "init.defaultBranch",
         "main",
     ]
-    shell_interface.run_cmd(
-        config=config,
-        cmd=cmd_set_default_branch,
+    manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_default_branch)
+    manage_log.log_outcome(
+        "installed pull-rebase, FF-first merge, and default-branch defaults globally in ~/.gitconfig",
+        status=manage_log.OutcomeStatus.SUCCESS,
     )
-    shell_interface.log_outcome("installed pull-rebase, FF-first merge, and default-branch defaults globally in ~/.gitconfig")
 
 
-def show_global_config(
-    _config: shell_interface.Config,
-) -> None:
+def show_global_config() -> None:
     """Print the current values of the git settings this module relies on."""
 
     ## inner helper to read one config key; returns "(unset)" rather than
@@ -100,13 +84,13 @@ def show_global_config(
             "--get",
             key,
         ]
-        raw_value = shell_interface.query_cmd(
-            cmd=cmd_read_global_config,
-            error_on_failure=False,
+        raw_value = manage_shell.query_cmd_and_capture_output(
+            cmd_parts=cmd_read_global_config,
+            raise_error=False,
         )
         return raw_value or "(unset)"
 
-    shell_interface.log_step("global git configuration:")
+    manage_log.log_task("global git configuration:")
     for key in [
             "pull.rebase",
             "pull.ff",
@@ -115,25 +99,14 @@ def show_global_config(
             "init.defaultBranch",
     ]:
         ## `{key:<18}` left-aligns the key in an 18-char field so values line up.
-        shell_interface.log_result(f"\t{key:<18} = {read_config_value(key)}")
-    shell_interface.bind_var(
-        var_name="tip",
-        var_value="edit directly via 'git config --global --edit' or run 'git_helpers set-global-config'",
+        manage_log.log_return(f"\t{key:<18} = {read_config_value(key)}")
+    manage_log.log_note(
+        "to change these settings",
+        items={
+            "edit by hand": "git config --global --edit",
+            "install defaults": "git_helpers set-global-config",
+        },
     )
-
-
-def check_self(
-    _config: shell_interface.Config,
-) -> None:
-    """Verify that git is available on PATH."""
-    ## verify git is on PATH before any other operation that would rely on it.
-    cmd_check_git = [
-        "which",
-        "git",
-    ]
-    if shell_interface.probe_cmd(cmd_check_git) != 0:
-        shell_interface.kill("git not found in PATH")
-    shell_interface.log_outcome("selfcheck passed")
 
 
 ## } MODULE

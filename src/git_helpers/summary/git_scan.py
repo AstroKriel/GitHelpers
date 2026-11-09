@@ -12,8 +12,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-## local
-from git_helpers import shell_interface
+## personal
+from huginn import manage_log, manage_shell
 
 ##
 ## === DATA
@@ -49,11 +49,18 @@ def _find_repos(
     max_depth: int,
 ) -> list[Path]:
     results: list[Path] = []
-    _walk(path=root, max_depth=max_depth, depth=0, results=results)
+    _walk(
+        path=root,
+        max_depth=max_depth,
+        depth=0,
+        results=results,
+    )
     return sorted(results)
 
 
-def _should_scan_submodules(repo_path: Path) -> bool:
+def _should_scan_submodules(
+    repo_path: Path,
+) -> bool:
     result = subprocess.run(
         ["git", "config", "--local", "git-helpers.scan-submodules"],
         cwd=repo_path,
@@ -63,7 +70,9 @@ def _should_scan_submodules(repo_path: Path) -> bool:
     return result.stdout.strip() == "true"
 
 
-def _active_submodule_paths(repo_path: Path) -> list[Path]:
+def _active_submodule_paths(
+    repo_path: Path,
+) -> list[Path]:
     gitmodules = repo_path / ".gitmodules"
     if not gitmodules.exists():
         return []
@@ -91,14 +100,24 @@ def _walk(
         if _should_scan_submodules(path):
             for sub_path in _active_submodule_paths(path):
                 if sub_path.is_dir():
-                    _walk(path=sub_path, max_depth=max_depth, depth=depth, results=results)
+                    _walk(
+                        path=sub_path,
+                        max_depth=max_depth,
+                        depth=depth,
+                        results=results,
+                    )
         return
     if depth >= max_depth:
         return
     try:
         for child in sorted(path.iterdir()):
             if child.is_dir() and not child.name.startswith("."):
-                _walk(path=child, max_depth=max_depth, depth=depth + 1, results=results)
+                _walk(
+                    path=child,
+                    max_depth=max_depth,
+                    depth=depth + 1,
+                    results=results,
+                )
     except PermissionError:
         pass
 
@@ -112,7 +131,12 @@ def _query(
     cmd: list[str],
     cwd: Path,
 ) -> str:
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
     return result.stdout.strip()
 
 
@@ -139,7 +163,12 @@ def _get_repo_status(
     dirty_files = len([line for line in dirty_output.splitlines() if line.strip()])
 
     ref_output = _query(
-        ["git", "for-each-ref", "--format=%(refname:short) %(upstream:track) %(upstream:remotename)", "refs/heads/"],
+        [
+            "git",
+            "for-each-ref",
+            "--format=%(refname:short) %(upstream:track) %(upstream:remotename)",
+            "refs/heads/",
+        ],
         path,
     )
     diverged: list[_BranchStatus] = []
@@ -160,12 +189,14 @@ def _get_repo_status(
         commits_ahead = int(ahead_match.group(1)) if ahead_match else 0
         commits_behind = int(behind_match.group(1)) if behind_match else 0
         if commits_ahead or commits_behind:
-            diverged.append(_BranchStatus(
-                name=branch_name,
-                upstream_remote=remote_name,
-                commits_ahead=commits_ahead,
-                commits_behind=commits_behind,
-            ))
+            diverged.append(
+                _BranchStatus(
+                    name=branch_name,
+                    upstream_remote=remote_name,
+                    commits_ahead=commits_ahead,
+                    commits_behind=commits_behind,
+                ),
+            )
 
     log_output = _query(["git", "log", "-1", "--format=%cr\n%ct"], path)
     lines = log_output.splitlines()
@@ -200,23 +231,27 @@ def _print_repo_status(
     *,
     status: _RepoStatus,
 ) -> None:
-    shell_interface.log_step(str(status.path))
-    shell_interface.bind_var(var_name="last commit", var_value=status.last_commit_rel)
+    manage_log.log_task(str(status.path))
+    items: dict[str, str] = {"last commit": status.last_commit_rel}
     if status.commits_in_window:
-        shell_interface.bind_var(var_name="commits", var_value=str(status.commits_in_window))
+        items["commits"] = str(status.commits_in_window)
     if status.dirty_files:
-        shell_interface.bind_var(var_name="dirty", var_value=f"{status.dirty_files} file(s)")
+        items["dirty"] = f"{status.dirty_files} file(s)"
+    unpushed_branches: list[str] = []
+    unpulled_branches: list[str] = []
     for branch in status.diverged:
         if branch.commits_ahead:
-            shell_interface.bind_var(
-                var_name="unpushed",
-                var_value=f"{branch.name} ({branch.commits_ahead} commit(s) ahead)",
-            )
+            unpushed_branches.append(f"{branch.name} ({branch.commits_ahead} commit(s) ahead)")
         if branch.commits_behind:
-            shell_interface.bind_var(
-                var_name="unpulled",
-                var_value=f"{branch.name} ({branch.commits_behind} commit(s) behind)",
-            )
+            unpulled_branches.append(f"{branch.name} ({branch.commits_behind} commit(s) behind)")
+    if unpushed_branches:
+        items["unpushed"] = ", ".join(unpushed_branches)
+    if unpulled_branches:
+        items["unpulled"] = ", ".join(unpulled_branches)
+    manage_log.log_note(
+        "repo state",
+        items=items,
+    )
 
 
 ##
@@ -233,7 +268,6 @@ def _get_current_branch(
 
 def _do_pull(
     *,
-    config: shell_interface.Config,
     path: Path,
     status: _RepoStatus,
     current_branch: str,
@@ -246,20 +280,22 @@ def _do_pull(
         if branch.commits_behind == 0 or branch.commits_ahead > 0:
             return False
         if status.dirty_files > 0:
-            shell_interface.bind_var(
-                var_name="pull skipped",
-                var_value=f"{branch.name} (dirty worktree)",
+            manage_log.log_outcome(
+                "did not pull: dirty worktree",
+                status=manage_log.OutcomeStatus.SKIPPED,
+                items={"branch": branch.name},
             )
             return False
-        success = shell_interface.try_run_cmd(
-            config=config,
-            cmd=["git", "pull", "--ff-only"],
-            cwd=path,
+        success = manage_shell.run_cmd_and_show_output(
+            cmd_parts=["git", "pull", "--ff-only"],
+            working_directory=path,
+            raise_error=False,
         )
         if not success:
-            shell_interface.bind_var(
-                var_name="pull failed",
-                var_value=f"{branch.name} (cannot fast-forward; manual intervention needed)",
+            manage_log.log_outcome(
+                "cannot fast-forward pull; manual intervention needed",
+                status=manage_log.OutcomeStatus.FAILURE,
+                items={"branch": branch.name},
             )
         return success
     return False
@@ -267,24 +303,24 @@ def _do_pull(
 
 def _do_push(
     *,
-    config: shell_interface.Config,
     path: Path,
     status: _RepoStatus,
 ) -> int:
     pushed = 0
     for branch in status.diverged:
         if branch.commits_ahead > 0 and branch.commits_behind == 0 and branch.upstream_remote:
-            success = shell_interface.try_run_cmd(
-                config=config,
-                cmd=["git", "push", branch.upstream_remote, branch.name],
-                cwd=path,
+            success = manage_shell.run_cmd_and_show_output(
+                cmd_parts=["git", "push", branch.upstream_remote, branch.name],
+                working_directory=path,
+                raise_error=False,
             )
             if success:
                 pushed += 1
             else:
-                shell_interface.bind_var(
-                    var_name="push failed",
-                    var_value=branch.name,
+                manage_log.log_outcome(
+                    "could not push branch",
+                    status=manage_log.OutcomeStatus.FAILURE,
+                    items={"branch": branch.name},
                 )
     return pushed
 
@@ -295,32 +331,46 @@ def _do_push(
 
 
 def scan_repos(
-    config: shell_interface.Config,
+    *,
     depth: int,
     since: int | None = None,
-    is_fetch_skipped: bool = False,
-    is_pulling: bool = False,
-    is_pushing: bool = False,
+    no_fetch: bool = False,
+    pull: bool = False,
+    push: bool = False,
 ) -> None:
     """Scan for git repos from CWD and report dirty, unpushed, and recently active ones; count commits per repo when --since is given."""
-    if is_fetch_skipped and (is_pulling or is_pushing):
-        shell_interface.kill("--pull and --push require a fetch; remove --no-fetch")
+    if no_fetch and (pull or push):
+        manage_log.exit_with_error("--pull and --push require a fetch; remove --no-fetch")
     root = Path.cwd()
-    shell_interface.log_step(f"scanning from {root} (depth {depth})")
-    repos = _find_repos(root=root, max_depth=depth)
-    shell_interface.bind_var(var_name="repos_found", var_value=str(len(repos)))
+    manage_log.log_task(f"scanning from {root} (depth {depth})")
+    repos = _find_repos(
+        root=root,
+        max_depth=depth,
+    )
     if not repos:
-        shell_interface.log_outcome("no git repos found")
+        manage_log.log_outcome(
+            "no git repos found",
+            status=manage_log.OutcomeStatus.SKIPPED,
+        )
         return
+    scan_items: dict[str, str] = {"repos": str(len(repos))}
     if since is not None:
-        shell_interface.bind_var(var_name="since_days", var_value=str(since))
-    is_fetching = not is_fetch_skipped
+        scan_items["since"] = f"{since} days"
+    manage_log.log_note(
+        "found git repos",
+        items=scan_items,
+    )
+    is_fetching = not no_fetch
     dirty_count = 0
     unpushed_count = 0
     unpulled_count = 0
     anything_shown = False
     for repo in repos:
-        status = _get_repo_status(path=repo, is_fetching=is_fetching, since=since)
+        status = _get_repo_status(
+            path=repo,
+            is_fetching=is_fetching,
+            since=since,
+        )
         if status.dirty_files:
             dirty_count += 1
         if any(b.commits_ahead for b in status.diverged):
@@ -329,26 +379,42 @@ def scan_repos(
             unpulled_count += 1
         should_show = (
             status.last_commit_age_days <= since
-            if since is not None
-            else bool(status.dirty_files or status.diverged)
+            if since is not None else bool(status.dirty_files or status.diverged)
         )
         if should_show:
             _print_repo_status(status=status)
             anything_shown = True
-            if is_pulling:
+            if pull:
                 current_branch = _get_current_branch(repo)
-                _do_pull(config=config, path=repo, status=status, current_branch=current_branch)
-            if is_pushing:
-                _do_push(config=config, path=repo, status=status)
+                _do_pull(
+                    path=repo,
+                    status=status,
+                    current_branch=current_branch,
+                )
+            if push:
+                _do_push(
+                    path=repo,
+                    status=status,
+                )
     if not anything_shown:
-        shell_interface.log_outcome("all repos are clean and synced")
+        manage_log.log_outcome(
+            "all repos are clean and synced",
+            status=manage_log.OutcomeStatus.SUCCESS,
+        )
         return
     summary_parts = [f"{len(repos)} repos scanned", f"{dirty_count} dirty repos"]
     if unpushed_count:
         summary_parts.append(f"{unpushed_count} with unpushed commits")
     if unpulled_count:
         summary_parts.append(f"{unpulled_count} with unpulled commits")
-    shell_interface.log_outcome("; ".join(summary_parts))
+    if (dirty_count > 0) or (unpushed_count > 0) or (unpulled_count > 0):
+        summary_status = manage_log.OutcomeStatus.WARNING
+    else:
+        summary_status = manage_log.OutcomeStatus.SUCCESS
+    manage_log.log_outcome(
+        "; ".join(summary_parts),
+        status=summary_status,
+    )
 
 
 ## } MODULE
