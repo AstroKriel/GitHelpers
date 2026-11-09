@@ -196,11 +196,11 @@ def count_ahead_behind() -> None:
         "--count",
         f"HEAD...{upstream_name}",
     ]
-    ahead_behind_counts = manage_shell.query_cmd_and_capture_output(
+    ahead_behind_output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_count_ahead_behind,
         raise_error=True,
     )
-    ahead_count, behind_count = ahead_behind_counts.split()
+    ahead_count, behind_count = ahead_behind_output.split()
     manage_log.log_return(f"ahead: {ahead_count}; behind: {behind_count}")
 
 
@@ -248,11 +248,11 @@ def show_local_remotes() -> None:
         "remote",
         "-v",
     ]
-    remotes_output = manage_shell.query_cmd_and_capture_output(
+    output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_list_remotes,
         raise_error=True,
     )
-    for line in sorted(set(remotes_output.splitlines())):
+    for line in sorted(set(output.splitlines())):
         manage_log.log_return(line)
 
 
@@ -264,23 +264,22 @@ def show_commits_on_branch(
 ) -> None:
     """Show commits on the current branch that are not on the base branch; fetches first by default."""
     repo_state.require_repo()
-    remote = repo_state.get_default_remote_name()
+    remote_name = repo_state.get_default_remote_name()
     if not no_fetch:
-        manage_log.log_task(f"fetching from {remote}")
-        manage_shell.run_cmd_and_show_output(
-            cmd_parts=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
-        )
+        manage_log.log_task(f"fetching from {remote_name}")
+        cmd_fetch_remote = ["git", "fetch", "--no-recurse-submodules", "--quiet", remote_name]
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_remote)
     if base:
         if "/" not in base:
             manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
         remote_base = base
     else:
-        inferred = repo_state.get_default_branch_name(remote_name=remote)
-        if not inferred:
+        default_branch_name = repo_state.get_default_branch_name(remote_name=remote_name)
+        if default_branch_name is None:
             manage_log.exit_with_error(
                 "could not infer default branch; pass base explicitly, e.g. origin/main",
             )
-        remote_base = f"{remote}/{inferred}"
+        remote_base = f"{remote_name}/{default_branch_name}"
     branch_name = repo_state.find_current_branch_name()
     base_branch = remote_base.split("/", 1)[-1]
     if branch_name == base_branch:
@@ -292,15 +291,15 @@ def show_commits_on_branch(
     else:
         head_label = f"'{branch_name}'"
     manage_log.log_task(f"showing commits on {head_label} not in '{remote_base}'")
-    cmd = [
+    cmd_show_branch_commits = [
         "git",
         "log",
         f"{remote_base}..HEAD",
         "--format=%C(auto)%h %C(cyan)%as (%ar)%C(reset) %s%C(auto)%d",
     ]
     if show_files_changed:
-        cmd.append("--stat")
-    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
+        cmd_show_branch_commits.append("--stat")
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_branch_commits)
 
 
 def show_recent_commits(
@@ -334,10 +333,10 @@ def show_diff(
     """Show all local changes vs HEAD (staged, unstaged, and uncommitted)."""
     repo_state.require_repo()
     manage_log.log_task("showing local changes vs HEAD")
-    cmd = ["git", "diff", *_diff_color_args(word_diff), "HEAD"]
+    cmd_show_diff = ["git", "diff", *_diff_color_args(word_diff), "HEAD"]
     if path:
-        cmd += ["--", path]
-    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
+        cmd_show_diff += ["--", path]
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_diff)
 
 
 def show_diff_untracked(
@@ -353,9 +352,9 @@ def show_diff_untracked(
     ## as an addition. It exits 1 when a difference is found (the expected
     ## outcome here), so pass `raise_error=False` to avoid treating that as a
     ## command failure.
-    cmd = ["git", "diff", *_diff_color_args(word_diff), "--no-index", "/dev/null", path]
+    cmd_show_untracked_diff = ["git", "diff", *_diff_color_args(word_diff), "--no-index", "/dev/null", path]
     manage_shell.query_cmd_and_show_output(
-        cmd_parts=cmd,
+        cmd_parts=cmd_show_untracked_diff,
         raise_error=False,
     )
 
@@ -370,23 +369,22 @@ def show_diff_committed(
 ) -> None:
     """Show all committed changes on the current branch vs a base branch; fetches first by default."""
     repo_state.require_repo()
-    remote = repo_state.get_default_remote_name()
+    remote_name = repo_state.get_default_remote_name()
     if not no_fetch:
-        manage_log.log_task(f"fetching from {remote}")
-        manage_shell.run_cmd_and_show_output(
-            cmd_parts=["git", "fetch", "--no-recurse-submodules", "--quiet", remote],
-        )
+        manage_log.log_task(f"fetching from {remote_name}")
+        cmd_fetch_remote = ["git", "fetch", "--no-recurse-submodules", "--quiet", remote_name]
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_remote)
     if base:
         if "/" not in base:
             manage_log.exit_with_error("base must be remote-qualified, e.g. origin/main")
         remote_base = base
     else:
-        inferred = repo_state.get_default_branch_name(remote_name=remote)
-        if not inferred:
+        default_branch_name = repo_state.get_default_branch_name(remote_name=remote_name)
+        if default_branch_name is None:
             manage_log.exit_with_error(
                 "could not infer default branch; pass base explicitly, e.g. origin/main",
             )
-        remote_base = f"{remote}/{inferred}"
+        remote_base = f"{remote_name}/{default_branch_name}"
     branch_name = repo_state.find_current_branch_name()
     base_branch = remote_base.split("/", 1)[-1]
     if branch_name == base_branch:
@@ -395,12 +393,12 @@ def show_diff_committed(
             "; use show-diff-n-commits N for commit-range diffs",
         )
     manage_log.log_task(f"showing committed changes vs '{remote_base}'")
-    cmd = ["git", "diff", *_diff_color_args(word_diff), f"{remote_base}...HEAD"]
+    cmd_show_committed_diff = ["git", "diff", *_diff_color_args(word_diff), f"{remote_base}...HEAD"]
     if name_only:
-        cmd.append("--name-only")
+        cmd_show_committed_diff.append("--name-only")
     if path:
-        cmd += ["--", path]
-    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
+        cmd_show_committed_diff += ["--", path]
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_committed_diff)
 
 
 def show_commit(
@@ -411,8 +409,8 @@ def show_commit(
     """Show the message and diff introduced by a specific commit."""
     repo_state.require_repo()
     manage_log.log_task(f"showing changes introduced by {commit}")
-    cmd = ["git", "show", *_diff_color_args(word_diff), commit]
-    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
+    cmd_show_commit = ["git", "show", *_diff_color_args(word_diff), commit]
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_commit)
 
 
 def show_commit_info(
@@ -424,9 +422,10 @@ def show_commit_info(
     manage_log.log_task(f"checking whether '{commit}' is available locally")
     cmd_check_local = ["git", "cat-file", "-e", f"{commit}^{{commit}}"]
     if manage_shell.query_cmd_and_discard_output(cmd_parts=cmd_check_local) != 0:
-        remote = repo_state.get_default_remote_name()
-        manage_log.log_task(f"not found locally; fetching '{commit}' from {remote}")
-        manage_shell.run_cmd_and_show_output(cmd_parts=["git", "fetch", remote, commit])
+        remote_name = repo_state.get_default_remote_name()
+        manage_log.log_task(f"not found locally; fetching '{commit}' from {remote_name}")
+        cmd_fetch_commit = ["git", "fetch", remote_name, commit]
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_fetch_commit)
     manage_log.log_task(f"showing info for '{commit}'")
     cmd_show_commit_info = [
         "git",
@@ -451,13 +450,13 @@ def show_diff_last(
         manage_log.exit_with_error("num_commits must be at least 1")
     if include_uncommitted:
         manage_log.log_task(f"showing changes over last {num_commits} commits including local changes")
-        cmd = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}"]
+        cmd_show_recent_diff = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}"]
     else:
         manage_log.log_task(f"showing committed changes over last {num_commits} commits")
-        cmd = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}", "HEAD"]
+        cmd_show_recent_diff = ["git", "diff", *_diff_color_args(word_diff), f"HEAD~{num_commits}", "HEAD"]
     if path:
-        cmd += ["--", path]
-    manage_shell.query_cmd_and_show_output(cmd_parts=cmd)
+        cmd_show_recent_diff += ["--", path]
+    manage_shell.query_cmd_and_show_output(cmd_parts=cmd_show_recent_diff)
 
 
 def show_submodules_status() -> None:
@@ -472,12 +471,12 @@ def show_submodules_status() -> None:
         "submodule",
         "status",
     ]
-    submodules_output = manage_shell.query_cmd_and_capture_output(
+    output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_submodule_status,
         raise_error=False,
     )
-    if submodules_output:
-        submodule_lines = submodules_output.splitlines()
+    if output:
+        submodule_lines = output.splitlines()
     else:
         submodule_lines = [
             "no submodules or not initialized",

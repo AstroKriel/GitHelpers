@@ -129,7 +129,7 @@ def test_fix_submodule_with_explicit_branch_restores_tracked_branch(
     _, sub_dir = make_repo_with_submodule
     git_submodules.cmd_fix_submodule(
         submodule_path="sub",
-        branch="main",
+        branch_name="main",
     )
     branch = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
@@ -141,7 +141,7 @@ def test_fix_submodule_with_explicit_branch_commits_pointer_in_parent(
     parent, _ = make_repo_with_submodule
     git_submodules.cmd_fix_submodule(
         submodule_path="sub",
-        branch="main",
+        branch_name="main",
     )
     msg = vtest_helpers.git(["log", "-1", "--format=%s"], cwd=parent).stdout.strip()
     assert msg == "fix: update sub pointer after repair"
@@ -156,7 +156,7 @@ def test_fix_submodule_reads_branch_from_gitmodules(
     vtest_helpers.git(["remote", "set-head", "origin", "--delete"], cwd=sub_dir)
     git_submodules.cmd_fix_submodule(
         submodule_path="sub",
-        branch=None,
+        branch_name=None,
     )
     branch = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
@@ -169,7 +169,7 @@ def test_fix_submodule_falls_back_to_origin_head_when_gitmodules_has_no_branch(
     _, sub_dir = make_repo_with_submodule
     git_submodules.cmd_fix_submodule(
         submodule_path="sub",
-        branch=None,
+        branch_name=None,
     )
     branch = vtest_helpers.git(["rev-parse", "--abbrev-ref", "HEAD"], cwd=sub_dir).stdout.strip()
     assert branch == "main"
@@ -184,7 +184,7 @@ def test_fix_submodule_exits_when_branch_not_detectable(
     with pytest.raises(SystemExit):
         git_submodules.cmd_fix_submodule(
             submodule_path="sub",
-            branch=None,
+            branch_name=None,
         )
 
 
@@ -204,7 +204,7 @@ def test_add_submodule_with_explicit_branch_creates_directory(
     git_submodules.cmd_add_submodule(
         url=str(sub_remote),
         local_name="sub",
-        branch="main",
+        branch_name="main",
     )
     assert (make_repo_ / "sub").is_dir()
 
@@ -220,7 +220,7 @@ def test_add_submodule_with_explicit_branch_writes_gitmodules(
     git_submodules.cmd_add_submodule(
         url=str(sub_remote),
         local_name="sub",
-        branch="main",
+        branch_name="main",
     )
     gitmodules = (make_repo_ / ".gitmodules").read_text()
     assert "branch = main" in gitmodules
@@ -237,7 +237,7 @@ def test_add_submodule_with_explicit_branch_creates_commit(
     git_submodules.cmd_add_submodule(
         url=str(sub_remote),
         local_name="sub",
-        branch="main",
+        branch_name="main",
     )
     msg = vtest_helpers.git(["log", "-1", "--format=%s"], cwd=make_repo_).stdout.strip()
     assert msg == "add sub submodule"
@@ -254,7 +254,7 @@ def test_add_submodule_auto_detects_branch_from_remote(
     git_submodules.cmd_add_submodule(
         url=str(sub_remote),
         local_name="sub",
-        branch=None,
+        branch_name=None,
     )
     gitmodules = (make_repo_ / ".gitmodules").read_text()
     assert "branch = main" in gitmodules
@@ -268,7 +268,7 @@ def test_add_submodule_exits_before_cloning_when_branch_not_detectable(
         git_submodules.cmd_add_submodule(
             url=str(tmp_path / "does_not_exist"),
             local_name="sub",
-            branch=None,
+            branch_name=None,
         )
     ## the submodule directory must not exist: the command exited before changing anything
     assert not (make_repo_ / "sub").exists()

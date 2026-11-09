@@ -50,11 +50,11 @@ def _get_cached_facts() -> _CachedFacts:
         "--show-toplevel",
         "--absolute-git-dir",
     ]
-    repo_paths_output = manage_shell.query_cmd_and_capture_output(
+    output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_find_repo,
         raise_error=False,
     )
-    repo_paths = repo_paths_output.splitlines()
+    repo_paths = output.splitlines()
     if len(repo_paths) != 2:
         manage_log.exit_with_error("not inside a git repo")
     _cached_facts = _CachedFacts(
@@ -78,11 +78,11 @@ def get_remote_names() -> list[str]:
             "git",
             "remote",
         ]
-        remotes_output = manage_shell.query_cmd_and_capture_output(
+        output = manage_shell.query_cmd_and_capture_output(
             cmd_parts=cmd_list_remotes,
             raise_error=True,
         )
-        cached_facts.remote_names = remotes_output.splitlines()
+        cached_facts.remote_names = output.splitlines()
     return cached_facts.remote_names
 
 
@@ -108,20 +108,20 @@ def list_worktrees() -> list[dict[str, str]]:
         raise_error=True,
     )
     worktrees: list[dict[str, str]] = []
-    current: dict[str, str] = {}
+    current_worktree: dict[str, str] = {}
     for line in output.splitlines():
         if line.startswith("worktree "):
-            current = {"path": line[len("worktree "):]}
+            current_worktree = {"path": line[len("worktree "):]}
         elif line.startswith("HEAD "):
-            current["head"] = line[len("HEAD "):]
+            current_worktree["head"] = line[len("HEAD "):]
         elif line.startswith("branch "):
             branch_ref = line[len("branch "):]
-            current["branch"] = branch_ref.removeprefix("refs/heads/")
-        elif line == "" and current:
-            worktrees.append(current)
-            current = {}
-    if current:
-        worktrees.append(current)
+            current_worktree["branch"] = branch_ref.removeprefix("refs/heads/")
+        elif (line == "") and current_worktree:
+            worktrees.append(current_worktree)
+            current_worktree = {}
+    if current_worktree:
+        worktrees.append(current_worktree)
     return worktrees
 
 
@@ -131,7 +131,7 @@ def branches_with_worktrees() -> set[str]:
     A branch checked out in a worktree may have real, uncommitted or untracked work sitting
     in that worktree that no commit-ancestry check (e.g. `git branch --merged`) can see.
     """
-    return {worktree["branch"] for worktree in list_worktrees() if "branch" in worktree}
+    return {_worktree["branch"] for _worktree in list_worktrees() if "branch" in _worktree}
 
 
 def find_default_remote_name() -> str | None:
@@ -230,11 +230,11 @@ def find_upstream(
         "--format=%(upstream:remotename)%00%(upstream:remoteref)",
         f"refs/heads/{branch_name}",
     ]
-    upstream_output = manage_shell.query_cmd_and_capture_output(
+    output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_read_upstream,
         raise_error=True,
     )
-    remote_name, _, remote_ref = upstream_output.partition("\0")
+    remote_name, _, remote_ref = output.partition("\0")
     if not remote_name:
         return None
     return Upstream(

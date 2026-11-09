@@ -565,7 +565,7 @@ COMMAND_LINE_TOOL = manage_cli.CommandLineTool(
                             input_value_type=InputValueTypes.PATHSPEC,
                         ),
                         cmd_args.PositionalArgument(
-                            param_name="branch",
+                            param_name="branch_name",
                             description="the branch to check out (default: detected from the submodule)",
                             input_value_type=InputValueTypes.BRANCH,
                             allowed_num_input_values=cmd_args.AllowedNumInputValues.ZERO_OR_ONE,
@@ -588,7 +588,7 @@ COMMAND_LINE_TOOL = manage_cli.CommandLineTool(
                             input_value_type=InputValueTypes.TEXT,
                         ),
                         cmd_args.PositionalArgument(
-                            param_name="branch",
+                            param_name="branch_name",
                             description="the branch to track (default: the default branch of the repo)",
                             input_value_type=InputValueTypes.BRANCH,
                             allowed_num_input_values=cmd_args.AllowedNumInputValues.ZERO_OR_ONE,

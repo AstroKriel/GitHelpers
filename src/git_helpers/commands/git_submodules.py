@@ -28,14 +28,14 @@ def _detect_default_branch_from_local(
         "--short",
         "refs/remotes/origin/HEAD",
     ]
-    result = manage_shell.query_cmd_and_capture_output(
+    output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_detect_local_branch,
         raise_error=False,
     )
-    if not result:
+    if not output:
         return None
-    _, _, branch = result.partition("/")
-    return branch or None
+    _, _, branch_name = output.partition("/")
+    return branch_name or None
 
 
 def _read_gitmodules_branch(
@@ -62,19 +62,19 @@ def _read_gitmodules_branch(
             continue
         ## key is "submodule.<name>.path"; strip prefix and suffix to extract <name>.
         ## avoids splitting on "." so names containing dots are handled correctly.
-        name = key.removeprefix("submodule.").removesuffix(".path")
+        submodule_name = key.removeprefix("submodule.").removesuffix(".path")
         cmd_read_gitmodules_branch = [
             "git",
             "config",
             "-f",
             ".gitmodules",
-            f"submodule.{name}.branch",
+            f"submodule.{submodule_name}.branch",
         ]
-        branch = manage_shell.query_cmd_and_capture_output(
+        branch_name = manage_shell.query_cmd_and_capture_output(
             cmd_parts=cmd_read_gitmodules_branch,
             raise_error=False,
         )
-        return branch or None
+        return branch_name or None
     return None
 
 
@@ -91,16 +91,16 @@ def _detect_default_branch_from_url(
         url,
         "HEAD",
     ]
-    result = manage_shell.query_cmd_and_capture_output(
+    output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_detect_remote_branch,
         raise_error=False,
     )
-    for line in result.splitlines():
-        if line.startswith("ref:") and "HEAD" in line:
+    for line in output.splitlines():
+        if line.startswith("ref:") and ("HEAD" in line):
             ## format: "ref: refs/heads/main\tHEAD"
             ref_part = line.split("\t")[0].replace("ref:", "").strip()
-            _, _, branch = ref_part.rpartition("/")
-            return branch or None
+            _, _, branch_name = ref_part.rpartition("/")
+            return branch_name or None
     return None
 
 
@@ -133,22 +133,22 @@ def cmd_update_submodules() -> None:
 def cmd_fix_submodule(
     *,
     submodule_path: str,
-    branch: str | None = None,
+    branch_name: str | None = None,
 ) -> None:
     """Repair a submodule stuck in detached HEAD: checkout default branch, pull, bump parent pointer."""
     repo_state.require_repo()
-    if branch is None:
+    if branch_name is None:
         manage_log.log_task("reading tracked branch from .gitmodules")
-        branch = _read_gitmodules_branch(submodule_path)
-    if branch is None:
+        branch_name = _read_gitmodules_branch(submodule_path)
+    if branch_name is None:
         manage_log.log_task("detecting default branch of the submodule")
-        branch = _detect_default_branch_from_local(submodule_path)
-    if branch is None:
+        branch_name = _detect_default_branch_from_local(submodule_path)
+    if branch_name is None:
         manage_log.exit_with_error(
             f"could not detect tracked branch for '{submodule_path}'; "
             "pass it explicitly: fix-submodule <path> <branch>",
         )
-    manage_log.log_task(f"checking out {branch} inside the submodule")
+    manage_log.log_task(f"checking out {branch_name} inside the submodule")
     ## `git -C <path>` runs the command as if cwd were <path>; avoids needing
     ## to actually cd in and out of the submodule directory.
     cmd_checkout_branch = [
@@ -156,7 +156,7 @@ def cmd_fix_submodule(
         "-C",
         submodule_path,
         "checkout",
-        branch,
+        branch_name,
     ]
     manage_shell.run_cmd_and_show_output(cmd_parts=cmd_checkout_branch)
     manage_log.log_task("pulling latest commits inside the submodule")
@@ -186,7 +186,7 @@ def cmd_fix_submodule(
     manage_log.log_outcome(
         f"repaired '{submodule_path}' and bumped parent pointer",
         status=manage_log.OutcomeStatus.SUCCESS,
-        items={"branch": branch},
+        items={"branch": branch_name},
     )
 
 
@@ -194,14 +194,14 @@ def cmd_add_submodule(
     *,
     url: str,
     local_name: str,
-    branch: str | None = None,
+    branch_name: str | None = None,
 ) -> None:
     """Add a new submodule, pin it to track its default branch, and commit .gitmodules + pointer."""
     repo_state.require_repo()
-    if branch is None:
+    if branch_name is None:
         manage_log.log_task("detecting default branch from remote")
-        branch = _detect_default_branch_from_url(url)
-        if branch is None:
+        branch_name = _detect_default_branch_from_url(url)
+        if branch_name is None:
             manage_log.exit_with_error(
                 f"could not detect default branch for '{url}'; "
                 "pass it explicitly: add-submodule <url> <name> <branch>",
@@ -216,7 +216,7 @@ def cmd_add_submodule(
         local_name,
     ]
     manage_shell.run_cmd_and_show_output(cmd_parts=cmd_add_submodule)
-    manage_log.log_task(f"setting tracked branch to {branch} in .gitmodules")
+    manage_log.log_task(f"setting tracked branch to {branch_name} in .gitmodules")
     ## record `branch = <branch>` so `git submodule update --remote` knows which
     ## branch to follow when pulling new commits.
     cmd_set_gitmodules_branch = [
@@ -225,7 +225,7 @@ def cmd_add_submodule(
         "-f",
         ".gitmodules",
         f"submodule.{local_name}.branch",
-        branch,
+        branch_name,
     ]
     manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_gitmodules_branch)
     manage_log.log_task("staging .gitmodules and submodule pointer")
@@ -245,7 +245,7 @@ def cmd_add_submodule(
     ]
     manage_shell.run_cmd_and_show_output(cmd_parts=cmd_commit_submodule)
     manage_log.log_outcome(
-        f"added submodule '{local_name}' tracking {branch}",
+        f"added submodule '{local_name}' tracking {branch_name}",
         status=manage_log.OutcomeStatus.SUCCESS,
         items={"url": url},
     )

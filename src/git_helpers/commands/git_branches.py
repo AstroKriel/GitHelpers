@@ -76,11 +76,11 @@ def _delete_gone_locals() -> None:
         "--format=%(refname:short) %(upstream:track)",
         "refs/heads/",
     ]
-    all_branches_output = manage_shell.query_cmd_and_capture_output(
+    branch_tracking_output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_list_branch_tracking,
         raise_error=True,
     )
-    gone_branches = [line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line]
+    gone_branches = [_line.split()[0] for _line in branch_tracking_output.splitlines() if "[gone]" in _line]
     if not gone_branches:
         manage_log.log_outcome(
             "no [gone] local branches",
@@ -101,11 +101,11 @@ def _delete_gone_locals() -> None:
             "--",
             branch_name,
         ]
-        success = manage_shell.run_cmd_and_show_output(
+        branch_was_deleted = manage_shell.run_cmd_and_show_output(
             cmd_parts=cmd_delete_gone_branch,
             raise_error=False,
         )
-        if not success:
+        if not branch_was_deleted:
             skipped_branches.append(branch_name)
             manage_log.log_note(
                 f"kept '{branch_name}' (unmerged commits; likely squash-merged: "
@@ -135,11 +135,11 @@ def cmd_force_delete_gone() -> None:
         "--format=%(refname:short) %(upstream:track)",
         "refs/heads/",
     ]
-    all_branches_output = manage_shell.query_cmd_and_capture_output(
+    branch_tracking_output = manage_shell.query_cmd_and_capture_output(
         cmd_parts=cmd_list_branch_tracking,
         raise_error=True,
     )
-    gone_branches = [line.split()[0] for line in all_branches_output.splitlines() if "[gone]" in line]
+    gone_branches = [_line.split()[0] for _line in branch_tracking_output.splitlines() if "[gone]" in _line]
     if not gone_branches:
         manage_log.log_outcome(
             "no [gone] local branches",
@@ -273,11 +273,11 @@ def _delete_merged_locals(
             "--",
             branch_name,
         ]
-        success = manage_shell.run_cmd_and_show_output(
+        branch_was_deleted = manage_shell.run_cmd_and_show_output(
             cmd_parts=cmd_delete_merged_branch,
             raise_error=False,
         )
-        if not success:
+        if not branch_was_deleted:
             skipped_branches.append(branch_name)
             manage_log.log_note(f"kept '{branch_name}' (could not delete; see the git error above)")
     deleted_count = len(branches_to_delete) - len(skipped_branches)
