@@ -20,7 +20,7 @@ sources = ["src"]
 git_helpers = "git_helpers.user_interface:main"
 
 [tool.uv.sources]
-huginn = { git = "https://github.com/AstroKriel/TerminalInterface.git", rev = "e9b10d5617022056075562dc76e07b3fb2d1ac30" }
+huginn = { git = "https://github.com/AstroKriel/TerminalInterface.git", rev = "8d2bb170836b38945c04f2c48718c3c5156bce4d" }
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]

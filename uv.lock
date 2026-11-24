@@ -25,7 +25,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "huginn", git = "https://github.com/AstroKriel/TerminalInterface.git?rev=e9b10d5617022056075562dc76e07b3fb2d1ac30" }]
+requires-dist = [{ name = "huginn", git = "https://github.com/AstroKriel/TerminalInterface.git?rev=8d2bb170836b38945c04f2c48718c3c5156bce4d" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]
@@ -33,7 +33,7 @@ dev = [{ name = "pytest", specifier = ">=8.0" }]
 [[package]]
 name = "huginn"
 version = "0.1.0"
-source = { git = "https://github.com/AstroKriel/TerminalInterface.git?rev=e9b10d5617022056075562dc76e07b3fb2d1ac30#e9b10d5617022056075562dc76e07b3fb2d1ac30" }
+source = { git = "https://github.com/AstroKriel/TerminalInterface.git?rev=8d2bb170836b38945c04f2c48718c3c5156bce4d#8d2bb170836b38945c04f2c48718c3c5156bce4d" }
 dependencies = [
     { name = "rich" },
 ]
