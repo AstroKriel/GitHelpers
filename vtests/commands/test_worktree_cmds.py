@@ -263,6 +263,37 @@ def test_rename_branch_relinks_worktree(
     assert str(new_worktree_path) in result.stdout
 
 
+def test_rename_branch_relinks_submodules(
+    make_repo_: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ## git refuses local-path submodule clones unless the file protocol is allowed
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "protocol.file.allow")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "always")
+    submodule_source = tmp_path / "submodule_source"
+    submodule_source.mkdir()
+    vtest_helpers.git(["init", "-b", "main"], cwd=submodule_source)
+    for key, val in vtest_helpers.GIT_USER.items():
+        vtest_helpers.git(["config", key, val], cwd=submodule_source)
+    vtest_helpers.make_commit(submodule_source, msg="init")
+    vtest_helpers.git(["submodule", "add", str(submodule_source), "extern/library"], cwd=make_repo_)
+    vtest_helpers.git(["commit", "-m", "add submodule"], cwd=make_repo_)
+    vtest_helpers.git(["checkout", "-b", "old/name"], cwd=make_repo_)
+    vtest_helpers.git(["checkout", "main"], cwd=make_repo_)
+    git_worktrees.cmd_create_worktree(branch_name="old/name")
+    old_worktree_path = worktree_path_for(make_repo_, "old/name")
+    monkeypatch.chdir(old_worktree_path)
+    git_worktrees.cmd_rename_branch(new_name="new/name")
+    new_worktree_path = worktree_path_for(make_repo_, "new/name")
+    ## status recurses into submodules, so it fails if a submodule still points at the old path
+    vtest_helpers.git(["status"], cwd=new_worktree_path)
+    submodule_checkout_path = new_worktree_path / "extern" / "library"
+    result = vtest_helpers.git(["rev-parse", "--show-toplevel"], cwd=submodule_checkout_path)
+    assert Path(result.stdout.strip()).resolve() == submodule_checkout_path.resolve()
+
+
 def test_rename_branch_aborts_when_target_path_exists(
     make_repo_: Path,
     monkeypatch: pytest.MonkeyPatch,

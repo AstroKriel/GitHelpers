@@ -5,6 +5,7 @@
 ##
 
 ## stdlib
+import os
 import pathlib
 
 ## personal
@@ -42,6 +43,66 @@ def _list_worktree_changes(
         raise_error=True,
     )
     return output.splitlines()
+
+
+def _relink_submodule_checkouts(
+    *,
+    old_worktree_path: pathlib.Path,
+    new_worktree_path: pathlib.Path,
+) -> None:
+    """Point each submodule of a moved worktree at its new checkout path; `git worktree repair` leaves their `core.worktree` at the old path."""
+    cmd_query_git_dir = [
+        "git",
+        "-C",
+        str(new_worktree_path),
+        "rev-parse",
+        "--absolute-git-dir",
+    ]
+    worktree_git_dir = pathlib.Path(
+        manage_shell.query_cmd_and_capture_output(
+            cmd_parts=cmd_query_git_dir,
+            raise_error=True,
+        ),
+    )
+    modules_dir = worktree_git_dir / "modules"
+    if not modules_dir.is_dir():
+        return
+    resolved_old_worktree_path = old_worktree_path.resolve()
+    resolved_new_worktree_path = new_worktree_path.resolve()
+    ## nested submodules keep their git dirs under modules/<name>/modules/, so search recursively
+    for config_path in sorted(modules_dir.rglob("config")):
+        submodule_git_dir = config_path.parent
+        if not (submodule_git_dir / "HEAD").is_file():
+            continue
+        cmd_query_checkout = [
+            "git",
+            "config",
+            "--file",
+            str(config_path),
+            "--get",
+            "core.worktree",
+        ]
+        stored_checkout_path = manage_shell.query_cmd_and_capture_output(
+            cmd_parts=cmd_query_checkout,
+            raise_error=False,
+        )
+        if not stored_checkout_path:
+            continue
+        old_checkout_path = (submodule_git_dir / stored_checkout_path).resolve()
+        if not old_checkout_path.is_relative_to(resolved_old_worktree_path):
+            continue
+        checkout_path_in_worktree = old_checkout_path.relative_to(resolved_old_worktree_path)
+        new_checkout_path = resolved_new_worktree_path / checkout_path_in_worktree
+        new_stored_checkout_path = os.path.relpath(new_checkout_path, submodule_git_dir)
+        cmd_set_checkout = [
+            "git",
+            "config",
+            "--file",
+            str(config_path),
+            "core.worktree",
+            new_stored_checkout_path,
+        ]
+        manage_shell.run_cmd_and_show_output(cmd_parts=cmd_set_checkout)
 
 
 ##
@@ -378,6 +439,11 @@ def cmd_rename_branch(
             str(new_worktree_path),
         ]
         manage_shell.run_cmd_and_show_output(cmd_parts=cmd_repair)
+        manage_log.log_task("relinking submodules")
+        _relink_submodule_checkouts(
+            old_worktree_path=old_worktree_path,
+            new_worktree_path=new_worktree_path,
+        )
         manage_log.log_outcome(
             f"moved worktree to '{new_worktree_path}'",
             status=manage_log.OutcomeStatus.SUCCESS,
